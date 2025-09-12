@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "id": "Location",
+  "allOf": [
+    {
+      "$ref": "../Core/Entity.json"
+    }
+  ],
+  "type": "object",
+  "properties": {
+    "RecommendedLevel": {
+      "type": "integer",
+      "format": "uint"
+    },
+    "Type": {
+      "$ref": "../Common/LocationType.json",
+      "default": "World"
+    },
+    "Chests": {
+      "type": "array",
+      "items": {
+        "$ref": "Spawn.json"
+      }
+    }
+  },
+  "required": [
+    "Type",
+    "Chests"
+  ]
+}

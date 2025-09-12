@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ChestDescriptor",
+  "allOf": [
+    {
+      "$ref": "../Core/Entity.json"
+    }
+  ],
+  "type": "object",
+  "properties": {
+    "Type": {
+      "$ref": "Types/ChestType.json"
+    },
+    "InteractDistance": {
+      "type": "integer"
+    },
+    "LockInteractTime": {
+      "type": "string",
+      "format": "TimeSpan",
+      "default": "00:00:00"
+    },
+    "DropInfo": {
+      "type": "object",
+      "properties": {
+        "Items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/itemInfo"
+          }
+        },
+        "Currency": {
+          "$ref": "Types/Currency.json"
+        },
+        "CraftMaterials": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/itemInfo"
+          }
+        }
+      },
+      "required": [
+        "Items",
+        "Currency",
+        "CraftMaterials"
+      ]
+    }
+  },
+  "$defs": {
+    "itemInfo": {
+      "type": "object",
+      "properties": {
+        "LootTable": {
+          "type": "string"
+        },
+        "DropPercent": {
+          "type": "integer"
+        }
+      }
+    }
+  },
+  "required": [
+    "LockInteractTime",
+    "DropInfo"
+  ]
+}

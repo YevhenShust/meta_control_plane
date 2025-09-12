@@ -1,0 +1,10 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "/Game/Types/ChestType.json",
+  "enum": [
+    "Common",
+    "Rare",
+    "Exotic",
+    "Epic"
+  ]
+}

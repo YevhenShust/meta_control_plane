@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "GameMetaData",
+  "allOf": [
+    {
+      "$ref": "Core/MetaData.json"
+    }
+  ],
+  "type": "object",
+  "properties": {
+    "Chests": {
+      "type": "array",
+      "items": {
+        "$ref": "Game/ChestDescriptor.json"
+      }
+    },
+    "ChestLootTables": {
+      "type": "array",
+      "items": {
+        "$ref": "Game/ChestLootTableDescriptor.json"
+      }
+    }  },
+  "required": [
+    "Chests",
+    "ChestLootTables"
+  ]
+}

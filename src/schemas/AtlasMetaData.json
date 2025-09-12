@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "AtlasMetaData",
+  "allOf": [
+    {
+      "$ref": "Core/MetaData.json"
+    }
+  ],
+  "type": "object",
+  "properties": {
+    "Locations": {
+      "type": "array",
+      "items": {
+        "$ref": "Atlas/Location.json"
+      }
+    }
+  },
+  "required": [
+    "Locations"
+  ]
+}
