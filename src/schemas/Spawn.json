@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "Spawn2",
+  "name": "Spawn",
+  "type": "object",
+  "properties": {
+    "Id": {
+      "type": "string"
+    },
+    "DescriptorId": {
+      "type": "string"
+    },
+    "Position": {
+      "type": "object",
+      "properties": {
+        "X": { "type": "number", "format": "float", "title": "X" },
+        "Y": { "type": "number", "format": "float", "title": "Y" },
+        "Z": { "type": "number", "format": "float", "title": "Z" }
+      }
+    },
+    "Rotation": {
+      "type": "object",
+      "properties": {
+        "X": { "type": "number", "format": "float" },
+        "Y": { "type": "number", "format": "float" },
+        "Z": { "type": "number", "format": "float" }
+      }
+    }
+  },
+  "required": ["Id", "Position"]
+}
