@@ -1,0 +1,70 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "$id": "ChestSpawn",
+  "allOf": [
+    {
+      "$ref": "#/$defs/Entity"
+    }
+  ],
+  "type": "object",
+  "properties": {
+    "DescriptorId": {
+      "type": "string"
+    },
+    "Position": {
+      "$ref": "#/$defs/Vector3"
+    },
+    "Rotation": {
+      "$ref": "#/$defs/Vector3"
+    }
+  },
+  "required": [
+    "Position"
+  ],
+  "$defs": {
+    "Entity": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "Entity",
+      "type": "object",
+      "x-abstract": true,
+      "properties": {
+        "Id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "Id"
+      ]
+    },
+    "LocationType": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "LocationType",
+      "enum": [
+        "World",
+        "Dungeon",
+        "Siege",
+        "Void",
+        "Arena"
+      ]
+    },
+    "Vector3": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "Vector3",
+      "type": "object",
+      "properties": {
+        "X": {
+          "type": "number",
+          "format": "float"
+        },
+        "Y": {
+          "type": "number",
+          "format": "float"
+        },
+        "Z": {
+          "type": "number",
+          "format": "float"
+        }
+      }
+    }
+  }
+}

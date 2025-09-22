@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema",
-  "x-id": "ChestDescriptor",
+  "$id": "ChestDescriptor",
   "allOf": [
     {
       "$ref": "#/$defs/Entity"
@@ -59,7 +59,7 @@
     },
     "Entity": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "x-id": "Entity",
+      "$id": "Entity",
       "type": "object",
       "x-abstract": true,
       "properties": {
@@ -73,7 +73,7 @@
     },
     "ChestType": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "x-id": "ChestType",
+      "$id": "ChestType",
       "enum": [
         "Common",
         "Rare",
@@ -88,16 +88,16 @@
       "x-csharp-generic-parameter": "T",
       "properties": {
         "Min": {
-          "x-csharp-generic-parameter": true
+          "type": "number"
         },
         "Max": {
-          "x-csharp-generic-parameter": true
+          "type": "number"
         }
       }
     },
     "Currency": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "x-id": "Currency",
+      "$id": "Currency",
       "type": "object",
       "properties": {
         "Amount": {
