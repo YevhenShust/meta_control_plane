@@ -6,6 +6,7 @@ import uiSchema from '../../ui/ChestDescriptor.uischema.json';
 import { listDraftsV1, updateDraftV1 } from '../../shared/api/drafts';
 import { getSchemaByIdV1 } from '../../shared/api/schema';
 import useSetups from '../../setup/useSetups';
+import { useRefreshGameChests } from '../../menu/useGameChests';
 
 export default function ChestEditor({ params }: { params?: { entityId?: string } }) {
   const { selectedId } = useSetups();
@@ -17,6 +18,7 @@ export default function ChestEditor({ params }: { params?: { entityId?: string }
   const [formData, setFormData] = useState<any>(null);
   const [original, setOriginal] = useState<any>(null);
   const [saving, setSaving] = useState(false);
+  const refreshChests = useRefreshGameChests();
 
   useEffect(() => {
     let mounted = true;
@@ -71,6 +73,7 @@ export default function ChestEditor({ params }: { params?: { entityId?: string }
               setSaving(true);
               try {
                 await updateDraftV1(draftId, JSON.stringify(formData ?? {}));
+                await refreshChests();
               } catch (e) {
                 console.error(e);
               } finally {
