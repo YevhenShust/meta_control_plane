@@ -1,88 +1,96 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState } from 'react';
-import { Form } from '@rjsf/antd';
+import { useEffect, useState } from 'react';
+import Form from '@rjsf/antd';
 import validator from '@rjsf/validator-ajv8';
-//import uiSchema from '../../ui/Chest.ui.json';
+import uiSchema from '../../ui/ChestDescriptor.uischema.json';
+import { listDraftsV1, updateDraftV1 } from '../../shared/api/drafts';
+import { getSchemaByIdV1 } from '../../shared/api/schema';
+import useSetups from '../../setup/useSetups';
 
-export default function ChestEditorScreen({ params }: { params?: Record<string, string> }) {
-  const chestSchema = {
-    title: 'Chest',
-    type: 'object',
-    properties: {
-      // Entity.json (allOf -> inline)
-      Id: { type: 'string' },
+export default function ChestEditor({ params }: { params?: { entityId?: string } }) {
+  const { selectedId } = useSetups();
+  const draftId = params?.entityId ?? '';
 
-      // ChestDescriptor.json
-      Type: {
-        type: 'string',
-        enum: ['Common', 'Rare', 'Exotic', 'Epic'],
-      },
-      InteractDistance: { type: 'integer' },
-      LockInteractTime: { type: 'string', format: 'TimeSpan', default: '00:00:00' },
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [schema, setSchema] = useState<unknown | null>(null);
+  const [formData, setFormData] = useState<any>(null);
+  const [original, setOriginal] = useState<any>(null);
+  const [saving, setSaving] = useState(false);
 
-      DropInfo: {
-        type: 'object',
-        properties: {
-          Items: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                LootTable: { type: 'string' },
-                DropPercent: { type: 'integer' },
-              },
-            },
-          },
-          Currency: {
-            type: 'object',
-            properties: {
-              Amount: {
-                type: 'object',
-                properties: {
-                  Min: { type: 'integer' },
-                  Max: { type: 'integer' },
-                },
-              },
-              ExpiriencePercent: { type: 'integer' },
-            },
-          },
-          CraftMaterials: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                LootTable: { type: 'string' },
-                DropPercent: { type: 'integer' },
-              },
-            },
-          },
-        },
-        required: ['Items', 'Currency', 'CraftMaterials'],
-      },
-    },
-    required: ['Id', 'LockInteractTime', 'DropInfo'],
-  } as const;
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      if (!selectedId || !draftId) {
+        if (mounted) {
+          setError('No setup or draft selected');
+          setLoading(false);
+        }
+        return;
+      }
+      try {
+        const drafts = await listDraftsV1(selectedId);
+        const d = drafts.find(x => x.id === draftId);
+        if (!d) {
+          if (mounted) setError('Draft not found');
+          return;
+        }
+        let data: unknown = {};
+        try { data = JSON.parse(d.content ?? '{}'); } catch { data = d.content ?? {}; }
+        const sch = await getSchemaByIdV1(d.schemaId!, selectedId);
+        if (!mounted) return;
+        setOriginal(data);
+        setFormData(data);
+        setSchema(sch);
+      } catch (e: unknown) {
+        if (mounted) setError((e && (e as Error).message) ? (e as Error).message : String(e));
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [selectedId, draftId]);
 
-const uiFiles = import.meta.glob('/src/**/*.ui.json', { eager: true, import: 'default' }) as Record<string, any>;
-const uiSchema = uiFiles['/src/Chest.ui.json'] ?? {};
-
-  const [formData, setFormData] = useState<any>({});
+  if (loading) return <>Loading…</>;
+  if (error) return <>{error}</>;
 
   return (
     <div>
-      <h3>Chest Editor</h3>
-      <div style={{ marginBottom: 8 }}>
-        Editing chest: <strong>{params?.entityId ?? 'new'}</strong>
-      </div>
       <Form
-        schema={chestSchema as any}
-        uiSchema={uiSchema as any}
+        schema={schema as any}
+        uiSchema={uiSchema}
         formData={formData}
         validator={validator}
-        onChange={({ formData }) => setFormData(formData)}
-        onSubmit={({ formData }) => console.log('submit', formData)}
-        onError={(errs) => console.warn('form errors', errs)}
-      />
+        onChange={e => setFormData(e.formData)}
+      >
+        <div style={{ marginTop: 12 }}>
+          <button
+            type="button"
+            onClick={async () => {
+              if (!draftId) return;
+              setSaving(true);
+              try {
+                await updateDraftV1(draftId, JSON.stringify(formData ?? {}));
+              } catch (e) {
+                console.error(e);
+              } finally {
+                setSaving(false);
+              }
+            }}
+            disabled={saving}
+          >
+            Save
+          </button>
+          <button
+            type="button"
+            style={{ marginLeft: 8 }}
+            onClick={() => setFormData(original)}
+            disabled={saving}
+          >
+            Reset
+          </button>
+        </div>
+      </Form>
     </div>
   );
 }

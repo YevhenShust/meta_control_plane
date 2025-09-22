@@ -117,7 +117,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/Schema/{setupId}": {
+    "/api/v1/Schemas/{setupId}": {
         parameters: {
             query?: never;
             header?: never;
