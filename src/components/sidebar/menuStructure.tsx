@@ -23,13 +23,7 @@ export const menuStructure: MenuItem[] = [
       {
         title: 'Chests',
         kind: 'game-chests',
-        children: [
-          {
-            title: 'Legendary chest',
-            kind: 'chest-editor',
-            params: { entityId: 'legendary' },
-          },
-        ],
+        children: [],
       },
     ],
   },
@@ -69,6 +63,8 @@ export function findNodeByPath(path: string[], tree: MenuItem[] = menuStructure)
   }
   return null;
 }
+
+export const isGameChestsNode = (n: MenuItem) => n.kind === 'game-chests';
 
 // Back-compat default export
 export default menuStructure;

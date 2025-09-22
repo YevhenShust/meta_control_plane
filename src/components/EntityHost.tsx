@@ -16,6 +16,9 @@ export default function EntityHost({ kind, params }: { kind: string; params?: Re
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // compute runtime guard: don't load the whole game-chests screen when no child is selected
+  const shouldLoad = !(kind === 'game-chests' && (!params || Object.keys(params).length === 0));
+
   function resolveLoaderPath(target: string): string | null {
     // 1) exact key
     if ((loaders as Record<string, unknown>)[target]) return target;
@@ -25,9 +28,15 @@ export default function EntityHost({ kind, params }: { kind: string; params?: Re
   }
 
   useEffect(() => {
+    // clear previous module state each time kind/shouldLoad change
     setLoaded(null);
     setError(null);
     setLoading(false);
+
+    // if we shouldn't load (e.g. Game → Chests with no selected child), just clear and exit
+    if (!shouldLoad) {
+      return;
+    }
 
     console.log('[EntityHost] registry', registry);
     console.log('[EntityHost] available loaders', Object.keys(loaders));
@@ -77,7 +86,12 @@ export default function EntityHost({ kind, params }: { kind: string; params?: Re
         setLoading(false);
       }
     })();
-  }, [kind]);
+  }, [kind, shouldLoad]);
+
+  // render placeholder when we intentionally skip loading for Game → Chests with no child
+  if (!shouldLoad) {
+    return <div style={{ padding: 8 }}>Select a chest</div>;
+  }
 
   if (!registry[kind]) {
     return <div>Missing renderer for kind: {kind}</div>;

@@ -6,6 +6,16 @@ export default function MainContent({ selectedMenuPath }: { selectedMenuPath: st
     return <div>Оберіть пункт меню</div>;
   }
 
+  // If user selected the Game -> Chests branch (depth 2), render lightweight placeholder
+  if (selectedMenuPath.length === 2 && selectedMenuPath[0] === 'Game' && selectedMenuPath[1] === 'Chests') {
+    return <div style={{ padding: 8 }}>Select a chest</div>;
+  }
+
+  if (selectedMenuPath.length >= 3 && selectedMenuPath[0] === 'Game' && selectedMenuPath[1] === 'Chests') {
+    const draftId = selectedMenuPath[2];
+    return <EntityHost kind="chest-editor" params={{ entityId: draftId }} />;
+  }
+
   const node = findNodeByPath(selectedMenuPath) as MenuItem | null;
 
   return (
