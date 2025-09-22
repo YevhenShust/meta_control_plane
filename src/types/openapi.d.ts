@@ -4,7 +4,7 @@
  */
 
 export interface paths {
-    "/api/v1/Draft/{setupId}": {
+    "/api/v1/Drafts/{setupId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -76,7 +76,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/Draft/{draftId}": {
+    "/api/v1/Drafts/{draftId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -189,7 +189,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/Setup": {
+    "/api/v1/Setups": {
         parameters: {
             query?: never;
             header?: never;
@@ -257,7 +257,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/Setup/{setupId}": {
+    "/api/v1/Setups/{setupId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -296,7 +296,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/Setup/by-name/{name}": {
+    "/api/v1/Setups/by-name/{name}": {
         parameters: {
             query?: never;
             header?: never;
