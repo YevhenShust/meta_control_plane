@@ -3,6 +3,7 @@ import type { MenuProps } from "antd";
 import { useEffect, useState } from "react";
 import type { MenuItem } from "./menuStructure";
 import useGameChests from '../../menu/useGameChests';
+import CreateChestModal from '../chests/CreateChestModal';
 import { isGameChestsNode } from './menuStructure';
 
 type SidebarMenuProps = {
@@ -41,9 +42,17 @@ function buildItems(items: MenuItem[], base: string[] = [], hookItems: MenuProps
 
 export default function SidebarMenu({ menu, selectedMenuPath, onSelect }: SidebarMenuProps) {
   const chests = useGameChests();
+  const [createOpen, setCreateOpen] = useState(false);
+
+  const newItem = {
+    key: 'Game/Chests/__new__',
+    label: '＋ New chest',
+    onClick: () => setCreateOpen(true),
+  } as AntMenuItem;
+
   const hookItems: MenuProps['items'] = (chests.loading && (!chests.items || chests.items.length === 0))
-    ? [{ key: 'Game/Chests/loading', label: 'Loading…', disabled: true } as AntMenuItem]
-    : (chests.items || []).map(c => ({ key: `Game/Chests/${c.params?.entityId ?? ''}`, label: c.title })) as MenuProps['items'];
+    ? [newItem, { key: 'Game/Chests/loading', label: 'Loading…', disabled: true } as AntMenuItem]
+    : [newItem, ...(chests.items || []).map(c => ({ key: `Game/Chests/${c.params?.entityId ?? ''}`, label: c.title }))] as MenuProps['items'];
   const items = buildItems(menu, [], hookItems as MenuProps['items']);
   const [openKeys, setOpenKeys] = useState<string[]>([]);
 
@@ -89,14 +98,31 @@ export default function SidebarMenu({ menu, selectedMenuPath, onSelect }: Sideba
   const selectedKeysArr: string[] = selectedMenuPath.length ? [toKey(selectedMenuPath)] : [];
 
   return (
-    <Menu
-      mode="inline"
-      items={items}
-      selectedKeys={selectedKeysArr}
-      onSelect={handleSelect}
-      onOpenChange={handleOpenChange}
-      openKeys={openKeys}
-      style={{ height: '100%', borderRight: 0 }}
-    />
+    <>
+      <Menu
+        mode="inline"
+        items={items}
+        selectedKeys={selectedKeysArr}
+        onSelect={handleSelect}
+        onOpenChange={handleOpenChange}
+        openKeys={openKeys}
+        style={{ height: '100%', borderRight: 0 }}
+      />
+      <CreateChestModal
+        open={createOpen}
+        onCancel={() => setCreateOpen(false)}
+        onCreated={async (draftId) => {
+          setCreateOpen(false);
+          await chests.refresh();
+          // ensure submenu is open: add Game and Game/Chests to open keys
+          setOpenKeys((prev) => {
+            const next = Array.from(new Set([...(prev || []), toKey(['Game']), toKey(['Game','Chests'])]));
+            return next;
+          });
+          onSelect(['Game','Chests', String(draftId)]);
+        }}
+      />
+    </>
   );
 }
+
