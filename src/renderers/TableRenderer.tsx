@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
-import { Table, Drawer } from 'antd';
-import FormRenderer from './FormRenderer';
+import { Table, Button, Input, InputNumber, Space, message } from 'antd';
 import useSetups from '../setup/useSetups';
 import { listSchemasV1 } from '../shared/api/schema';
-import { listDraftsV1 } from '../shared/api/drafts';
+import { listDraftsV1, updateDraftV1 } from '../shared/api/drafts';
 import type { components } from '../types/openapi.d.ts';
 
 type DraftDto = NonNullable<components['schemas']['DraftDto']>;
@@ -21,12 +20,25 @@ function getByPath(obj: unknown, path: string): unknown {
   }, obj);
 }
 
+function setByPath(obj: Record<string, unknown>, path: string, value: unknown) {
+  const parts = path.split('.');
+  const last = parts.pop()!;
+  let cur: Record<string, unknown> = obj;
+  for (const p of parts) {
+    if (!cur[p] || typeof cur[p] !== 'object') cur[p] = {};
+    cur = cur[p] as Record<string, unknown>;
+  }
+  cur[last] = value;
+}
+
 export default function TableRenderer({ schemaKey, uiSchema }: Props) {
   const { selectedId } = useSetups();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<Array<{ id: string; content: unknown }>>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingContent, setEditingContent] = useState<unknown>(null);
+  const [saving, setSaving] = useState(false);
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -84,41 +96,99 @@ export default function TableRenderer({ schemaKey, uiSchema }: Props) {
       title: col,
       dataIndex: col,
       key: col,
-      render: (_: unknown, r: { content: unknown }) => {
-        const v = getByPath(r.content, col);
+      render: (_: unknown, r: { id: string; content: unknown }) => {
+        const reading = editingId === r.id ? editingContent : r.content;
+        const v = getByPath(reading, col);
+        if (editingId === r.id) {
+          const isNumber = typeof v === 'number' || /^[A-Za-z]*\.(X|Y|Z)$/.test(col);
+          if (isNumber) {
+            return (
+              <InputNumber
+                style={{ width: '100%' }}
+                value={typeof v === 'number' ? v : undefined}
+                onChange={(val) => {
+                  const draft = JSON.parse(JSON.stringify(editingContent ?? {}));
+                  setByPath(draft, col, typeof val === 'number' ? val : null);
+                  setEditingContent(draft);
+                }}
+              />
+            );
+          }
+          return (
+            <Input
+              value={typeof v === 'string' ? v : String(v ?? '')}
+              onChange={(e) => {
+                const draft = JSON.parse(JSON.stringify(editingContent ?? {}));
+                setByPath(draft, col, e.target.value);
+                setEditingContent(draft);
+              }}
+            />
+          );
+        }
         return typeof v === 'object' ? JSON.stringify(v) : String(v ?? '');
       }
     }));
-  }, [cols]);
+  }, [cols, editingId, editingContent]);
+
+  const actionCol = {
+    title: '',
+    key: '__actions',
+    width: 160,
+  render: (_: unknown, r: { id: string; content: unknown }) => {
+      const isEditing = editingId === r.id;
+      return (
+        <Space>
+          {isEditing ? (
+            <>
+              <Button
+                type="primary"
+                loading={saving}
+                onClick={async () => {
+                  try {
+                    setSaving(true);
+                    await updateDraftV1(r.id, JSON.stringify(editingContent ?? {}));
+                    message.success('Saved');
+                    window.dispatchEvent(new CustomEvent('drafts:changed', { detail: { schemaKey, setupId: selectedId } }));
+                    setEditingId(null);
+                    setEditingContent(null);
+                    void load();
+                  } catch (e) {
+                    message.error(e instanceof Error ? e.message : 'Save failed');
+                  } finally {
+                    setSaving(false);
+                  }
+                }}
+              >
+                Save
+              </Button>
+              <Button onClick={() => { setEditingId(null); setEditingContent(null); }}>Cancel</Button>
+            </>
+          ) : (
+            <Button
+              onClick={() => {
+                setEditingId(r.id);
+                setEditingContent(JSON.parse(JSON.stringify(r.content ?? {})));
+              }}
+            >
+              Edit
+            </Button>
+          )}
+        </Space>
+      );
+    }
+  };
 
   if (!selectedId) return <div style={{ padding: 8 }}>Select setup</div>;
   if (error) return <div style={{ padding: 8, color: 'crimson' }}>{error}</div>;
   if (cols.length === 0) return <div style={{ padding: 8 }}>No columns configured</div>;
 
   return (
-    <>
-      <Table
-        rowKey={(r) => r.id}
-        loading={loading}
-        dataSource={rows}
-        columns={tableCols}
-        pagination={false}
-        onRow={(record) => ({
-    onClick: () => setEditingId(((record as unknown) as { id: string }).id),
-        })}
-      />
-
-      <Drawer
-        title={`Edit ${schemaKey}`}
-        open={!!editingId}
-        onClose={() => setEditingId(null)}
-        width={720}
-        destroyOnClose
-      >
-        {editingId ? (
-          <FormRenderer schemaKey={schemaKey} draftId={editingId} uiSchema={uiSchema as Record<string, unknown> | undefined} />
-        ) : null}
-      </Drawer>
-    </>
+    <Table
+      rowKey={(r) => r.id}
+      loading={loading}
+      dataSource={rows}
+      columns={[...tableCols, actionCol]}
+      pagination={false}
+    />
   );
 }

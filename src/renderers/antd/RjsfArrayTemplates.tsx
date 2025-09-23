@@ -14,10 +14,7 @@ export function ArrayFieldItemTemplate(props: ArrayFieldItemTemplateProps) {
     children,
     disabled,
     readonly,
-    hasMoveUp,
-    hasMoveDown,
     hasRemove,
-    onReorderClick,
     onDropIndexClick,
     index,
   } = props;
@@ -26,18 +23,6 @@ export function ArrayFieldItemTemplate(props: ArrayFieldItemTemplateProps) {
     <div style={{ marginBottom: 8 }}>
       <div>{children}</div>
       <Space.Compact style={{ marginTop: 6 }}>
-        <Button
-          disabled={disabled || readonly || !hasMoveUp}
-          onClick={onReorderClick(index, index - 1)}
-        >
-          ↑
-        </Button>
-        <Button
-          disabled={disabled || readonly || !hasMoveDown}
-          onClick={onReorderClick(index, index + 1)}
-        >
-          ↓
-        </Button>
         <Button
           danger
           disabled={disabled || readonly || !hasRemove}
