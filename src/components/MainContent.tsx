@@ -1,6 +1,7 @@
 import EntityHost from './EntityHost';
 import { findNodeByPath, type MenuItem } from './sidebar/menuStructure.tsx';
 
+
 export default function MainContent({ selectedMenuPath }: { selectedMenuPath: string[] }) {
   if (!selectedMenuPath || selectedMenuPath.length === 0) {
     return <div>Оберіть пункт меню</div>;
@@ -15,6 +16,8 @@ export default function MainContent({ selectedMenuPath }: { selectedMenuPath: st
     const draftId = selectedMenuPath[2];
     return <EntityHost key={draftId} kind="chest-editor" params={{ entityId: draftId }} />;
   }
+
+  
 
   const node = findNodeByPath(selectedMenuPath) as MenuItem | null;
 

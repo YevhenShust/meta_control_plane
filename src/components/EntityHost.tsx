@@ -6,7 +6,7 @@ type ScreenModule = { default: React.ComponentType<{ params?: Record<string, str
 const loaders = import.meta.glob<ScreenModule>('../screens/**/*.screen.tsx');
 
 const registry: Record<string, string> = {
-  'atlas-chests': '../screens/atlas/SpawnsTable.screen.tsx',
+  'atlas-chests': '../screens/atlas/AtlasChestSpawns.screen.tsx',
   'game-chests': '../screens/game/ChestsTable.screen.tsx',
   'chest-editor': '../screens/game/ChestEditor.screen.tsx',
 };
@@ -38,9 +38,7 @@ export default function EntityHost({ kind, params }: { kind: string; params?: Re
       return;
     }
 
-    console.log('[EntityHost] registry', registry);
-    console.log('[EntityHost] available loaders', Object.keys(loaders));
-    console.log('[EntityHost] requested kind', kind, '→', registry[kind]);
+    
 
     const target = registry[kind];
     if (!target) return; // fallback handled in render
