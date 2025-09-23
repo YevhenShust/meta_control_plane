@@ -2,7 +2,7 @@ import { Menu } from "antd";
 import type { MenuProps } from "antd";
 import { useEffect, useState } from "react";
 import type { MenuItem } from "./menuStructure";
-import useGameChests from '../../menu/useGameChests';
+import useGameChests from '../../menu/useDraftMenu';
 import CreateChestModal from '../chests/CreateChestModal';
 import { isGameChestsNode } from './menuStructure';
 
