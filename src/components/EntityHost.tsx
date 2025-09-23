@@ -1,14 +1,11 @@
 import React, { useEffect, useState } from 'react';
-
-type ScreenModule = { default: React.ComponentType<{ params?: Record<string, string> }> };
+import FormRenderer from '../renderers/FormRenderer';
 
 // Loaders for all screen modules under src/screens
-const loaders = import.meta.glob<ScreenModule>('../screens/**/*.screen.tsx');
+const loaders = import.meta.glob<{ default: React.ComponentType<{ params?: Record<string, string> }> }>('../screens/**/*.screen.tsx');
 
 const registry: Record<string, string> = {
   'atlas-chests': '../screens/atlas/AtlasChestSpawns.screen.tsx',
-  'game-chests': '../screens/game/ChestsTable.screen.tsx',
-  'chest-editor': '../screens/game/ChestEditor.screen.tsx',
 };
 
 export default function EntityHost({ kind, params }: { kind: string; params?: Record<string, string> }) {
@@ -16,52 +13,32 @@ export default function EntityHost({ kind, params }: { kind: string; params?: Re
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // compute runtime guard: don't load the whole game-chests screen when no child is selected
-  const shouldLoad = !(kind === 'game-chests' && (!params || Object.keys(params).length === 0));
+  const isGameChestsEmpty = kind === 'game-chests' && (!params || Object.keys(params).length === 0);
+  const target = registry[kind];
 
-  function resolveLoaderPath(target: string): string | null {
-    // 1) exact key
-    if ((loaders as Record<string, unknown>)[target]) return target;
-    // 2) suffix match (handle different relative bases)
-    const key = Object.keys(loaders).find(k => k.endsWith(target.replace(/^\.{1,2}\//, '')));
-    return key ?? null;
-  }
-
+  // loader effect (always declared to preserve hook order)
   useEffect(() => {
-    // clear previous module state each time kind/shouldLoad change
+    let mounted = true;
     setLoaded(null);
     setError(null);
     setLoading(false);
 
-    // if we shouldn't load (e.g. Game → Chests with no selected child), just clear and exit
-    if (!shouldLoad) {
-      return;
-    }
+    if (isGameChestsEmpty) return;
+    if (kind === 'form') return;
+    if (!target) return;
 
-    
-
-    const target = registry[kind];
-    if (!target) return; // fallback handled in render
-
-    let key: string | null = null;
-    try {
-      key = resolveLoaderPath ? resolveLoaderPath(target) : null;
-    } catch {
-      key = null;
-    }
+    const key = (loaders as Record<string, unknown>)[target]
+      ? target
+      : Object.keys(loaders).find(k => k.endsWith(target.replace(/^\.{1,2}\//, ''))) ?? null;
 
     if (!key) {
-      // fallback: simple suffix-based search for the common ChestEditor path
-      key = (loaders as Record<string, unknown>)[target] ? target : Object.keys(loaders).find(k => k.endsWith('/screens/game/ChestEditor.screen.tsx')) ?? null;
-      if (!key) {
-        setError('Loader not found for ChestEditor.screen.tsx');
-        return;
-      }
+      setError('Loader not found for: ' + target);
+      return;
     }
 
     const loader = (loaders as Record<string, () => Promise<unknown>>)[key];
     if (!loader) {
-      setError(`No loader for key: ${key}`);
+      setError('No loader for key: ' + key);
       return;
     }
 
@@ -70,8 +47,10 @@ export default function EntityHost({ kind, params }: { kind: string; params?: Re
       try {
         const mod = await loader();
         const d = (mod as { default?: React.ComponentType<Record<string, unknown>> }).default;
-        if (d) setLoaded(() => d as React.ComponentType<{ params?: Record<string, string> }>);
-        else setError('Module has no default export');
+        if (mounted) {
+          if (d) setLoaded(() => d as React.ComponentType<{ params?: Record<string, string> }>);
+          else setError('Module has no default export');
+        }
       } catch (e: unknown) {
         let msg = 'Failed to load module';
         if (e && typeof e === 'object' && 'message' in e && typeof (e as { message?: unknown }).message === 'string') {
@@ -79,24 +58,34 @@ export default function EntityHost({ kind, params }: { kind: string; params?: Re
         } else if (typeof e === 'string') {
           msg = e;
         }
-        setError(msg);
+        if (mounted) setError(msg);
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     })();
-  }, [kind, shouldLoad]);
 
-  // render placeholder when we intentionally skip loading for Game → Chests with no child
-  if (!shouldLoad) {
+    return () => { mounted = false; };
+  }, [isGameChestsEmpty, kind, target, params]);
+
+  // early placeholder for game-chests without selected child
+  if (isGameChestsEmpty) {
     return <div style={{ padding: 8 }}>Select a chest</div>;
   }
 
-  if (!registry[kind]) {
+  // handle direct form renderer nodes
+  if (kind === 'form') {
+    const schemaKey = params?.schemaKey as string;
+    const draftId = params?.draftId as string;
+    if (!schemaKey || !draftId) return <div>Missing schemaKey or draftId</div>;
+    return <FormRenderer schemaKey={schemaKey} draftId={draftId} />;
+  }
+
+  if (!target) {
     return <div>Missing renderer for kind: {kind}</div>;
   }
 
   if (error) {
-    console.error(error, { kind, registry, available: Object.keys(loaders) });
+    console.error(error, { kind, target });
     return <div>Renderer failed: {error}</div>;
   }
 
@@ -104,3 +93,4 @@ export default function EntityHost({ kind, params }: { kind: string; params?: Re
 
   return <Loaded params={params} />;
 }
+

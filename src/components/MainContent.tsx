@@ -14,10 +14,8 @@ export default function MainContent({ selectedMenuPath }: { selectedMenuPath: st
 
   if (selectedMenuPath.length >= 3 && selectedMenuPath[0] === 'Game' && selectedMenuPath[1] === 'Chests') {
     const draftId = selectedMenuPath[2];
-    return <EntityHost key={draftId} kind="chest-editor" params={{ entityId: draftId }} />;
+    return <EntityHost key={draftId} kind="form" params={{ schemaKey: 'ChestDescriptor', draftId }} />;
   }
-
-  
 
   const node = findNodeByPath(selectedMenuPath) as MenuItem | null;
 

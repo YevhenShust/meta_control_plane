@@ -20,7 +20,11 @@ function toKey(path: string[]) {
 
 function buildItems(items: MenuItem[], base: string[] = [], hookItems: MenuProps['items'] = []): NonNullable<MenuProps['items']> {
   return items.map((it) => {
-    const key = toKey([...base, it.title]);
+    const seg =
+      it.kind === 'form' && it.params && typeof it.params.draftId === 'string'
+        ? it.params.draftId
+        : it.title;
+    const key = toKey([...base, seg]);
     // if this is the game-chests node, return a submenu provided via hookItems regardless of children
     if (isGameChestsNode(it)) {
       return {
@@ -52,7 +56,7 @@ export default function SidebarMenu({ menu, selectedMenuPath, onSelect }: Sideba
 
   const hookItems: MenuProps['items'] = (chests.loading && (!chests.items || chests.items.length === 0))
     ? [newItem, { key: 'Game/Chests/loading', label: 'Loading…', disabled: true } as AntMenuItem]
-    : [newItem, ...(chests.items || []).map(c => ({ key: `Game/Chests/${c.params?.entityId ?? ''}`, label: c.title }))] as MenuProps['items'];
+    : [newItem, ...(chests.items || []).map(c => ({ key: `Game/Chests/${c.params?.draftId ?? ''}`, label: c.title }))] as MenuProps['items'];
   const items = buildItems(menu, [], hookItems as MenuProps['items']);
   const [openKeys, setOpenKeys] = useState<string[]>([]);
 
@@ -93,7 +97,7 @@ export default function SidebarMenu({ menu, selectedMenuPath, onSelect }: Sideba
     // if Game/Chests branch was opened, trigger load
   if (next.includes('Game/Chests')) chests.ensureLoaded();
   };
-  console.log('[menu chests]', { loading: chests.loading, items: (chests.items || []).map(i => ({ id: i.params.entityId, title: i.title })) });
+  console.log('[menu chests]', { loading: chests.loading, items: (chests.items || []).map(i => ({ id: i.params?.draftId, title: i.title })) });
 
   const selectedKeysArr: string[] = selectedMenuPath.length ? [toKey(selectedMenuPath)] : [];
 

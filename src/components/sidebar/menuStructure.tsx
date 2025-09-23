@@ -1,9 +1,9 @@
 // menuStructure.tsx - typed menu tree + helper
 
 export type NodeKind =
+  | 'form'
   | 'game-root'
   | 'game-chests'
-  | 'chest-editor'
   | 'atlas-root'
   | 'atlas-location'
   | 'atlas-chests';
