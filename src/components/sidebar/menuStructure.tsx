@@ -2,18 +2,20 @@
 
 export type NodeKind =
   | 'form'
+  | 'table'
   | 'game-root'
   | 'game-chests'
   | 'atlas-root'
-  | 'atlas-location'
-  | 'atlas-chests';
+  | 'atlas-location';
 
 export interface MenuItem {
   title: string;
   kind: NodeKind;
-  params?: Record<string, string>;
+  params?: Record<string, unknown>;
   children?: MenuItem[];
 }
+
+import chestSpawnUi from '../../ui/ChestSpawn.rjsf.uischema.json';
 
 export const menuStructure: MenuItem[] = [
   {
@@ -38,8 +40,8 @@ export const menuStructure: MenuItem[] = [
         children: [
           {
             title: 'Chests',
-            kind: 'atlas-chests',
-            params: { locationId: '1' },
+            kind: 'table',
+            params: { schemaKey: 'ChestSpawn', uiSchema: chestSpawnUi },
           },
         ],
       },

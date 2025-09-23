@@ -19,18 +19,20 @@ import type { components } from '../types/openapi.d.ts';
 type DraftDto = NonNullable<components['schemas']['DraftDto']>;
 type SchemaDto = NonNullable<components['schemas']['SchemaDto']>;
 
-type Props = { schemaKey: 'ChestDescriptor' | string; draftId: string };
+type Props = { schemaKey: 'ChestDescriptor' | string; draftId: string; uiSchema?: Record<string, unknown> };
 
-export default function FormRenderer({ schemaKey, draftId }: Props) {
+export default function FormRenderer(props: Props) {
+  const { schemaKey, draftId } = props;
   const { selectedId } = useSetups();
 
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [schema, setSchema] = useState<any | null>(null);
-  const uiSchema = useMemo(() => {
+  const resolvedUiSchema = useMemo(() => {
+    if (props.uiSchema && typeof props.uiSchema === 'object') return props.uiSchema as any;
     if (schemaKey === 'ChestDescriptor') return chestDescriptorUi as any;
-    return {} as any;
-  }, [schemaKey]);
+    return {};
+  }, [schemaKey, props.uiSchema]);
   const [formData, setFormData] = useState<any>(null);
   const [saving, setSaving] = useState(false);
 
@@ -82,7 +84,7 @@ export default function FormRenderer({ schemaKey, draftId }: Props) {
   return (
     <Form
       schema={schema as any}
-      uiSchema={uiSchema}
+  uiSchema={resolvedUiSchema}
       templates={{ ArrayFieldItemTemplate, ArrayFieldTemplate }}
       validator={validator}
       showErrorList={false}

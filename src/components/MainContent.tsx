@@ -1,4 +1,5 @@
 import EntityHost from './EntityHost';
+import chestSpawnUi from '../ui/ChestSpawn.rjsf.uischema.json';
 import { findNodeByPath, type MenuItem } from './sidebar/menuStructure.tsx';
 
 
@@ -10,6 +11,14 @@ export default function MainContent({ selectedMenuPath }: { selectedMenuPath: st
   // If user selected the Game -> Chests branch (depth 2), render lightweight placeholder
   if (selectedMenuPath.length === 2 && selectedMenuPath[0] === 'Game' && selectedMenuPath[1] === 'Chests') {
     return <div style={{ padding: 8 }}>Select a chest</div>;
+  }
+
+  // Atlas -> Location -> Chests should open a read-only table view
+  if (selectedMenuPath.length >= 3
+      && selectedMenuPath[0] === 'Atlas'
+      && selectedMenuPath[1] === 'Location'
+      && selectedMenuPath[2] === 'Chests') {
+    return <EntityHost kind="table" params={{ schemaKey: 'ChestSpawn', uiSchema: chestSpawnUi }} />;
   }
 
   if (selectedMenuPath.length >= 3 && selectedMenuPath[0] === 'Game' && selectedMenuPath[1] === 'Chests') {
