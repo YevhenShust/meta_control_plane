@@ -1,4 +1,4 @@
-import { Table, Input, InputNumber, Typography } from 'antd';
+import { Table, InputNumber, Typography, Select } from 'antd';
 import { useEffect, useState, useRef } from 'react';
 import useSetups from '../../setup/useSetups';
 import { listSchemasV1 } from '../../shared/api/schema';
@@ -12,6 +12,8 @@ export default function AtlasChestSpawnsScreen() {
   const [rows, setRows] = useState<Row[]>([]);
   const rowsRef = useRef<Row[]>(rows);
   const saveTimers = useRef(new Map<string, number>());
+  const [descriptorOpts, setDescriptorOpts] = useState<Array<{ value: string; label: string }>>([]);
+  const [descLoading, setDescLoading] = useState(false);
 
   useEffect(() => { rowsRef.current = rows; }, [rows]);
 
@@ -26,6 +28,26 @@ export default function AtlasChestSpawnsScreen() {
         }) ?? schemas[0];
         const drafts = await listDraftsV1(selectedId);
         const filtered = drafts.filter(d => d.schemaId === picked?.id);
+        // load chest descriptor drafts once for DescriptorId select options
+        try {
+          setDescLoading(true);
+          const chestDesc = schemas.find(s => {
+            try { return JSON.parse(String(s.content || '{}')).$id === 'ChestDescriptor'; } catch { return false; }
+          });
+          if (chestDesc?.id) {
+            const opts = drafts
+              .filter(d => d.schemaId === chestDesc.id)
+              .map(d => {
+                let id = String(d.id);
+                try { id = (JSON.parse(String(d.content || '{}')).Id) || id; } catch { /* ignore parse errors */ }
+                return { value: id, label: id };
+              })
+              .sort((a, b) => a.label.localeCompare(b.label));
+            if (mounted) setDescriptorOpts(opts);
+          }
+        } finally {
+          setDescLoading(false);
+        }
         const mapped: Row[] = filtered.map(d => {
           let parsed: any = {};
           try { parsed = JSON.parse(String(d.content || '{}')); } catch { parsed = {}; }
@@ -65,12 +87,25 @@ export default function AtlasChestSpawnsScreen() {
   if (!selectedId) return <div style={{ padding: 8 }}>Select setup</div>;
 
   const columns = [
-    { title: 'Draft ID', dataIndex: 'id' },
     {
       title: 'DescriptorId',
-      render: (_: any, row: Row) => (
-        <Input value={row.content?.DescriptorId ?? ''} onChange={(v) => edit(row.id, d => { d.DescriptorId = v.target.value; })} />
-      ),
+      render: (_: any, row: Row) => {
+        const current = row.content?.DescriptorId ?? '';
+        const opts = current && !descriptorOpts.some(o => o.value === current) ? [{ value: current, label: current }, ...descriptorOpts] : descriptorOpts;
+        return (
+          <Select
+            value={current}
+            options={opts}
+            loading={descLoading}
+            showSearch
+            allowClear={false}
+            placeholder="Select chest Id"
+            filterOption={(input, opt) => (opt?.label as string).toLowerCase().includes(String(input).toLowerCase())}
+            onChange={(val) => edit(row.id, d => { d.DescriptorId = val; })}
+            style={{ minWidth: 160 }}
+          />
+        );
+      },
     },
     {
       title: 'Position',
@@ -93,7 +128,7 @@ export default function AtlasChestSpawnsScreen() {
       ),
     },
     {
-      title: 'Status',
+      title: 'Update status',
       render: (_: any, row: Row) => (
         row.saving ? <Typography.Text type="secondary">Saving…</Typography.Text> : (row.error ? <Typography.Text type="danger">{row.error}</Typography.Text> : null)
       ),
