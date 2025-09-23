@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Table, Input, InputNumber, Select } from 'antd';
+import { Table, Input, InputNumber, Select, Button, Drawer } from 'antd';
 import useSetups from '../setup/useSetups';
 import { listSchemasV1 } from '../shared/api/schema';
-import { listDraftsV1, updateDraftV1 } from '../shared/api/drafts';
+import { listDraftsV1, updateDraftV1, createDraftV1 } from '../shared/api/drafts';
+import FormRenderer from './FormRenderer';
 import type { components } from '../types/openapi.d.ts';
 type SchemaDto = NonNullable<components['schemas']['SchemaDto']>;
 type Props = { schemaKey: string; uiSchema?: Record<string, unknown> };
@@ -68,6 +69,7 @@ export default function TableRenderer({ schemaKey, uiSchema }: Props) {
   const cols = useMemo(() => pickTableColumns(uiSchema), [uiSchema]);
   const selectCfg = useMemo(() => pickSelectConfig(uiSchema), [uiSchema]);
   const [selectOptions, setSelectOptions] = useState<Record<string, Array<{label: string; value: string}>>>({});
+  const [creatingId, setCreatingId] = useState<string | null>(null);
 
   // локальні незбережені зміни по рядках (rowId -> content)
   const editsRef = useRef(new Map<string, unknown>());
@@ -199,6 +201,23 @@ export default function TableRenderer({ schemaKey, uiSchema }: Props) {
     }
   }, [schemaKey, selectedId]);
 
+  const createNew = useCallback(async () => {
+    if (!selectedId) return;
+    try {
+      const schemas: SchemaDto[] = await listSchemasV1(selectedId);
+      const match = schemas.find(s => {
+        const raw = parseJson(s.content);
+        return raw && typeof raw === 'object' && (raw as Record<string, unknown>)['$id'] === schemaKey;
+      });
+      if (!match || !match.id) throw new Error(`Schema not found: ${schemaKey}`);
+
+  const created = await createDraftV1(selectedId, { schemaId: String(match.id), content: JSON.stringify({}) });
+  setCreatingId(String(created.id));
+    } catch {
+      // ignore
+    }
+  }, [schemaKey, selectedId]);
+
   useEffect(() => () => {
     // cleanup таймерів при демонтажі
     timersRef.current.forEach((t) => window.clearTimeout(t));
@@ -271,15 +290,33 @@ export default function TableRenderer({ schemaKey, uiSchema }: Props) {
   if (!selectedId) return <div style={{ padding: 8 }}>Select setup</div>;
   if (error) return <div style={{ padding: 8, color: 'crimson' }}>{error}</div>;
   if (!cols.length) return <div style={{ padding: 8 }}>No columns configured</div>;
-
   return (
-    <Table<Row>
-      rowKey={(r) => r.id}
-      loading={loading}
-      dataSource={rows}
-      columns={tableCols}
-      pagination={false}
-    />
+    <>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+        <Button type="primary" onClick={createNew} disabled={!selectedId}>New</Button>
+      </div>
+
+      <Table<Row>
+        rowKey={(r) => r.id}
+        loading={loading}
+        dataSource={rows}
+        columns={tableCols}
+        pagination={false}
+      />
+
+      <Drawer
+        title={`New ${schemaKey}`}
+        placement="right"
+        width={720}
+        open={!!creatingId}
+        onClose={() => setCreatingId(null)}
+        destroyOnClose
+      >
+        {creatingId ? (
+          <FormRenderer schemaKey={schemaKey} draftId={creatingId} uiSchema={uiSchema as Record<string, unknown> | undefined} />
+        ) : null}
+      </Drawer>
+    </>
   );
 }
 
