@@ -6,16 +6,11 @@ import { menuStructure } from "./components/sidebar/menuStructure";
 import { Layout } from "antd";
 import "antd/dist/reset.css";
 import "./App.css";
-import TopBar from './components/TopBar';
-import CreateSetupModal from './components/CreateSetupModal';
-import useSetups from './setup/useSetups';
-
-const { Sider, Content, Header } = Layout;
+// setup hook not needed in this file
 
 const App: React.FC = () => {
   const [selectedMenuPath, setSelectedMenuPath] = useState<string[]>([]);
-  const [createOpen, setCreateOpen] = useState(false);
-  const [creating, setCreating] = useState(false);
+  
 
   // On mount: read ?path= from URL and restore selection
   useEffect(() => {
@@ -57,44 +52,35 @@ const App: React.FC = () => {
     window.history.pushState(null, '', qp || window.location.pathname + cleaned);
   }, [selectedMenuPath]);
 
-  const { createSetup } = useSetups();
-
-  const handleCreateSubmit = async (name: string) => {
-    try {
-      setCreating(true);
-      await createSetup(name);
-      setCreateOpen(false);
-    } catch (e) {
-      console.error('[App] createSetup failed', e);
-    } finally {
-      setCreating(false);
-    }
-  };
+  
 
   return (
-    <Layout style={{ minHeight: "100vh" }}>
-      <Header style={{ background: '#fff', padding: 0, borderBottom: '1px solid #eee' }}>
-        <TopBar />
-        <CreateSetupModal
-          open={createOpen}
-          loading={creating}
-          onCancel={() => setCreateOpen(false)}
-          onSubmit={handleCreateSubmit}
+    <Layout style={{ minHeight: '100vh', background: '#fff' }}>
+      <Layout.Sider
+        width={260}
+        theme="light"
+        style={{
+          position: 'fixed',
+          left: 0,
+          top: 0,
+          bottom: 0,
+          height: '100vh',
+          background: '#fff',
+          borderRight: '1px solid #f0f0f0',
+          overflow: 'auto',
+        }}
+      >
+        <SidebarMenu
+          menu={menuStructure}
+          selectedMenuPath={selectedMenuPath}
+          onSelect={setSelectedMenuPath}
         />
-      </Header>
-      <Layout>
-        <Sider width={300} style={{ background: "#fff", borderRight: "1px solid #eee" }}>
-          <SidebarMenu
-            menu={menuStructure}
-            selectedMenuPath={selectedMenuPath}
-            onSelect={setSelectedMenuPath}
-          />
-        </Sider>
-        <Layout>
-          <Content style={{ padding: 24, background: "#fafafa" }}>
-            <MainContent selectedMenuPath={selectedMenuPath} />
-          </Content>
-        </Layout>
+      </Layout.Sider>
+
+      <Layout style={{ marginLeft: 260, background: '#fff', minHeight: '100vh' }}>
+        <Layout.Content style={{ padding: '16px 24px' }}>
+          <MainContent selectedMenuPath={selectedMenuPath} />
+        </Layout.Content>
       </Layout>
     </Layout>
   );
