@@ -1,8 +1,8 @@
-import { Table, InputNumber, Typography, Select } from 'antd';
+import { Table, InputNumber, Typography, Select, Button, Space } from 'antd';
 import { useEffect, useState, useRef } from 'react';
 import useSetups from '../../setup/useSetups';
 import { listSchemasV1 } from '../../shared/api/schema';
-import { listDraftsV1, updateDraftV1 } from '../../shared/api/drafts';
+import { listDraftsV1, updateDraftV1, createDraftV1 } from '../../shared/api/drafts';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 type Row = { id: string; schemaId: string; content: any; saving?: boolean; error?: string | null };
@@ -14,8 +14,17 @@ export default function AtlasChestSpawnsScreen() {
   const saveTimers = useRef(new Map<string, number>());
   const [descriptorOpts, setDescriptorOpts] = useState<Array<{ value: string; label: string }>>([]);
   const [descLoading, setDescLoading] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [newRow, setNewRow] = useState<{ Id: string; DescriptorId?: string; Position: { X: number; Y: number; Z: number }; Rotation?: { X: number; Y: number; Z: number } } | null>(null);
+  const [chestSpawnSchemaId, setChestSpawnSchemaId] = useState<string | null>(null);
+  const [savingNew, setSavingNew] = useState(false);
 
   useEffect(() => { rowsRef.current = rows; }, [rows]);
+
+  const handleNew = () => {
+    setCreating(true);
+    setNewRow({ Id: `spawn-chest-${Date.now()}`, DescriptorId: descriptorOpts[0]?.value, Position: { X: 0, Y: 0, Z: 0 }, Rotation: { X: 0, Y: 0, Z: 0 } });
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -45,6 +54,7 @@ export default function AtlasChestSpawnsScreen() {
               .sort((a, b) => a.label.localeCompare(b.label));
             if (mounted) setDescriptorOpts(opts);
           }
+
         } finally {
           setDescLoading(false);
         }
@@ -54,6 +64,8 @@ export default function AtlasChestSpawnsScreen() {
           return { id: String(d.id), schemaId: String(d.schemaId), content: parsed, saving: false, error: null };
         });
         if (mounted) setRows(mapped);
+        // remember chest spawn schema id for creating new drafts
+        if (picked?.id) setChestSpawnSchemaId(String(picked.id));
       } catch {
         if (mounted) setRows([]);
       }
@@ -84,13 +96,29 @@ export default function AtlasChestSpawnsScreen() {
     scheduleSave(rowId);
   }
 
+  const handleCreate = async () => {
+    if (!selectedId || !chestSpawnSchemaId || !newRow) return;
+    setSavingNew(true);
+    try {
+      const created = await createDraftV1(selectedId, { schemaId: chestSpawnSchemaId, content: JSON.stringify(newRow) });
+      setRows(prev => [{ id: String(created.id), schemaId: chestSpawnSchemaId, content: newRow, saving: false, error: null }, ...prev]);
+      setCreating(false);
+      setNewRow(null);
+    } catch (e) {
+      console.error('create spawn failed', e);
+    } finally {
+      setSavingNew(false);
+    }
+  };
+
   if (!selectedId) return <div style={{ padding: 8 }}>Select setup</div>;
 
   const columns = [
     {
       title: 'DescriptorId',
       render: (_: any, row: Row) => {
-        const current = row.content?.DescriptorId ?? '';
+        const isNew = row.id === '__new__';
+        const current = isNew ? (newRow?.DescriptorId ?? '') : (row.content?.DescriptorId ?? '');
         const opts = current && !descriptorOpts.some(o => o.value === current) ? [{ value: current, label: current }, ...descriptorOpts] : descriptorOpts;
         return (
           <Select
@@ -101,7 +129,10 @@ export default function AtlasChestSpawnsScreen() {
             allowClear={false}
             placeholder="Select chest Id"
             filterOption={(input, opt) => (opt?.label as string).toLowerCase().includes(String(input).toLowerCase())}
-            onChange={(val) => edit(row.id, d => { d.DescriptorId = val; })}
+            onChange={(val) => {
+              if (isNew) setNewRow(prev => ({ ...(prev ?? { Id: `spawn-chest-${Date.now()}`, Position: { X: 0, Y: 0, Z: 0 }, Rotation: { X: 0, Y: 0, Z: 0 } }), DescriptorId: val }));
+              else edit(row.id, d => { d.DescriptorId = val; });
+            }}
             style={{ minWidth: 160 }}
           />
         );
@@ -109,23 +140,49 @@ export default function AtlasChestSpawnsScreen() {
     },
     {
       title: 'Position',
-      render: (_: any, row: Row) => (
-        <div style={{ display: 'flex', gap: 8 }}>
-          <InputNumber value={row.content?.Position?.X ?? 0} onChange={(val) => edit(row.id, d => { d.Position = d.Position ?? { X: 0, Y: 0, Z: 0 }; d.Position.X = Number(val) || 0; })} />
-          <InputNumber value={row.content?.Position?.Y ?? 0} onChange={(val) => edit(row.id, d => { d.Position = d.Position ?? { X: 0, Y: 0, Z: 0 }; d.Position.Y = Number(val) || 0; })} />
-          <InputNumber value={row.content?.Position?.Z ?? 0} onChange={(val) => edit(row.id, d => { d.Position = d.Position ?? { X: 0, Y: 0, Z: 0 }; d.Position.Z = Number(val) || 0; })} />
-        </div>
-      ),
+      render: (_: any, row: Row) => {
+        const isNew = row.id === '__new__';
+        const pos = isNew ? (newRow?.Position ?? { X: 0, Y: 0, Z: 0 }) : (row.content?.Position ?? { X: 0, Y: 0, Z: 0 });
+        return (
+          <div style={{ display: 'flex', gap: 8 }}>
+            <InputNumber value={pos.X ?? 0} onChange={(val) => {
+              if (isNew) setNewRow(prev => ({ ...(prev ?? { Id: `spawn-chest-${Date.now()}`, DescriptorId: descriptorOpts[0]?.value, Position: { X: 0, Y: 0, Z: 0 }, Rotation: { X: 0, Y: 0, Z: 0 } }), Position: { ...(prev?.Position ?? { X: 0, Y: 0, Z: 0 }), X: Number(val) || 0 } }));
+              else edit(row.id, d => { d.Position = d.Position ?? { X: 0, Y: 0, Z: 0 }; d.Position.X = Number(val) || 0; });
+            }} />
+            <InputNumber value={pos.Y ?? 0} onChange={(val) => {
+              if (isNew) setNewRow(prev => ({ ...(prev ?? { Id: `spawn-chest-${Date.now()}`, DescriptorId: descriptorOpts[0]?.value, Position: { X: 0, Y: 0, Z: 0 }, Rotation: { X: 0, Y: 0, Z: 0 } }), Position: { ...(prev?.Position ?? { X: 0, Y: 0, Z: 0 }), Y: Number(val) || 0 } }));
+              else edit(row.id, d => { d.Position = d.Position ?? { X: 0, Y: 0, Z: 0 }; d.Position.Y = Number(val) || 0; });
+            }} />
+            <InputNumber value={pos.Z ?? 0} onChange={(val) => {
+              if (isNew) setNewRow(prev => ({ ...(prev ?? { Id: `spawn-chest-${Date.now()}`, DescriptorId: descriptorOpts[0]?.value, Position: { X: 0, Y: 0, Z: 0 }, Rotation: { X: 0, Y: 0, Z: 0 } }), Position: { ...(prev?.Position ?? { X: 0, Y: 0, Z: 0 }), Z: Number(val) || 0 } }));
+              else edit(row.id, d => { d.Position = d.Position ?? { X: 0, Y: 0, Z: 0 }; d.Position.Z = Number(val) || 0; });
+            }} />
+          </div>
+        );
+      },
     },
     {
       title: 'Rotation',
-      render: (_: any, row: Row) => (
-        <div style={{ display: 'flex', gap: 8 }}>
-          <InputNumber value={row.content?.Rotation?.X ?? 0} onChange={(val) => edit(row.id, d => { d.Rotation = d.Rotation ?? { X: 0, Y: 0, Z: 0 }; d.Rotation.X = Number(val) || 0; })} />
-          <InputNumber value={row.content?.Rotation?.Y ?? 0} onChange={(val) => edit(row.id, d => { d.Rotation = d.Rotation ?? { X: 0, Y: 0, Z: 0 }; d.Rotation.Y = Number(val) || 0; })} />
-          <InputNumber value={row.content?.Rotation?.Z ?? 0} onChange={(val) => edit(row.id, d => { d.Rotation = d.Rotation ?? { X: 0, Y: 0, Z: 0 }; d.Rotation.Z = Number(val) || 0; })} />
-        </div>
-      ),
+      render: (_: any, row: Row) => {
+        const isNew = row.id === '__new__';
+        const rot = isNew ? (newRow?.Rotation ?? { X: 0, Y: 0, Z: 0 }) : (row.content?.Rotation ?? { X: 0, Y: 0, Z: 0 });
+        return (
+          <div style={{ display: 'flex', gap: 8 }}>
+            <InputNumber value={rot.X ?? 0} onChange={(val) => {
+              if (isNew) setNewRow(prev => ({ ...(prev ?? { Id: `spawn-chest-${Date.now()}`, DescriptorId: descriptorOpts[0]?.value, Position: { X: 0, Y: 0, Z: 0 }, Rotation: { X: 0, Y: 0, Z: 0 } }), Rotation: { ...(prev?.Rotation ?? { X: 0, Y: 0, Z: 0 }), X: Number(val) || 0 } }));
+              else edit(row.id, d => { d.Rotation = d.Rotation ?? { X: 0, Y: 0, Z: 0 }; d.Rotation.X = Number(val) || 0; });
+            }} />
+            <InputNumber value={rot.Y ?? 0} onChange={(val) => {
+              if (isNew) setNewRow(prev => ({ ...(prev ?? { Id: `spawn-chest-${Date.now()}`, DescriptorId: descriptorOpts[0]?.value, Position: { X: 0, Y: 0, Z: 0 }, Rotation: { X: 0, Y: 0, Z: 0 } }), Rotation: { ...(prev?.Rotation ?? { X: 0, Y: 0, Z: 0 }), Y: Number(val) || 0 } }));
+              else edit(row.id, d => { d.Rotation = d.Rotation ?? { X: 0, Y: 0, Z: 0 }; d.Rotation.Y = Number(val) || 0; });
+            }} />
+            <InputNumber value={rot.Z ?? 0} onChange={(val) => {
+              if (isNew) setNewRow(prev => ({ ...(prev ?? { Id: `spawn-chest-${Date.now()}`, DescriptorId: descriptorOpts[0]?.value, Position: { X: 0, Y: 0, Z: 0 }, Rotation: { X: 0, Y: 0, Z: 0 } }), Rotation: { ...(prev?.Rotation ?? { X: 0, Y: 0, Z: 0 }), Z: Number(val) || 0 } }));
+              else edit(row.id, d => { d.Rotation = d.Rotation ?? { X: 0, Y: 0, Z: 0 }; d.Rotation.Z = Number(val) || 0; });
+            }} />
+          </div>
+        );
+      },
     },
     {
       title: 'Update status',
@@ -133,7 +190,27 @@ export default function AtlasChestSpawnsScreen() {
         row.saving ? <Typography.Text type="secondary">Saving…</Typography.Text> : (row.error ? <Typography.Text type="danger">{row.error}</Typography.Text> : null)
       ),
     },
+    {
+      title: 'Actions',
+      render: (_: any, row: Row) => {
+        if (row.id === '__new__') {
+          return (
+            <Space>
+              <Button onClick={() => { setCreating(false); setNewRow(null); }}>
+                Cancel
+              </Button>
+              <Button type="primary" onClick={handleCreate} loading={savingNew}>
+                Create
+              </Button>
+            </Space>
+          );
+        }
+        return <Button onClick={handleNew}>New</Button>;
+      },
+    },
   ];
 
-  return <Table dataSource={rows} pagination={false} columns={columns} />;
+  const dataSource = creating ? [{ id: '__new__', schemaId: chestSpawnSchemaId ?? '', content: newRow }, ...rows] : rows;
+
+  return <Table rowKey={(r: any) => r.id} dataSource={dataSource} pagination={false} columns={columns} />;
 }
