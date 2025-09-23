@@ -1,0 +1,11 @@
+{
+  "ui:renderer": "table",
+  "ui:options": {
+    "tableColumns": [
+      "DescriptorId",
+      "Position.X", "Position.Y", "Position.Z",
+      "Rotation.X", "Rotation.Y", "Rotation.Z"
+    ]
+  },
+  "ui:order": ["Id", "DescriptorId", "Position", "Rotation"]
+}

@@ -1,7 +1,7 @@
 import { Modal, Button } from 'antd';
 import Form from '@rjsf/antd';
 import validator from '@rjsf/validator-ajv8';
-import uiSchema from '../../ui/ChestDescriptor.uischema.json';
+import uiSchema from '../../ui/ChestDescriptor.rjsf.uischema.json';
 import useSetups from '../../setup/useSetups';
 import { listSchemasV1 } from '../../shared/api/schema';
 import { createDraftV1 } from '../../shared/api/drafts';
