@@ -3,7 +3,8 @@ import type { MenuProps } from "antd";
 import { useEffect, useState } from "react";
 import type { MenuItem } from "./menuStructure";
 import useGameChests from '../../menu/useDraftMenu';
-import CreateChestModal from '../chests/CreateChestModal';
+import CreateDraftModal from '../CreateDraftModal';
+import chestUi from '../../ui/ChestDescriptor.rjsf.uischema.json';
 import { isGameChestsNode } from './menuStructure';
 
 type SidebarMenuProps = {
@@ -112,19 +113,25 @@ export default function SidebarMenu({ menu, selectedMenuPath, onSelect }: Sideba
         openKeys={openKeys}
         style={{ height: '100%', borderRight: 0 }}
       />
-      <CreateChestModal
+      <CreateDraftModal
         open={createOpen}
         onCancel={() => setCreateOpen(false)}
-        onCreated={async (draftId) => {
+        onCreated={(id) => {
           setCreateOpen(false);
-          await chests.refresh();
-          // ensure submenu is open: add Game and Game/Chests to open keys
-          setOpenKeys((prev) => {
-            const next = Array.from(new Set([...(prev || []), toKey(['Game']), toKey(['Game','Chests'])]));
-            return next;
-          });
-          onSelect(['Game','Chests', String(draftId)]);
+          const qp = '?path=' + encodeURIComponent(['Game','Chests', String(id)].join('/'));
+          window.history.pushState(null, '', qp);
+          window.dispatchEvent(new PopStateEvent('popstate'));
         }}
+        schemaKey="ChestDescriptor"
+        title="Create chest"
+        uiSchema={chestUi}
+        initialFormData={() => ({
+          Id: `chest-${Date.now()}`,
+          Type: 'Common',
+          InteractDistance: 0,
+          LockInteractTime: '00:00:00',
+          DropInfo: { Items: [], Currency: { Amount: { Min: 0, Max: 0 }, ExpiriencePercent: 0 }, CraftMaterials: [] }
+        })}
       />
     </>
   );
