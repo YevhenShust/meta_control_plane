@@ -261,9 +261,9 @@ export default function TableRenderer({ schemaKey, uiSchema }: Props) {
   if (error) return <div style={{ padding: 8, color: 'crimson' }}>{error}</div>;
   if (!cols.length) return <div style={{ padding: 8 }}>No columns configured</div>;
   return (
-    <>
+    <div className="table-renderer-root">
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
-        <Button type="primary" onClick={createNew} disabled={!selectedId}>New</Button>
+        <Button className="slate-outline-add" onClick={createNew} disabled={!selectedId}>＋ New</Button>
       </div>
 
       <Table<Row>
@@ -286,7 +286,7 @@ export default function TableRenderer({ schemaKey, uiSchema }: Props) {
           <FormRenderer schemaKey={schemaKey} draftId={creatingId} uiSchema={uiSchema as Record<string, unknown> | undefined} />
         ) : null}
       </Drawer>
-    </>
+    </div>
   );
 }
 

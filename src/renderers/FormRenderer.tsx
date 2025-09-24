@@ -6,6 +6,7 @@ import { buildSelectOptions } from '../core/uiLinking';
 import { listDraftsV1, updateDraftV1 } from '../shared/api/drafts';
 import { listSchemasV1, getSchemaByIdV1 } from '../shared/api/schema';
 import useSetups from '../setup/useSetups';
+import { Button } from 'antd';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 type Props = { schemaKey: string; draftId: string; uiSchema?: Record<string, unknown> };
@@ -206,9 +207,10 @@ export default function FormRenderer(props: Props) {
         }
       }}
       liveValidate={false}
+      className="rjsf-form-container"
     >
       <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-        <button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>
+        <Button htmlType="submit" type="primary" disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
       </div>
     </Form>
   );

@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import './styles/rjsf-layout.css';
+import './styles/slate.css';
 import SidebarMenu from "./components/sidebar/SidebarMenu";
 import MainContent from "./components/MainContent";
 import { menuStructure } from "./components/sidebar/menuStructure";
-import { Layout } from "antd";
+import { ConfigProvider, Layout } from "antd";
+import slateTokens from './theme/slateTheme';
 import "antd/dist/reset.css";
 import "./App.css";
 import Header from './components/Header';
@@ -55,9 +57,10 @@ const App: React.FC = () => {
   }, [selectedMenuPath]);
 
   return (
-    <Layout style={{ minHeight: '100vh', background: '#fff' }}>
+    <ConfigProvider theme={slateTokens}>
+    <Layout className="app-layout" style={{ minHeight: '100vh' }}>
       {/* Fixed header on top */}
-      <Layout.Header
+      <Layout.Header className="slate-header"
         style={{
           position: 'fixed',
           top: 0,
@@ -65,8 +68,6 @@ const App: React.FC = () => {
           right: 0,
           height: HEADER_H,
           zIndex: 100,
-          background: '#fff',
-          borderBottom: '1px solid #f0f0f0',
           display: 'flex',
           alignItems: 'center',
           paddingInline: 16,
@@ -80,15 +81,14 @@ const App: React.FC = () => {
         {/* Fixed sidebar under header */}
         <Layout.Sider
           width={SIDER_W}
-          theme="light"
+          theme="dark"
+          className="slate-sider"
           style={{
             position: 'fixed',
             top: HEADER_H,
             bottom: 0,
             left: 0,
             height: `calc(100vh - ${HEADER_H}px)`,
-            background: '#fff',
-            borderRight: '1px solid #f0f0f0',
             overflow: 'auto',
           }}
         >
@@ -100,13 +100,12 @@ const App: React.FC = () => {
         </Layout.Sider>
 
         {/* Scrollable content area */}
-        <Layout style={{ marginLeft: SIDER_W, paddingTop: HEADER_H, background: '#fff' }}>
-          <Layout.Content
+        <Layout style={{ marginLeft: SIDER_W, paddingTop: HEADER_H }}>
+          <Layout.Content className="slate-content"
             style={{
               height: `calc(100vh - ${HEADER_H}px)`,
               overflow: 'auto',
               padding: '16px 24px',
-              background: '#fff',
             }}
           >
             <MainContent selectedMenuPath={selectedMenuPath} />
@@ -114,6 +113,7 @@ const App: React.FC = () => {
         </Layout>
       </Layout>
     </Layout>
+    </ConfigProvider>
   );
 };
 

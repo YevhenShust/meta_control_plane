@@ -9,7 +9,7 @@ export default function Header() {
   return (
     <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
       <Space>
-        <Typography.Text strong>Setup:</Typography.Text>
+        <Typography.Text strong style={{ color: 'var(--slate-text)' }}>Setup:</Typography.Text>
         <Select
           style={{ minWidth: 260 }}
           placeholder="Select setup"
@@ -23,16 +23,14 @@ export default function Header() {
 
       <Space>
         <Button
-          type="primary"
+          className="slate-icon-button"
           icon={<PlusOutlined />}
           onClick={async () => {
             const name = prompt('Setup name');
             if (name) await createSetup(name);
           }}
-        >
-          New
-        </Button>
-        <Typography.Text type="secondary">Current ID:</Typography.Text>
+        />
+        <Typography.Text type="secondary" style={{ color: 'var(--slate-muted)' }}>Current ID:</Typography.Text>
         <Tag color="blue">{selectedId ?? '—'}</Tag>
       </Space>
     </div>

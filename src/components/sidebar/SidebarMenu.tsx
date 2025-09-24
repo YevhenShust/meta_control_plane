@@ -50,7 +50,7 @@ export default function SidebarMenu({ menu, selectedMenuPath, onSelect }: Sideba
 
   const newItem = {
     key: 'Game/Chests/__new__',
-    label: '＋ New chest',
+    label: <span className="slate-outline-add" onClick={() => setCreateOpen(true)} style={{ cursor: 'pointer' }}>＋</span>,
     onClick: () => setCreateOpen(true),
   } as AntMenuItem;
 
@@ -110,6 +110,7 @@ export default function SidebarMenu({ menu, selectedMenuPath, onSelect }: Sideba
         onOpenChange={handleOpenChange}
         openKeys={openKeys}
         style={{ height: '100%', borderRight: 0 }}
+        className="slate-sidebar-menu"
       />
       <CreateDraftModal
         open={createOpen}
