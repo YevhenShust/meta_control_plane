@@ -1,11 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Table, Input, InputNumber, Select, Button, Drawer } from 'antd';
 import useSetups from '../setup/useSetups';
-import { listSchemasV1 } from '../shared/api/schema';
 import { listDraftsV1, updateDraftV1, createDraftV1 } from '../shared/api/drafts';
+import { resolveSchemaIdByKey, buildSelectOptions, type SelectColumnConfig } from '../core/uiLinking';
 import FormRenderer from './FormRenderer';
-import type { components } from '../types/openapi.d.ts';
-type SchemaDto = NonNullable<components['schemas']['SchemaDto']>;
 type Props = { schemaKey: string; uiSchema?: Record<string, unknown> };
 
 type Row = { id: string; content: unknown };
@@ -39,7 +37,6 @@ function pickTableColumns(uiSchema?: Record<string, unknown>): string[] {
   return cols;
 }
 
-type SelectColumnConfig = { schemaKey: string; labelPath?: string; valuePath?: string; sort?: boolean };
 function pickSelectConfig(uiSchema?: Record<string, unknown>): Record<string, SelectColumnConfig> {
   const opts = uiSchema && typeof uiSchema === 'object' ? (uiSchema as Record<string, unknown>)['ui:options'] as Record<string, unknown> | undefined : undefined;
   const cfg = opts && opts.selectColumns && typeof opts.selectColumns === 'object' ? opts.selectColumns as Record<string, unknown> : {};
@@ -80,15 +77,11 @@ export default function TableRenderer({ schemaKey, uiSchema }: Props) {
     if (!selectedId) return;
     setLoading(true); setError(null);
     try {
-      const schemas: SchemaDto[] = await listSchemasV1(selectedId);
-      const match = schemas.find(s => {
-        const raw = parseJson(s.content);
-        return raw && typeof raw === 'object' && (raw as Record<string, unknown>)['$id'] === schemaKey;
-      });
-      if (!match || !match.id) throw new Error(`Schema not found: ${schemaKey}`);
+      const schemaId = await resolveSchemaIdByKey(selectedId, schemaKey);
+      if (!schemaId) throw new Error(`Schema not found: ${schemaKey}`);
 
       const drafts = await listDraftsV1(selectedId);
-      const filtered = drafts.filter(d => String(d.schemaId || '') === String(match.id));
+      const filtered = drafts.filter(d => String(d.schemaId || '') === String(schemaId));
       const mapped: Row[] = filtered.map(d => ({ id: String(d.id), content: parseJson(d.content) }));
       setRows(mapped);
     } catch (e) {
@@ -119,27 +112,8 @@ export default function TableRenderer({ schemaKey, uiSchema }: Props) {
     if (!selectedId) return;
     const next: Record<string, Array<{label: string; value: string}>> = {};
     for (const col of Object.keys(selectCfg)) {
-      const refKey = selectCfg[col].schemaKey;
       try {
-        const schemas: SchemaDto[] = await listSchemasV1(selectedId);
-        const match = schemas.find(s => {
-          const raw = parseJson(s.content);
-          return raw && typeof raw === 'object' && (raw as Record<string, unknown>)['$id'] === refKey;
-        });
-        if (!match || !match.id) continue;
-        const drafts = await listDraftsV1(selectedId);
-        const filtered = drafts.filter(d => String(d.schemaId || '') === String(match.id));
-        const opts: Array<{label: string; value: string}> = [];
-        const seen = new Set<string>();
-        for (const d of filtered) {
-          const c = parseJson(d.content);
-          const label = String(getByPath(c, selectCfg[col].labelPath || 'Id') ?? '');
-          const value = String(getByPath(c, selectCfg[col].valuePath || 'Id') ?? '');
-          if (!value || seen.has(value)) continue;
-          seen.add(value);
-          opts.push({ label: label || value, value });
-        }
-        if (selectCfg[col].sort) opts.sort((a, b) => a.label.localeCompare(b.label));
+        const opts = await buildSelectOptions(selectedId, selectCfg[col] as SelectColumnConfig);
         next[col] = opts;
       } catch { /* ignore */ }
     }
@@ -204,14 +178,10 @@ export default function TableRenderer({ schemaKey, uiSchema }: Props) {
   const createNew = useCallback(async () => {
     if (!selectedId) return;
     try {
-      const schemas: SchemaDto[] = await listSchemasV1(selectedId);
-      const match = schemas.find(s => {
-        const raw = parseJson(s.content);
-        return raw && typeof raw === 'object' && (raw as Record<string, unknown>)['$id'] === schemaKey;
-      });
-      if (!match || !match.id) throw new Error(`Schema not found: ${schemaKey}`);
+      const schemaId = await resolveSchemaIdByKey(selectedId, schemaKey);
+      if (!schemaId) throw new Error(`Schema not found: ${schemaKey}`);
 
-  const created = await createDraftV1(selectedId, { schemaId: String(match.id), content: JSON.stringify({}) });
+      const created = await createDraftV1(selectedId, { schemaId: String(schemaId), content: JSON.stringify({}) });
   setCreatingId(String(created.id));
     } catch {
       // ignore
