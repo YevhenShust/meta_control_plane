@@ -6,11 +6,13 @@ import { menuStructure } from "./components/sidebar/menuStructure";
 import { Layout } from "antd";
 import "antd/dist/reset.css";
 import "./App.css";
-// setup hook not needed in this file
+import Header from './components/Header';
+
+const HEADER_H = 64;
+const SIDER_W = 260;
 
 const App: React.FC = () => {
   const [selectedMenuPath, setSelectedMenuPath] = useState<string[]>([]);
-  
 
   // On mount: read ?path= from URL and restore selection
   useEffect(() => {
@@ -52,35 +54,64 @@ const App: React.FC = () => {
     window.history.pushState(null, '', qp || window.location.pathname + cleaned);
   }, [selectedMenuPath]);
 
-  
-
   return (
     <Layout style={{ minHeight: '100vh', background: '#fff' }}>
-      <Layout.Sider
-        width={260}
-        theme="light"
+      {/* Fixed header on top */}
+      <Layout.Header
         style={{
           position: 'fixed',
-          left: 0,
           top: 0,
-          bottom: 0,
-          height: '100vh',
+          left: 0,
+          right: 0,
+          height: HEADER_H,
+          zIndex: 100,
           background: '#fff',
-          borderRight: '1px solid #f0f0f0',
-          overflow: 'auto',
+          borderBottom: '1px solid #f0f0f0',
+          display: 'flex',
+          alignItems: 'center',
+          paddingInline: 16,
         }}
       >
-        <SidebarMenu
-          menu={menuStructure}
-          selectedMenuPath={selectedMenuPath}
-          onSelect={setSelectedMenuPath}
-        />
-      </Layout.Sider>
+        <Header />
+      </Layout.Header>
 
-      <Layout style={{ marginLeft: 260, background: '#fff', minHeight: '100vh' }}>
-        <Layout.Content style={{ padding: '16px 24px' }}>
-          <MainContent selectedMenuPath={selectedMenuPath} />
-        </Layout.Content>
+      {/* Body under header */}
+      <Layout>
+        {/* Fixed sidebar under header */}
+        <Layout.Sider
+          width={SIDER_W}
+          theme="light"
+          style={{
+            position: 'fixed',
+            top: HEADER_H,
+            bottom: 0,
+            left: 0,
+            height: `calc(100vh - ${HEADER_H}px)`,
+            background: '#fff',
+            borderRight: '1px solid #f0f0f0',
+            overflow: 'auto',
+          }}
+        >
+          <SidebarMenu
+            menu={menuStructure}
+            selectedMenuPath={selectedMenuPath}
+            onSelect={setSelectedMenuPath}
+          />
+        </Layout.Sider>
+
+        {/* Scrollable content area */}
+        <Layout style={{ marginLeft: SIDER_W, paddingTop: HEADER_H, background: '#fff' }}>
+          <Layout.Content
+            style={{
+              height: `calc(100vh - ${HEADER_H}px)`,
+              overflow: 'auto',
+              padding: '16px 24px',
+              background: '#fff',
+            }}
+          >
+            <MainContent selectedMenuPath={selectedMenuPath} />
+          </Layout.Content>
+        </Layout>
       </Layout>
     </Layout>
   );
