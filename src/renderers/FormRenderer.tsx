@@ -1,23 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useEffect, useState, useCallback } from 'react';
+import validatorAjv8 from '@rjsf/validator-ajv8';
 import Form from '@rjsf/antd';
-import { customizeValidator } from '@rjsf/validator-ajv8';
-const timeSpanRe = /^\d{2}:\d{2}:\d{2}$/; // HH:MM:SS
-const validator = customizeValidator({
-  customFormats: { TimeSpan: timeSpanRe },
-  ajvOptionsOverrides: { allErrors: true }
-});
-
-const DEV_SKIP_VALIDATION = Boolean(import.meta.env.DEV);
-import useSetups from '../setup/useSetups';
-import { listSchemasV1, getSchemaByIdV1 } from '../shared/api/schema';
-import { listDraftsV1, updateDraftV1 } from '../shared/api/drafts';
+import { ArrayFieldTemplate, ArrayFieldItemTemplate } from './antd/RjsfArrayTemplates';
 import { buildSelectOptions } from '../core/uiLinking';
-import { ArrayFieldItemTemplate, ArrayFieldTemplate } from './antd/RjsfArrayTemplates';
+import { listDraftsV1, updateDraftV1 } from '../shared/api/drafts';
+import { listSchemasV1, getSchemaByIdV1 } from '../shared/api/schema';
+import useSetups from '../setup/useSetups';
 /* eslint-disable @typescript-eslint/no-explicit-any */
-
-import type { components } from '../types/openapi.d.ts';
-type DraftDto = NonNullable<components['schemas']['DraftDto']>;
-type SchemaDto = NonNullable<components['schemas']['SchemaDto']>;
 
 type Props = { schemaKey: string; draftId: string; uiSchema?: Record<string, unknown> };
 
@@ -46,23 +35,27 @@ export default function FormRenderer(props: Props) {
 
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [schema, setSchema] = useState<any | null>(null);
+  const [baseSchemaObject, setBaseSchemaObject] = useState<any | null>(null);
   const [enhancedSchema, setEnhancedSchema] = useState<any | null>(null);
   const [formData, setFormData] = useState<any>(null);
   const [saving, setSaving] = useState(false);
 
-  const resolvedUiSchema = useMemo(() => (props.uiSchema && typeof props.uiSchema === 'object' ? props.uiSchema as any : {}), [props.uiSchema]);
+  // 2) uiSchema fallback (memoized)
+  const resolvedUiSchema = useMemo<Record<string, unknown>>(() => (props.uiSchema && typeof props.uiSchema === 'object' ? props.uiSchema as Record<string, unknown> : {}), [props.uiSchema]);
+
+  // 3) select config
   const selectCfg = useMemo(() => pickSelectConfig(resolvedUiSchema), [resolvedUiSchema]);
 
   // helpers
   function deepClone<T>(x: T): T { return JSON.parse(JSON.stringify(x)); }
 
+  // load base schema and draft
   useEffect(() => {
     let mounted = true;
     (async () => {
       setLoading(true);
       setError(null);
-      setSchema(null);
+      setBaseSchemaObject(null);
       setFormData(null);
       if (!selectedId) {
         if (mounted) { setError('Select setup'); setLoading(false); }
@@ -70,22 +63,24 @@ export default function FormRenderer(props: Props) {
       }
       try {
         const schemas = await listSchemasV1(selectedId);
-        const match = schemas.find((s: SchemaDto) => { try { return JSON.parse(String(s.content || '{}')).$id === schemaKey; } catch { return false; } });
+        const match = schemas.find(s => { try { return JSON.parse(String(s.content || '{}')).$id === schemaKey; } catch { return false; } });
         if (!match || !match.id) {
           if (mounted) { setError(`Schema not found or has no id: ${schemaKey}`); setLoading(false); }
           return;
         }
         const schemaObj = await getSchemaByIdV1(String(match.id), selectedId);
+
+        // load draft content via listDraftsV1 and find by id
         const drafts = await listDraftsV1(selectedId);
-        const d = drafts.find((x: DraftDto) => String(x.id) === String(draftId));
-        if (!d) {
+        const dResp = drafts.find(x => String(x.id) === String(draftId));
+        if (!dResp) {
           if (mounted) { setError('Draft not found'); setLoading(false); }
           return;
         }
         let data: any = {};
-        try { data = JSON.parse(String(d.content || '{}')); } catch { data = d.content ?? {}; }
+        try { data = JSON.parse(String(dResp.content || '{}')); } catch { data = dResp.content ?? {}; }
         if (mounted) {
-          setSchema(schemaObj as any);
+          setBaseSchemaObject(schemaObj as any);
           setFormData(data);
           setError(null);
           setLoading(false);
@@ -99,16 +94,15 @@ export default function FormRenderer(props: Props) {
     return () => { mounted = false; };
   }, [selectedId, draftId, schemaKey]);
 
-  // enrich schema with enums derived from referenced schemas/drafts (use buildSelectOptions)
+  // 4) enrich schema with enums using buildSelectOptions and selectCfg
   useEffect(() => {
     let closed = false;
     (async () => {
-      const baseSchemaObject = schema;
-      if (!baseSchemaObject) { setEnhancedSchema(null); return; }
-      const schemaCopy = deepClone(baseSchemaObject);
+      const base = baseSchemaObject;
+      if (!base) { setEnhancedSchema(null); return; }
+      const copy = deepClone(base);
 
       const enumMap: Record<string, { values: string[]; labels: string[] }> = {};
-
       if (selectedId) {
         for (const field of Object.keys(selectCfg)) {
           try {
@@ -120,9 +114,9 @@ export default function FormRenderer(props: Props) {
         }
       }
 
-      if (schemaCopy?.properties && typeof schemaCopy.properties === 'object') {
+      if (copy?.properties && typeof copy.properties === 'object') {
         for (const key of Object.keys(enumMap)) {
-          const prop = (schemaCopy.properties as any)[key];
+          const prop = (copy.properties as any)[key];
           if (prop && typeof prop === 'object') {
             prop.enum = enumMap[key].values;
             (prop as any).enumNames = enumMap[key].labels;
@@ -130,82 +124,88 @@ export default function FormRenderer(props: Props) {
         }
       }
 
-      if (!closed) setEnhancedSchema(schemaCopy);
+      if (!closed) setEnhancedSchema(copy);
     })();
     return () => { closed = true; };
-  }, [schema, selectCfg, selectedId]);
+  }, [baseSchemaObject, selectCfg, selectedId]);
 
-  // Build effective uiSchema by hiding fields from ui options
-  const uiOptions = useMemo(() => (resolvedUiSchema && typeof resolvedUiSchema === 'object') ? (resolvedUiSchema as any)['ui:options'] : undefined, [resolvedUiSchema]);
-  const fieldVisibility = useMemo(() => Array.isArray(uiOptions?.hide) ? (uiOptions!.hide as string[]) : [], [uiOptions]);
-  const requiredAdd = useMemo(() => Array.isArray((uiOptions as any)?.required?.add) ? (uiOptions as any).required.add as string[] : [], [uiOptions]);
-  const requiredRemove = useMemo(() => Array.isArray((uiOptions as any)?.required?.remove) ? (uiOptions as any).required.remove as string[] : [], [uiOptions]);
+  // 5) hide & required driven by uiSchema (memoized)
+  const opts = useMemo(() => ((resolvedUiSchema as any)['ui:options']) || {}, [resolvedUiSchema]);
+  const hidden = useMemo(() => Array.isArray(opts?.fieldVisibility?.hide) ? opts.fieldVisibility.hide : [], [opts]);
+  const reqAdd = useMemo(() => Array.isArray(opts?.required?.add) ? opts.required.add : [], [opts]);
+  const reqRemove = useMemo(() => Array.isArray(opts?.required?.remove) ? opts.required.remove : [], [opts]);
 
   const effectiveUiSchema = useMemo(() => {
-    const copy = deepClone(resolvedUiSchema ?? {});
-    for (const f of fieldVisibility) {
-      (copy as any)[f] = { ...(copy as any)[f] || {}, 'ui:widget': 'hidden', 'ui:options': { ...(((copy as any)[f] && (copy as any)[f]['ui:options']) || {}), label: false } };
-    }
-    return copy;
-  }, [resolvedUiSchema, fieldVisibility]);
+    const ui = { ...(resolvedUiSchema as Record<string, any>) } as any;
+    for (const k of hidden) ui[k] = { ...(ui[k] || {}), 'ui:widget': 'hidden', 'ui:options': { ...(ui[k]?.['ui:options']||{}), label: false } };
+    return ui as Record<string, unknown>;
+  }, [resolvedUiSchema, hidden]);
 
   const schemaForRjsf = useMemo(() => {
-    const base = deepClone(enhancedSchema ?? schema ?? {});
-    if (!base || typeof base !== 'object') return base;
-    base.required = Array.isArray(base.required) ? Array.from(base.required) : [];
-    for (const r of requiredAdd) {
-      if (!base.required.includes(r)) base.required.push(r);
+    const s = JSON.parse(JSON.stringify(enhancedSchema ?? baseSchemaObject ?? {}));
+    const req: string[] = Array.isArray(s.required) ? [...s.required] : [];
+    for (const r of reqAdd) if (!req.includes(r)) req.push(r);
+    for (const r of reqRemove) {
+      const i = req.indexOf(r);
+      if (i >= 0) req.splice(i, 1);
     }
-    if (Array.isArray(requiredRemove) && requiredRemove.length) {
-      base.required = base.required.filter((x: string) => !requiredRemove.includes(x));
+    s.required = req;
+    // Sanitize nested defs: remove local $id/$schema to avoid AJV registering duplicate ids
+    function sanitizeDefs(obj: any) {
+      if (!obj || typeof obj !== 'object') return;
+      if (obj.$defs && typeof obj.$defs === 'object') {
+        for (const k of Object.keys(obj.$defs)) {
+          const def = obj.$defs[k];
+          if (def && typeof def === 'object') {
+            delete def.$id;
+            delete def.$schema;
+            sanitizeDefs(def);
+          }
+        }
+      }
+      // also recurse into properties to catch nested $defs
+      for (const key of Object.keys(obj)) {
+        if (key === '$defs') continue;
+        const child = obj[key];
+        if (child && typeof child === 'object') sanitizeDefs(child);
+      }
     }
-    return base;
-  }, [enhancedSchema, schema, requiredAdd, requiredRemove]);
+    try { sanitizeDefs(s); } catch { /* ignore sanitization failures */ }
+    return s;
+  }, [enhancedSchema, baseSchemaObject, reqAdd, reqRemove]);
+
+  // 6) transformErrors
+  const transformErrors = useCallback((errors: any[]) => {
+    if (!hidden.length) return errors;
+    return errors.filter((e: any) => {
+      const mp = e?.params?.missingProperty || '';
+      return !(e.name === 'required' && hidden.includes(mp));
+    });
+  }, [hidden]);
 
   if (loading) return <>Loading…</>;
   if (error) return <>{error}</>;
 
-  function transformErrors(errors: any[]) {
-    if (!fieldVisibility || !fieldVisibility.length) return errors;
-    return errors.filter((err) => {
-      try {
-        if (err && err.name === 'required') {
-          const missing = err.params && (err.params.missingProperty || (err.params as any)?.missingProperty);
-          if (typeof missing === 'string' && fieldVisibility.includes(missing)) return false;
-        }
-      } catch { /* ignore */ }
-      return true;
-    });
-  }
-
+  // 7) render Form with array templates and safe props
   return (
     <Form
       schema={schemaForRjsf}
       uiSchema={effectiveUiSchema}
-      templates={{ ArrayFieldItemTemplate, ArrayFieldTemplate }}
-      validator={validator}
-      showErrorList={false}
-      liveValidate={false}
-      noHtml5Validate
-      noValidate={DEV_SKIP_VALIDATION}
-      transformErrors={transformErrors}
-      onError={(errs) => { if (!DEV_SKIP_VALIDATION) console.warn('[RJSF] validation errors', errs); else console.debug('[RJSF][DEV-SKIP] errors', errs); }}
       formData={formData}
-      onChange={e => setFormData(e.formData)}
-      onSubmit={async () => {
+      templates={{ ArrayFieldTemplate, ArrayFieldItemTemplate }}
+      validator={validatorAjv8}
+      transformErrors={transformErrors}
+      onChange={({ formData }) => setFormData(formData)}
+      onSubmit={async ({ formData: fd }) => {
         try {
           setSaving(true);
-          await updateDraftV1(draftId, JSON.stringify(formData ?? {}));
-          // notify listeners
-          window.dispatchEvent(
-            new CustomEvent('drafts:changed', {
-              detail: { schemaKey, setupId: selectedId }
-            })
-          );
+          await updateDraftV1(draftId, JSON.stringify(fd ?? {}));
+          window.dispatchEvent(new CustomEvent('drafts:changed', { detail: { schemaKey, setupId: selectedId } }));
         } finally {
           setSaving(false);
         }
       }}
+      liveValidate={false}
     >
       <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
         <button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>

@@ -4,8 +4,7 @@ import { useEffect, useState } from "react";
 import type { MenuItem } from "./menuStructure";
 import useGameChests from '../../menu/useDraftMenu';
 import CreateDraftModal from '../CreateDraftModal';
-import chestUi from '../../ui/ChestDescriptor.rjsf.uischema.json';
-import { isGameChestsNode } from './menuStructure';
+import { getDynamicFormConfig, isGameChestsNode } from './menuStructure';
 
 type SidebarMenuProps = {
   menu: MenuItem[];
@@ -98,7 +97,6 @@ export default function SidebarMenu({ menu, selectedMenuPath, onSelect }: Sideba
     // if Game/Chests branch was opened, trigger load
   if (next.includes('Game/Chests')) chests.ensureLoaded();
   };
-  console.log('[menu chests]', { loading: chests.loading, items: (chests.items || []).map(i => ({ id: i.params?.draftId, title: i.title })) });
 
   const selectedKeysArr: string[] = selectedMenuPath.length ? [toKey(selectedMenuPath)] : [];
 
@@ -122,9 +120,9 @@ export default function SidebarMenu({ menu, selectedMenuPath, onSelect }: Sideba
           window.history.pushState(null, '', qp);
           window.dispatchEvent(new PopStateEvent('popstate'));
         }}
-        schemaKey="ChestDescriptor"
+        schemaKey={getDynamicFormConfig('Game/Chests')?.schemaKey ?? 'ChestDescriptor'}
         title="Create chest"
-        uiSchema={chestUi}
+  uiSchema={getDynamicFormConfig('Game/Chests')?.uiSchema as Record<string, unknown> | undefined}
         initialFormData={() => ({
           Id: `chest-${Date.now()}`,
           Type: 'Common',

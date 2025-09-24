@@ -1,27 +1,23 @@
 import FormRenderer from '../renderers/FormRenderer';
 import TableRenderer from '../renderers/TableRenderer';
 
-type Props = { kind: string; params?: Record<string, unknown> };
+type FormParams = { kind: 'form';  params: { schemaKey: string; draftId: string; uiSchema?: Record<string, unknown> } };
+type TableParams = { kind: 'table'; params: { schemaKey: string; uiSchema?: Record<string, unknown> } };
+type Placeholder = { kind: string; params?: Record<string, unknown> };
+type HostProps = FormParams | TableParams | Placeholder;
 
-export default function EntityHost({ kind, params }: Props) {
+export default function EntityHost({ kind, params }: HostProps) {
   if (kind === 'form') {
-    const rawSchemaKey = params?.schemaKey ?? params?.['schemaKey'];
-    const rawDraftId = params?.draftId ?? params?.['draftId'];
-    const schemaKey = typeof rawSchemaKey === 'string' ? rawSchemaKey : (rawSchemaKey == null ? '' : String(rawSchemaKey));
-    const draftId = typeof rawDraftId === 'string' ? rawDraftId : (rawDraftId == null ? '' : String(rawDraftId));
+    const { schemaKey, draftId, uiSchema } = (params || {}) as FormParams['params'];
     if (!schemaKey || !draftId) return <div style={{ padding: 8 }}>Missing schemaKey or draftId</div>;
-    return <FormRenderer schemaKey={schemaKey} draftId={draftId} />;
+    return <FormRenderer schemaKey={schemaKey} draftId={draftId} uiSchema={uiSchema} />;
   }
 
   if (kind === 'table') {
-    const rawSchemaKey = params?.schemaKey ?? params?.['schemaKey'];
-    const schemaKey = typeof rawSchemaKey === 'string' ? rawSchemaKey : (rawSchemaKey == null ? '' : String(rawSchemaKey));
-    const maybeUi = params?.uiSchema ?? params?.['uiSchema'];
-    const uiSchema = maybeUi && typeof maybeUi === 'object' ? (maybeUi as Record<string, unknown>) : undefined;
+    const { schemaKey, uiSchema } = (params || {}) as TableParams['params'];
     if (!schemaKey) return <div style={{ padding: 8 }}>Missing schemaKey</div>;
     return <TableRenderer schemaKey={schemaKey} uiSchema={uiSchema} />;
   }
 
-  return <div style={{ padding: 8 }}>Missing renderer for kind: {kind}</div>;
+  return <div style={{ padding: 8, color: '#999' }}>Немає рендера для: {kind}</div>;
 }
-
