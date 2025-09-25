@@ -1,7 +1,13 @@
 import EntityHost from './EntityHost';
 import { findNodeByPath, type MenuItem } from './sidebar/menuStructure';
+import JsonFormsDemoChest from '../dev/JsonFormsDemoChest';
 
 export default function MainContent({ selectedMenuPath }: { selectedMenuPath: string[] }) {
+  const search = typeof window !== 'undefined' ? window.location.search : '';
+  const params = new URLSearchParams(search);
+  if (params.get('demo') === 'jsonforms') {
+    return <JsonFormsDemoChest />; // show demo only
+  }
   if (!selectedMenuPath || selectedMenuPath.length === 0) {
     return <div style={{ color: 'var(--slate-text)' }}>Оберіть пункт меню</div>;
   }
