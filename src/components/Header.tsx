@@ -1,38 +1,33 @@
-import { Select, Typography, Space, Tag, Button } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+import { Select, MenuItem, Typography, Stack, Chip, Button, Box } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
 import useSetups from '../setup/useSetups';
 
 export default function Header() {
   const { setups, selectedId, setSelectedId, createSetup } = useSetups();
-  const options = setups.map(s => ({ label: s.name ?? s.id, value: s.id }));
 
   return (
-    <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-      <Space>
-        <Typography.Text strong style={{ color: 'var(--slate-text)' }}>Setup:</Typography.Text>
+    <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <Stack direction="row" spacing={1} alignItems="center">
+        <Typography fontWeight={700}>Setup:</Typography>
         <Select
-          style={{ minWidth: 260 }}
-          placeholder="Select setup"
-          options={options}
-          value={selectedId ?? undefined}
-          onChange={id => setSelectedId(id as string)}
-          showSearch
-          optionFilterProp="label"
-        />
-      </Space>
+          sx={{ minWidth: 260 }}
+          value={selectedId ?? ''}
+          onChange={(e) => setSelectedId(e.target.value as string)}
+          displayEmpty
+        >
+          <MenuItem value="">Select setup</MenuItem>
+          {setups.map(s => <MenuItem key={s.id} value={s.id}>{s.name ?? s.id}</MenuItem>)}
+        </Select>
+      </Stack>
 
-      <Space>
-        <Button
-          className="slate-icon-button"
-          icon={<PlusOutlined />}
-          onClick={async () => {
-            const name = prompt('Setup name');
-            if (name) await createSetup(name);
-          }}
-        />
-        <Typography.Text type="secondary" style={{ color: 'var(--slate-muted)' }}>Current ID:</Typography.Text>
-        <Tag color="blue">{selectedId ?? '—'}</Tag>
-      </Space>
-    </div>
+      <Stack direction="row" spacing={1} alignItems="center">
+        <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={async () => {
+          const name = prompt('Setup name');
+          if (name) await createSetup(name);
+        }} />
+        <Typography color="text.secondary">Current ID:</Typography>
+        <Chip label={selectedId ?? '—'} color="primary" size="small" />
+      </Stack>
+    </Box>
   );
 }

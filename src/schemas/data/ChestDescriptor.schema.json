@@ -1,0 +1,116 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema",
+    "$id": "ChestDescriptor",
+    "allOf": [
+        {
+            "$ref": "#/$defs/Entity"
+        }
+    ],
+    "type": "object",
+    "properties": {
+        "Type": {
+            "$ref": "#/$defs/ChestType"
+        },
+        "InteractDistance": {
+            "type": "integer"
+        },
+        "LockInteractTime": {
+            "type": "string",
+            "format": "TimeSpan",
+            "default": "00:00:00"
+        },
+        "DropInfo": {
+            "type": "object",
+            "properties": {
+                "Items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/itemInfo"
+                    }
+                },
+                "Currency": {
+                    "$ref": "#/$defs/Currency"
+                },
+                "CraftMaterials": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/itemInfo"
+                    }
+                }
+            },
+            "required": [
+                "Items",
+                "Currency",
+                "CraftMaterials"
+            ]
+        }
+    },
+    "$defs": {
+        "itemInfo": {
+            "type": "object",
+            "properties": {
+                "LootTable": {
+                    "type": "string"
+                },
+                "DropPercent": {
+                    "type": "integer"
+                }
+            }
+        },
+        "Entity": {
+            "$schema": "http://json-schema.org/draft-07/schema",
+            "x-id": "Entity",
+            "type": "object",
+            "x-abstract": true,
+            "properties": {
+                "Id": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Id"
+            ]
+        },
+        "ChestType": {
+            "$schema": "http://json-schema.org/draft-07/schema",
+            "x-id": "ChestType",
+            "enum": [
+                "Common",
+                "Rare",
+                "Exotic",
+                "Epic"
+            ]
+        },
+        "Range": {
+            "$schema": "http://json-schema.org/draft-07/schema",
+            "x-id": "Range",
+            "type": "object",
+            "x-csharp-generic-parameter": "T",
+            "properties": {
+                "Min": {
+                    "type": "number"
+                },
+                "Max": {
+                    "type": "number"
+                }
+            }
+        },
+        "Currency": {
+            "$schema": "http://json-schema.org/draft-07/schema",
+            "x-id": "Currency",
+            "type": "object",
+            "properties": {
+                "Amount": {
+                    "$ref": "#/$defs/Range"
+                },
+                "ExpiriencePercent": {
+                    "type": "integer"
+                }
+            }
+        }
+    },
+    "required": [
+        "LockInteractTime",
+        "DropInfo"
+    ]
+}

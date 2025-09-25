@@ -1,15 +1,41 @@
 import { listSchemasV1 } from '../shared/api/schema';
 import { listDraftsV1 } from '../shared/api/drafts';
 
+// cache resolved schema ids by key `${setupId}:${schemaKey}`
+const resolvedSchemaIdCache = new Map<string, string | null>();
+const inflight = new Map<string, Promise<string | null>>();
+
 export async function resolveSchemaIdByKey(setupId: string, schemaKey: string): Promise<string | null> {
-  const schemas = await listSchemasV1(setupId);
-  for (const s of schemas) {
+  const cacheKey = `${setupId}:${schemaKey}`;
+  if (resolvedSchemaIdCache.has(cacheKey)) return resolvedSchemaIdCache.get(cacheKey) ?? null;
+  if (inflight.has(cacheKey)) return inflight.get(cacheKey) as Promise<string | null>;
+
+  const p = (async () => {
     try {
-      const raw = typeof s.content === 'string' ? (JSON.parse(s.content) as unknown) : (s.content as unknown);
-      if (raw && typeof raw === 'object' && (raw as Record<string, unknown>)['$id'] === schemaKey) return String(s.id);
-    } catch { /* ignore */ }
-  }
-  return null;
+      const schemas = await listSchemasV1(setupId);
+      for (const s of schemas) {
+        try {
+          const raw = typeof s.content === 'string' ? (JSON.parse(s.content) as unknown) : (s.content as unknown);
+          if (raw && typeof raw === 'object' && (raw as Record<string, unknown>)['$id'] === schemaKey) {
+            resolvedSchemaIdCache.set(cacheKey, String(s.id));
+            return String(s.id);
+          }
+        } catch {
+          // ignore malformed content
+        }
+      }
+      resolvedSchemaIdCache.set(cacheKey, null);
+      return null;
+    } catch {
+      resolvedSchemaIdCache.set(cacheKey, null);
+      return null;
+    } finally {
+      inflight.delete(cacheKey);
+    }
+  })();
+
+  inflight.set(cacheKey, p);
+  return p;
 }
 
 export type SelectColumnConfig = { schemaKey: string; labelPath?: string; valuePath?: string; sort?: boolean };

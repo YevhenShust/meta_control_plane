@@ -9,46 +9,14 @@ export type NodeKind =
   | 'atlas-location'
   | 'atlas-chests';
 
-export interface MenuItem {
-  title: string;
-  kind: NodeKind;
-  params?: Record<string, unknown>;
-  children?: MenuItem[];
-}
+export interface MenuItem { title: string; kind: NodeKind; params?: Record<string, unknown>; children?: MenuItem[] }
 
-import chestSpawnUi from '../../ui/ChestSpawn.rjsf.uischema.json';
-import chestUi from '../../ui/ChestDescriptor.rjsf.uischema.json';
+import chestSpawnUi from '../../schemas/ui/ChestSpawn.uischema.json';
+import chestUi from '../../schemas/ui/ChestDescriptor.uischema.json';
 
-// Visible tree (no params here; same style for Game and Atlas)
 export const menuStructure: MenuItem[] = [
-  {
-    title: 'Game',
-    kind: 'game-root',
-    children: [
-      {
-        title: 'Chests',
-        kind: 'game-chests',
-        children: [], // draft ids appear dynamically (via URL or Sidebar)
-      },
-    ],
-  },
-  {
-    title: 'Atlas',
-    kind: 'atlas-root',
-    children: [
-      {
-        title: 'Location 1',
-        kind: 'atlas-location',
-        children: [
-          {
-            title: 'Chests',
-            kind: 'atlas-chests',
-            children: [],
-          },
-        ],
-      },
-    ],
-  },
+  { title: 'Game', kind: 'game-root', children: [{ title: 'Chests', kind: 'game-chests', children: [] }] },
+  { title: 'Atlas', kind: 'atlas-root', children: [{ title: 'Location 1', kind: 'atlas-location', children: [{ title: 'Chests', kind: 'atlas-chests', children: [] }] }] },
 ];
 
 // One data-driven map for all dynamic routes (both Game & Atlas)
@@ -65,11 +33,7 @@ export const dynamicRoutes: Record<string, DynRoute> = {
 };
 
 // helpers to read dynamic config from a base path
-export function getDynamicConfig(basePath: string): DynRoute | null {
-  return dynamicRoutes[basePath] || null;
-}
-
-// back-compat alias (used by SidebarMenu)
+export const getDynamicConfig = (basePath: string): DynRoute | null => dynamicRoutes[basePath] || null;
 export const getDynamicFormConfig = (basePath: string) => {
   const r = dynamicRoutes[basePath];
   return r?.kind === 'form' ? r : null;
@@ -82,45 +46,22 @@ export const getDynamicFormConfig = (basePath: string) => {
  */
 export function findNodeByPath(path: string[], tree: MenuItem[] = menuStructure): MenuItem | null {
   if (!path || path.length === 0) return null;
+  const full = path.join('/');
 
-  const fullPath = path.join('/');
-
-  // 1) Try dynamic routes (data-driven, same style for Game & Atlas)
-
-  // Form routes: base + "/<draftId>"
-  for (const [key, route] of Object.entries(dynamicRoutes)) {
-    if (route.kind === 'form' && fullPath.startsWith(key + '/')) {
-      const draftId = fullPath.slice(key.length + 1);
-      if (draftId && !draftId.includes('/')) {
-        return {
-          title: draftId,
-          kind: 'form',
-          params: { schemaKey: route.schemaKey, draftId, uiSchema: route.uiSchema },
-        } as MenuItem;
-      }
+  // form dynamic: base + /id
+  for (const [base, route] of Object.entries(dynamicRoutes)) {
+    if (route.kind === 'form' && full.startsWith(base + '/')) {
+      const id = full.slice(base.length + 1);
+      if (id && !id.includes('/')) return { title: id, kind: 'form', params: { schemaKey: route.schemaKey, draftId: id, uiSchema: route.uiSchema } } as MenuItem;
     }
   }
 
-  // Table routes: exact match
-  const exact = dynamicRoutes[fullPath];
-  if (exact && exact.kind === 'table') {
-    return {
-      title: path[path.length - 1],
-      kind: 'table',
-      params: { schemaKey: exact.schemaKey, uiSchema: exact.uiSchema },
-    } as MenuItem;
-  }
+  const exact = dynamicRoutes[full];
+  if (exact && exact.kind === 'table') return { title: path[path.length - 1], kind: 'table', params: { schemaKey: exact.schemaKey, uiSchema: exact.uiSchema } } as MenuItem;
 
-  // 2) Fallback: normal static traversal (no params here)
-  const [head, ...rest] = path;
-  for (const node of tree) {
-    if (node.title === head) {
-      if (rest.length === 0) return node;
-      if (!node.children) return null;
-      return findNodeByPath(rest, node.children);
-    }
-  }
-
+  // fallback static traversal
+  const [h, ...rest] = path;
+  for (const n of tree) if (n.title === h) return rest.length === 0 ? n : (n.children ? findNodeByPath(rest, n.children) : null);
   return null;
 }
 

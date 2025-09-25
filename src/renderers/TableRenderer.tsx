@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTheme } from '@mui/material';
 import { Table, Input, InputNumber, Select, Button, Drawer } from 'antd';
 import useSetups from '../setup/useSetups';
 import { listDraftsV1, updateDraftV1, createDraftV1 } from '../shared/api/drafts';
+import { onChanged, emitChanged } from '../shared/events/DraftEvents';
 import { resolveSchemaIdByKey, buildSelectOptions, type SelectColumnConfig } from '../core/uiLinking';
-import FormRenderer from './FormRenderer';
+import JsonFormsFormRenderer from './JsonFormsFormRenderer';
 type Props = { schemaKey: string; uiSchema?: Record<string, unknown> };
 
 type Row = { id: string; content: unknown };
@@ -60,6 +62,7 @@ function pickSelectConfig(uiSchema?: Record<string, unknown>): Record<string, Se
 
 export default function TableRenderer({ schemaKey, uiSchema }: Props) {
   const { selectedId } = useSetups();
+  const theme = useTheme();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<Row[]>([]);
@@ -95,16 +98,13 @@ export default function TableRenderer({ schemaKey, uiSchema }: Props) {
 
   // реакція на зовнішнє збереження (FormRenderer, інші екрани)
   useEffect(() => {
-    const onChanged = (e: Event) => {
-      const d = (e as CustomEvent<{ schemaKey?: string; setupId?: string }>).detail || {};
-      if (d.schemaKey === schemaKey && d.setupId === selectedId) {
-        // очистити локальні правки і перезавантажити
+    const off = onChanged((payload: { schemaKey: string; setupId: string }) => {
+      if (payload.schemaKey === schemaKey && payload.setupId === selectedId) {
         editsRef.current.clear();
         void load();
       }
-    };
-    window.addEventListener('drafts:changed', onChanged);
-    return () => window.removeEventListener('drafts:changed', onChanged);
+    });
+    return off;
   }, [load, schemaKey, selectedId]);
 
   // load select options for configured select columns
@@ -126,17 +126,15 @@ export default function TableRenderer({ schemaKey, uiSchema }: Props) {
 
   // refresh options when referenced drafts change
   useEffect(() => {
-    const onChanged = (e: Event) => {
-      const d = (e as CustomEvent<{ schemaKey?: string; setupId?: string }>).detail || {};
-      if (!d.setupId || d.setupId !== selectedId) return;
-      if (d.schemaKey === schemaKey || Object.values(selectCfg).some(s => s.schemaKey === d.schemaKey)) {
+    const off = onChanged((payload: { schemaKey: string; setupId: string }) => {
+      if (!payload.setupId || payload.setupId !== selectedId) return;
+      if (payload.schemaKey === schemaKey || Object.values(selectCfg).some(s => s.schemaKey === payload.schemaKey)) {
         editsRef.current.clear();
         void load();
         void loadOptions();
       }
-    };
-    window.addEventListener('drafts:changed', onChanged);
-    return () => window.removeEventListener('drafts:changed', onChanged);
+    });
+    return off;
   }, [load, schemaKey, selectCfg, selectedId, loadOptions]);
 
   const scheduleSave = useCallback((rowId: string) => {
@@ -150,8 +148,8 @@ export default function TableRenderer({ schemaKey, uiSchema }: Props) {
         await updateDraftV1(rowId, JSON.stringify(content));
         // оновити локальні рядки оптимістично
         setRows(prevRows => prevRows.map(r => (r.id === rowId ? { ...r, content } : r)));
-        // повідомити слухачів і очистити локальний буфер
-        window.dispatchEvent(new CustomEvent('drafts:changed', { detail: { schemaKey, setupId: selectedId } }));
+    // повідомити слухачів і очистити локальний буфер
+    emitChanged({ schemaKey, setupId: selectedId ?? '' });
         editsRef.current.delete(rowId);
       } catch {
         // залишаємо правку в буфері; користувач може ще раз змінити — повторимо спробу
@@ -168,7 +166,7 @@ export default function TableRenderer({ schemaKey, uiSchema }: Props) {
     try {
       await updateDraftV1(rowId, JSON.stringify(content));
       setRows(prevRows => prevRows.map(r => (r.id === rowId ? { ...r, content } : r)));
-      window.dispatchEvent(new CustomEvent('drafts:changed', { detail: { schemaKey, setupId: selectedId } }));
+  emitChanged({ schemaKey, setupId: selectedId ?? '' });
       editsRef.current.delete(rowId);
     } catch {
       // no-op
@@ -258,12 +256,12 @@ export default function TableRenderer({ schemaKey, uiSchema }: Props) {
   }, [cols, flushSave, scheduleSave, selectCfg, selectOptions]);
 
   if (!selectedId) return <div style={{ padding: 8 }}>Select setup</div>;
-  if (error) return <div style={{ padding: 8, color: 'crimson' }}>{error}</div>;
+  if (error) return <div style={{ padding: 8, color: theme.palette.error.main }}>{error}</div>;
   if (!cols.length) return <div style={{ padding: 8 }}>No columns configured</div>;
   return (
     <div className="table-renderer-root">
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
-        <Button className="slate-outline-add" onClick={createNew} disabled={!selectedId}>＋ New</Button>
+        <Button onClick={createNew} disabled={!selectedId}>＋ New</Button>
       </div>
 
       <Table<Row>
@@ -283,7 +281,7 @@ export default function TableRenderer({ schemaKey, uiSchema }: Props) {
         destroyOnClose
       >
         {creatingId ? (
-          <FormRenderer schemaKey={schemaKey} draftId={creatingId} uiSchema={uiSchema as Record<string, unknown> | undefined} />
+          <JsonFormsFormRenderer setupId={selectedId!} schemaKey={schemaKey} draftId={creatingId} uiSchema={uiSchema as Record<string, unknown> | undefined} />
         ) : null}
       </Drawer>
     </div>
