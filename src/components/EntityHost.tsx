@@ -1,8 +1,8 @@
 import type { UISchemaElement } from '@jsonforms/core';
-import FormRenderer from '../renderers/FormRenderer';
 import TableRenderer from '../renderers/TableRenderer';
 import JsonFormsFormRenderer from '../renderers/JsonFormsFormRenderer';
 import useSetups from '../setup/useSetups';
+import CreateDraft from './CreateDraft';
 
 type FormParams = { kind: 'form';  params: { schemaKey: string; draftId: string; uiSchema?: UISchemaElement | Record<string, unknown> } };
 type TableParams = { kind: 'table'; params: { schemaKey: string; uiSchema?: Record<string, unknown> } };
@@ -16,13 +16,31 @@ export default function EntityHost({ kind, params }: HostProps) {
     if (!schemaKey || !draftId) return <div style={{ padding: 8 }}>Missing schemaKey or draftId</div>;
     if (!setupId) return <div style={{ padding: 8 }}>Select a Setup</div>;
 
-    if (schemaKey === 'ChestDescriptor') {
+    // special placeholder used by the sidebar for the 'new' action
+    if (draftId === '__new__') {
+      const ui = params && typeof (params as Record<string, unknown>).uiSchema === 'object' ? (params as Record<string, unknown>).uiSchema as Record<string, unknown> : undefined;
+      const sk = schemaKey;
       return (
-        <JsonFormsFormRenderer setupId={setupId} schemaKey={schemaKey} draftId={draftId} uiSchema={uiSchema} />
+        <CreateDraft
+          schemaKey={sk}
+          uiSchema={ui}
+          initialFormData={{
+            Id: `chest-${Date.now()}`,
+            Type: 'Common',
+            InteractDistance: 0,
+            LockInteractTime: '00:00:00',
+            DropInfo: { Items: [], Currency: { Amount: { Min: 0, Max: 0 }, ExpiriencePercent: 0 }, CraftMaterials: [] }
+          }}
+          onCreated={(id) => {
+            const qp = '?path=' + encodeURIComponent(['Game','Chests', String(id)].join('/'));
+            window.history.pushState(null, '', qp);
+            window.dispatchEvent(new PopStateEvent('popstate'));
+          }}
+        />
       );
     }
 
-    return <FormRenderer schemaKey={schemaKey} draftId={draftId} uiSchema={uiSchema as Record<string, unknown> | undefined} />;
+    return <JsonFormsFormRenderer setupId={setupId} schemaKey={schemaKey} draftId={draftId} uiSchema={uiSchema as Record<string, unknown> | undefined} />;
   }
 
   if (kind === 'table') {

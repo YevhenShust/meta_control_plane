@@ -2,9 +2,8 @@ import { Menu } from "antd";
 import type { MenuProps } from "antd";
 import { useEffect, useState } from "react";
 import type { MenuItem } from "./menuStructure";
-import useGameChests from '../../menu/useDraftMenu';
-import CreateDraftModal from '../CreateDraftModal';
-import { getDynamicFormConfig, isGameChestsNode } from './menuStructure';
+import { useDraftMenu } from '../../menu/useDraftMenu';
+import { isGameChestsNode } from './menuStructure';
 
 type SidebarMenuProps = {
   menu: MenuItem[];
@@ -45,18 +44,11 @@ function buildItems(items: MenuItem[], base: string[] = [], hookItems: MenuProps
 }
 
 export default function SidebarMenu({ menu, selectedMenuPath, onSelect }: SidebarMenuProps) {
-  const chests = useGameChests();
-  const [createOpen, setCreateOpen] = useState(false);
-
-  const newItem = {
-    key: 'Game/Chests/__new__',
-    label: <span onClick={() => setCreateOpen(true)} style={{ cursor: 'pointer' }}>＋</span>,
-    onClick: () => setCreateOpen(true),
-  } as AntMenuItem;
+  const chests = useDraftMenu({ schemaKey: 'ChestDescriptor' });
 
   const hookItems: MenuProps['items'] = (chests.loading && (!chests.items || chests.items.length === 0))
-    ? [newItem, { key: 'Game/Chests/loading', label: 'Loading…', disabled: true } as AntMenuItem]
-    : [newItem, ...(chests.items || []).map(c => ({ key: `Game/Chests/${c.params?.draftId ?? ''}`, label: c.title }))] as MenuProps['items'];
+    ? [{ key: 'Game/Chests/loading', label: 'Loading…', disabled: true } as AntMenuItem]
+    : (chests.items || []).map(c => ({ key: `Game/Chests/${c.params?.draftId ?? ''}`, label: c.title })) as MenuProps['items'];
   const items = buildItems(menu, [], hookItems as MenuProps['items']);
   const [openKeys, setOpenKeys] = useState<string[]>([]);
 
@@ -110,26 +102,6 @@ export default function SidebarMenu({ menu, selectedMenuPath, onSelect }: Sideba
         onOpenChange={handleOpenChange}
         openKeys={openKeys}
   style={{ height: '100%', borderRight: 0 }}
-      />
-      <CreateDraftModal
-        open={createOpen}
-        onCancel={() => setCreateOpen(false)}
-        onCreated={(id) => {
-          setCreateOpen(false);
-          const qp = '?path=' + encodeURIComponent(['Game','Chests', String(id)].join('/'));
-          window.history.pushState(null, '', qp);
-          window.dispatchEvent(new PopStateEvent('popstate'));
-        }}
-        schemaKey={getDynamicFormConfig('Game/Chests')?.schemaKey ?? 'ChestDescriptor'}
-        title="Create chest"
-  uiSchema={getDynamicFormConfig('Game/Chests')?.uiSchema as Record<string, unknown> | undefined}
-        initialFormData={() => ({
-          Id: `chest-${Date.now()}`,
-          Type: 'Common',
-          InteractDistance: 0,
-          LockInteractTime: '00:00:00',
-          DropInfo: { Items: [], Currency: { Amount: { Min: 0, Max: 0 }, ExpiriencePercent: 0 }, CraftMaterials: [] }
-        })}
       />
     </>
   );

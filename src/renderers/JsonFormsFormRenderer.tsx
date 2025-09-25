@@ -6,10 +6,11 @@ import MaterialScope from '../theme/MaterialScope';
 import type { UISchemaElement, JsonSchema } from '@jsonforms/core';
 import { Generate } from '@jsonforms/core';
 import { getSchemaByIdV1 } from '../shared/api/schema';
-import { listDraftsV1, updateDraftV1, createDraftV1 } from '../shared/api/drafts';
+import { updateDraftV1, createDraftV1 } from '../shared/api/drafts';
 import { emitChanged } from '../shared/events/DraftEvents';
 import { resolveSchemaIdByKey } from '../core/uiLinking';
 import { buildSelectOptions } from '../core/uiLinking';
+import useDrafts from '../setup/useDrafts';
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
 
@@ -18,21 +19,26 @@ type Props = {
   schemaKey: string;
   draftId?: string;
   uiSchema?: UISchemaElement | Record<string, unknown>;
+  initialData?: Record<string, unknown> | null;
+  onCreated?: (id: string) => void;
 };
 
-export default function JsonFormsFormRenderer({ setupId, schemaKey, draftId, uiSchema: uiSchemaProp }: Props) {
+export default function JsonFormsFormRenderer({ setupId, schemaKey, draftId, uiSchema: uiSchemaProp, initialData, onCreated }: Props) {
   const [schema, setSchema] = useState<JsonSchema | null>(null);
   const [uiLocal, setUiLocal] = useState<UISchemaElement | undefined>(undefined);
   const [enhancedSchema, setEnhancedSchema] = useState<JsonSchema | null>(null);
   const [data, setData] = useState<Record<string, unknown>>({});
   const [saving, setSaving] = useState(false);
   const [sid, setSid] = useState<string | null>(null);
+  const draftsCtx = useDrafts();
 
   useEffect(() => {
     let mounted = true;
     (async () => {
+      // keep resolved in outer scope so we can use it after the try/catch
+      let resolved: string | null = null;
       try {
-        const resolved = await resolveSchemaIdByKey(setupId, schemaKey);
+        resolved = await resolveSchemaIdByKey(setupId, schemaKey);
         if (!resolved) throw new Error(`Schema id not found for key: ${schemaKey}`);
         if (!mounted) return;
         setSid(resolved);
@@ -100,10 +106,14 @@ export default function JsonFormsFormRenderer({ setupId, schemaKey, draftId, uiS
 
       if (draftId) {
         try {
-          const drafts = await listDraftsV1(setupId);
-          const found = drafts.find(d => String(d.id) === String(draftId));
-          if (found && found.content) {
-            try { setData(typeof found.content === 'string' ? JSON.parse(found.content) : found.content); } catch { setData({}); }
+          // try cache first
+          const cached = draftsCtx.getDraftById(setupId, draftId);
+          if (cached) { setData(cached.content as Record<string, unknown>); }
+          else {
+            // ensure drafts for this schema are loaded
+            await draftsCtx.ensureDrafts(setupId, resolved as string);
+            const after = draftsCtx.getDraftById(setupId, draftId);
+            if (after) setData(after.content as Record<string, unknown>);
           }
         } catch (e) {
           console.error('Failed to load drafts', e);
@@ -111,7 +121,18 @@ export default function JsonFormsFormRenderer({ setupId, schemaKey, draftId, uiS
       }
     })();
     return () => { mounted = false; };
-  }, [setupId, schemaKey, draftId, uiSchemaProp]);
+  }, [setupId, schemaKey, draftId, uiSchemaProp, draftsCtx]);
+
+  // If creating (no draftId) simply apply initialData passed from CreateDraft
+  useEffect(() => {
+    if (draftId) return;
+    if (!initialData) return;
+    if (data && Object.keys(data).length !== 0) return;
+    try { setData(initialData ?? {}); } catch { /* ignore */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialData, draftId]);
+
+  // helper removed: we now always build defaults when creating
 
   // enrich schema with select options (enum + enumNames) based on ui:options.selectColumns
   function pickSelectConfig(uiSchema?: Record<string, unknown>): Record<string, { schemaKey: string; labelPath?: string; valuePath?: string; sort?: boolean }> {
@@ -210,7 +231,14 @@ export default function JsonFormsFormRenderer({ setupId, schemaKey, draftId, uiS
       if (draftId) {
         await updateDraftV1(draftId, JSON.stringify(data));
       } else {
-        await createDraftV1(setupId, { schemaId: sid ?? undefined, content: JSON.stringify(data) });
+        const created = await createDraftV1(setupId, { schemaId: sid ?? undefined, content: JSON.stringify(data) });
+        // if parent provided a callback, inform about new id
+        try {
+          const newId = created && typeof created === 'object' && 'id' in created ? String((created as Record<string, unknown>).id) : undefined;
+          if (newId && typeof onCreated === 'function') onCreated(newId);
+        } catch {
+          // ignore
+        }
       }
       emitChanged({ schemaKey, setupId });
     } catch (e) {

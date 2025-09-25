@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import { SetupsProvider } from './setup/SetupsContext';
+import { DraftsProvider } from './setup/DraftsContext';
 import { ConfigProvider } from "antd";
 
 // Dev-only: unregister stray service workers and clear caches to avoid noisy errors
@@ -22,7 +23,9 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <ConfigProvider>
       <SetupsProvider>
-        <App />
+        <DraftsProvider>
+          <App />
+        </DraftsProvider>
       </SetupsProvider>
     </ConfigProvider>
   </React.StrictMode>
