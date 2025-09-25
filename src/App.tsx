@@ -1,11 +1,8 @@
 import { useEffect, useState } from 'react';
-import './styles/rjsf-layout.css';
-import './styles/slate.css';
 import SidebarMenu from "./components/sidebar/SidebarMenu";
 import MainContent from "./components/MainContent";
 import { menuStructure } from "./components/sidebar/menuStructure";
 import { ConfigProvider, Layout } from "antd";
-import slateTokens from './theme/slateTheme';
 import { ThemeProvider, CssBaseline } from '@mui/material';
 import muiTheme from './theme/muiTheme';
 import "antd/dist/reset.css";
@@ -61,10 +58,10 @@ const App: React.FC = () => {
   return (
     <ThemeProvider theme={muiTheme}>
       <CssBaseline />
-      <ConfigProvider theme={slateTokens}>
-      <Layout className="app-layout" style={{ minHeight: '100vh' }}>
+      <ConfigProvider>
+  <Layout className="app-layout" style={{ minHeight: '100vh' }}>
       {/* Fixed header on top */}
-      <Layout.Header className="slate-header"
+      <Layout.Header
         style={{
           position: 'fixed',
           top: 0,
@@ -86,7 +83,6 @@ const App: React.FC = () => {
         <Layout.Sider
           width={SIDER_W}
           theme="dark"
-          className="slate-sider"
           style={{
             position: 'fixed',
             top: HEADER_H,
@@ -105,7 +101,7 @@ const App: React.FC = () => {
 
         {/* Scrollable content area */}
         <Layout style={{ marginLeft: SIDER_W, paddingTop: HEADER_H }}>
-          <Layout.Content className="slate-content"
+          <Layout.Content
             style={{
               height: `calc(100vh - ${HEADER_H}px)`,
               overflow: 'auto',

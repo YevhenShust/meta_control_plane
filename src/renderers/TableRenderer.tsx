@@ -263,7 +263,7 @@ export default function TableRenderer({ schemaKey, uiSchema }: Props) {
   return (
     <div className="table-renderer-root">
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
-        <Button className="slate-outline-add" onClick={createNew} disabled={!selectedId}>＋ New</Button>
+        <Button onClick={createNew} disabled={!selectedId}>＋ New</Button>
       </div>
 
       <Table<Row>

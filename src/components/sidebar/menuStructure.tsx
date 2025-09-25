@@ -16,8 +16,8 @@ export interface MenuItem {
   children?: MenuItem[];
 }
 
-import chestSpawnUi from '../../uischemas/ChestSpawn.rjsf.uischema.json';
-import chestUi from '../../uischemas/ChestDescriptor.rjsf.uischema.json';
+import chestSpawnUi from '../../schemas/ui/ChestSpawn.uischema.json';
+import chestUi from '../../schemas/ui/ChestDescriptor.uischema.json';
 
 // Visible tree (no params here; same style for Game and Atlas)
 export const menuStructure: MenuItem[] = [

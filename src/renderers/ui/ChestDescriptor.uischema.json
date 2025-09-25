@@ -1,0 +1,18 @@
+{
+  "type": "VerticalLayout",
+  "elements": [
+    { "type": "Control", "scope": "#/properties/Id" },
+    { "type": "Control", "scope": "#/properties/Type" },
+    { "type": "Control", "scope": "#/properties/InteractDistance" },
+    { "type": "Control", "scope": "#/properties/LockInteractTime" },
+    {
+      "type": "Group",
+      "label": "Drop Info",
+      "elements": [
+        { "type": "Control", "scope": "#/properties/DropInfo/properties/Items" },
+        { "type": "Control", "scope": "#/properties/DropInfo/properties/Currency" },
+        { "type": "Control", "scope": "#/properties/DropInfo/properties/CraftMaterials" }
+      ]
+    }
+  ]
+}

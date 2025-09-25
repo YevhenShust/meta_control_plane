@@ -4,7 +4,7 @@ import { materialRenderers, materialCells } from '@jsonforms/material-renderers'
 import useSetups from '../setup/useSetups';
 import { resolveSchemaIdByKey } from '../core/uiLinking';
 import { getSchemaByIdV1 } from '../shared/api/schema';
-import chestUi from '../uischemas/ChestDescriptor.uischema.json';
+import chestUi from '../schemas/ui/ChestDescriptor.uischema.json';
 import type { UISchemaElement } from '@jsonforms/core';
 
 function removeIdsRecursive(obj: unknown) {
@@ -64,7 +64,7 @@ export default function JsonFormsDemoChest() {
 
   return (
     <div style={{ padding: 16 }}>
-      <div style={{ marginBottom: 8, color: 'var(--slate-text)' }}>
+      <div style={{ marginBottom: 8 }}>
         Loaded schema: {loadedId ?? '—'} (properties: {propsCount})
       </div>
       {!schema ? (
