@@ -6,6 +6,8 @@ import MainContent from "./components/MainContent";
 import { menuStructure } from "./components/sidebar/menuStructure";
 import { ConfigProvider, Layout } from "antd";
 import slateTokens from './theme/slateTheme';
+import { ThemeProvider, CssBaseline } from '@mui/material';
+import muiTheme from './theme/muiTheme';
 import "antd/dist/reset.css";
 import "./App.css";
 import Header from './components/Header';
@@ -57,8 +59,10 @@ const App: React.FC = () => {
   }, [selectedMenuPath]);
 
   return (
-    <ConfigProvider theme={slateTokens}>
-    <Layout className="app-layout" style={{ minHeight: '100vh' }}>
+    <ThemeProvider theme={muiTheme}>
+      <CssBaseline />
+      <ConfigProvider theme={slateTokens}>
+      <Layout className="app-layout" style={{ minHeight: '100vh' }}>
       {/* Fixed header on top */}
       <Layout.Header className="slate-header"
         style={{
@@ -114,6 +118,7 @@ const App: React.FC = () => {
       </Layout>
     </Layout>
     </ConfigProvider>
+    </ThemeProvider>
   );
 };
 

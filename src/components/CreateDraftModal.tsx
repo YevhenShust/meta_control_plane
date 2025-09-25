@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Modal, Button, Typography } from 'antd';
 import Form from '@rjsf/antd';
 import { customizeValidator } from '@rjsf/validator-ajv8';
