@@ -1,17 +1,19 @@
-import { Select } from 'antd';
+import { Select, MenuItem, Box, Typography } from '@mui/material';
 import useSetups from './useSetups';
 
 export default function SetupSelect() {
   const { setups, selectedId, setSelectedId } = useSetups();
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <span style={{ color: '#666' }}>Setup:</span>
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+      <Typography color="text.secondary">Setup:</Typography>
       <Select
-        value={selectedId ?? undefined}
-        onChange={(v) => setSelectedId(String(v))}
-        options={(setups ?? []).map(s => ({ label: s.name ?? s.id, value: s.id }))}
-        style={{ minWidth: 200 }}
-      />
-    </div>
+        value={selectedId ?? ''}
+        onChange={(e) => setSelectedId(String(e.target.value))}
+        sx={{ minWidth: 200 }}
+      >
+        <MenuItem value="">Select setup</MenuItem>
+        {setups.map(s => <MenuItem key={s.id} value={s.id}>{s.name ?? s.id}</MenuItem>)}
+      </Select>
+    </Box>
   );
 }

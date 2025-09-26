@@ -1,4 +1,5 @@
-import { Modal, Form, Input } from 'antd';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField } from '@mui/material';
+import { useState } from 'react';
 
 export default function CreateSetupModal({
   open, loading, onCancel, onSubmit,
@@ -8,27 +9,25 @@ export default function CreateSetupModal({
   onCancel: () => void;
   onSubmit: (name: string) => void;
 }) {
-  const [form] = Form.useForm<{ name: string }>();
+  const [name, setName] = useState('');
   return (
-    <Modal
-      open={open}
-      title="Create setup"
-      okText="Create"
-      confirmLoading={loading}
-      onCancel={onCancel}
-      onOk={() => {
-        form.validateFields().then(({ name }) => onSubmit(name));
-      }}
-    >
-      <Form form={form} layout="vertical" initialValues={{ name: '' }}>
-        <Form.Item
-          name="name"
+    <Dialog open={open} onClose={onCancel} fullWidth>
+      <DialogTitle>Create setup</DialogTitle>
+      <DialogContent>
+        <TextField
+          value={name}
+          onChange={(e) => setName(e.target.value)}
           label="Setup name"
-          rules={[{ required: true, message: 'Enter setup name' }]}
-        >
-          <Input placeholder="e.g. Setup 2025-09-12 12:34" />
-        </Form.Item>
-      </Form>
-    </Modal>
+          placeholder="e.g. Setup 2025-09-12 12:34"
+          fullWidth
+          variant="standard"
+          margin="normal"
+        />
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onCancel}>Cancel</Button>
+        <Button onClick={() => onSubmit(name)} variant="contained" disabled={loading || !name}>{loading ? 'Creating…' : 'Create'}</Button>
+      </DialogActions>
+    </Dialog>
   );
 }

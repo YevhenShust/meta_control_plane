@@ -3,7 +3,6 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import { SetupsProvider } from './setup/SetupsContext';
 import { DraftsProvider } from './setup/DraftsContext';
-import { ConfigProvider } from "antd";
 
 // Dev-only: unregister stray service workers and clear caches to avoid noisy errors
 if (import.meta.env.DEV && 'serviceWorker' in navigator) {
@@ -21,12 +20,10 @@ if (import.meta.env.DEV && 'serviceWorker' in navigator) {
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <ConfigProvider>
-      <SetupsProvider>
-        <DraftsProvider>
-          <App />
-        </DraftsProvider>
-      </SetupsProvider>
-    </ConfigProvider>
+    <SetupsProvider>
+      <DraftsProvider>
+        <App />
+      </DraftsProvider>
+    </SetupsProvider>
   </React.StrictMode>
 );

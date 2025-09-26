@@ -1,16 +1,8 @@
 import { useEffect, useState } from 'react';
-import SidebarMenu from "./components/sidebar/SidebarMenu";
-import MainContent from "./components/MainContent";
-import { menuStructure } from "./components/sidebar/menuStructure";
-import { ConfigProvider, Layout } from "antd";
-import { ThemeProvider, CssBaseline } from '@mui/material';
-import muiTheme from './theme/muiTheme';
-import "antd/dist/reset.css";
-import "./App.css";
-import Header from './components/Header';
+import AppShell from './ui/AppShell';
+import './App.css';
 
-const HEADER_H = 64;
-const SIDER_W = 260;
+// Layout constants are handled inside AppShell
 
 const App: React.FC = () => {
   const [selectedMenuPath, setSelectedMenuPath] = useState<string[]>([]);
@@ -56,65 +48,7 @@ const App: React.FC = () => {
   }, [selectedMenuPath]);
 
   return (
-    <ThemeProvider theme={muiTheme}>
-      <CssBaseline />
-      <ConfigProvider>
-  <Layout className="app-layout" style={{ minHeight: '100vh' }}>
-      {/* Fixed header on top */}
-      <Layout.Header
-        style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: HEADER_H,
-          zIndex: 100,
-          display: 'flex',
-          alignItems: 'center',
-          paddingInline: 16,
-        }}
-      >
-        <Header />
-      </Layout.Header>
-
-      {/* Body under header */}
-      <Layout>
-        {/* Fixed sidebar under header */}
-        <Layout.Sider
-          width={SIDER_W}
-          theme="dark"
-          style={{
-            position: 'fixed',
-            top: HEADER_H,
-            bottom: 0,
-            left: 0,
-            height: `calc(100vh - ${HEADER_H}px)`,
-            overflow: 'auto',
-          }}
-        >
-          <SidebarMenu
-            menu={menuStructure}
-            selectedMenuPath={selectedMenuPath}
-            onSelect={setSelectedMenuPath}
-          />
-        </Layout.Sider>
-
-        {/* Scrollable content area */}
-        <Layout style={{ marginLeft: SIDER_W, paddingTop: HEADER_H }}>
-          <Layout.Content
-            style={{
-              height: `calc(100vh - ${HEADER_H}px)`,
-              overflow: 'auto',
-              padding: '16px 24px',
-            }}
-          >
-            <MainContent selectedMenuPath={selectedMenuPath} />
-          </Layout.Content>
-        </Layout>
-      </Layout>
-    </Layout>
-    </ConfigProvider>
-    </ThemeProvider>
+    <AppShell selectedMenuPath={selectedMenuPath} onSelect={setSelectedMenuPath} />
   );
 };
 

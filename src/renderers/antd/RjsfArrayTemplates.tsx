@@ -1,5 +1,5 @@
 // src/renderers/antd/RjsfArrayTemplates.tsx
-import { Button, Space } from 'antd';
+import { Button, Stack } from '@mui/material';
 import type {
   ArrayFieldTemplateProps,
   Registry,
@@ -22,15 +22,16 @@ export function ArrayFieldItemTemplate(props: ArrayFieldItemTemplateProps) {
   return (
     <div style={{ marginBottom: 8 }}>
       <div>{children}</div>
-      <Space.Compact style={{ marginTop: 6 }}>
+      <Stack direction="row" spacing={1} sx={{ marginTop: 1 }}>
         <Button
-          danger
+          color="error"
+          variant="outlined"
           disabled={disabled || readonly || !hasRemove}
           onClick={onDropIndexClick(index)}
         >
           ✖
         </Button>
-      </Space.Compact>
+      </Stack>
     </div>
   );
 }
@@ -48,11 +49,11 @@ export function ArrayFieldTemplate(props: ArrayFieldTemplateProps) {
         <ItemTemplate key={key} {...childProps} />
       ))}
       <div style={{ marginTop: 8 }}>
-        <Space.Compact>
-          <Button type="dashed" disabled={!canAdd} onClick={onAddClick}>
+        <Stack direction="row">
+          <Button variant="outlined" disabled={!canAdd} onClick={onAddClick}>
             ＋
           </Button>
-        </Space.Compact>
+        </Stack>
       </div>
     </div>
   );
