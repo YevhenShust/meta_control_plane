@@ -103,7 +103,7 @@
                 "Amount": {
                     "$ref": "#/$defs/Range"
                 },
-                "ExpiriencePercent": {
+                "ExperiencePercent": {
                     "type": "integer"
                 }
             }

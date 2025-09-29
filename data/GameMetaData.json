@@ -69,7 +69,7 @@
             "Min": 10,
             "Max": 15
           },
-          "ExpiriencePercent": 3
+          "ExperiencePercent": 3
         },
         "CraftMaterials": [
           {
@@ -103,7 +103,7 @@
             "Min": 50,
             "Max": 100
           },
-          "ExpiriencePercent": 6
+          "ExperiencePercent": 6
         },
         "CraftMaterials": [
           {
@@ -147,7 +147,7 @@
             "Min": 150,
             "Max": 200
           },
-          "ExpiriencePercent": 8
+          "ExperiencePercent": 8
         },
         "CraftMaterials": [
           {
@@ -191,7 +191,7 @@
             "Min": 250,
             "Max": 300
           },
-          "ExpiriencePercent": 10
+          "ExperiencePercent": 10
         },
         "CraftMaterials": [
           {

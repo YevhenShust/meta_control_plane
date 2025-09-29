@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import AppShell from './ui/AppShell';
-import './App.css';
+import Header from './components/Header';
+import SidebarMenuContainer from './components/sidebar/SidebarMenuContainer';
+import MainContent from './components/MainContent';
 
-// Layout constants are handled inside AppShell
+// layout constants moved to CSS variables
 
 const App: React.FC = () => {
   const [selectedMenuPath, setSelectedMenuPath] = useState<string[]>([]);
@@ -48,7 +49,19 @@ const App: React.FC = () => {
   }, [selectedMenuPath]);
 
   return (
-    <AppShell selectedMenuPath={selectedMenuPath} onSelect={setSelectedMenuPath} />
+    <div className="app-shell">
+      <div>
+        <Header />
+      </div>
+      <div className="app-body">
+        <div className="app-sider">
+          <SidebarMenuContainer selectedMenuPath={selectedMenuPath} onSelect={setSelectedMenuPath} />
+        </div>
+        <div className="app-main">
+          <MainContent selectedMenuPath={selectedMenuPath} />
+        </div>
+      </div>
+    </div>
   );
 };
 

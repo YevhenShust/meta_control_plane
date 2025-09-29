@@ -13,6 +13,22 @@ If you are developing a production application, we recommend updating the config
 
 ```js
 export default tseslint.config([
+## Agent Manifest (summary)
+
+This project follows a short, machine-readable development manifest used by contributors and automated assistants.
+
+- UI stack: Eclipse JSON Forms with custom Blueprint.js renderers.
+- Validation: AJV (draft-07), with ajv-formats and a small custom TimeSpan format.
+- Renderers: all JSON Forms renderers and related UI code live under `src/renderers` (and optional `src/jsonforms`).
+- Entity flow: `EntityHost` routes to `EntityEditor` which resolves schema, uischema and data and chooses `FormRenderer` or `TableRenderer`.
+- Logging: use clear tags in console logs: `[Host]`, `[Editor]`, `[Form]`, `[Table]`, `[AJV]`, `[Schema]`.
+- Types: avoid `any`; prefer `unknown` or explicit types.
+
+If anything is ambiguous, prefer small, explicit assumptions and document them in the PR description or a short comment.
+
+Full manifest: `docs/AGENT_MANIFEST.md`
+
+Assistants: read `docs/AGENT_MANIFEST.md` before making code changes.
   globalIgnores(['dist']),
   {
     files: ['**/*.{ts,tsx}'],

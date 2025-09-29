@@ -2,7 +2,10 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import { SetupsProvider } from './setup/SetupsContext';
-import { DraftsProvider } from './setup/DraftsContext';
+// Blueprint styling (dark + compact)
+import "@blueprintjs/core/lib/css/blueprint.css";
+import "@blueprintjs/icons/lib/css/blueprint-icons.css";
+import "./index.css";
 
 // Dev-only: unregister stray service workers and clear caches to avoid noisy errors
 if (import.meta.env.DEV && 'serviceWorker' in navigator) {
@@ -20,10 +23,10 @@ if (import.meta.env.DEV && 'serviceWorker' in navigator) {
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <SetupsProvider>
-      <DraftsProvider>
+  <div className="bp4-dark app-root">
+      <SetupsProvider>
         <App />
-      </DraftsProvider>
-    </SetupsProvider>
+      </SetupsProvider>
+    </div>
   </React.StrictMode>
 );
