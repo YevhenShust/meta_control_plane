@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useTheme, Box } from '@mui/material';
 import List from '@mui/material/List';
 import ListItemButton from '@mui/material/ListItemButton';
 import ListItemText from '@mui/material/ListItemText';
@@ -20,79 +21,83 @@ function toKey(path: string[]) {
 }
 
 // Render nodes recursively as MUI Lists
-function renderNodes(
-  items: MenuItem[],
-  base: string[],
-  openKeys: string[],
-  onToggle: (key: string) => void,
-  onSelect: (path: string[]) => void,
-  chestsHookItems: { key: string; label: string }[] | null,
-  chestsLoading: boolean
-) {
-  return items.map((it) => {
-    const seg = it.kind === 'form' && it.params && typeof it.params.draftId === 'string' ? it.params.draftId : it.title;
-    const path = [...base, seg];
-    const key = toKey(path);
-    const hasChildren = !!(it.children && it.children.length);
-
-    // Game/Chests special case: show hook-provided children
-    if (isGameChestsNode(it)) {
-      const expanded = openKeys.includes(key);
-      return (
-        <div key={key}>
-          <ListItemButton onClick={() => onToggle(key)} selected={expanded}>
-            <ListItemText primary={it.title} />
-          </ListItemButton>
-          <Collapse in={expanded} timeout="auto" unmountOnExit>
-            <List component="div" disablePadding>
-              {chestsLoading ? (
-                <ListItemButton sx={{ pl: 4 }}>
-                  <ListItemText primary={'Loading…'} />
-                  <CircularProgress size={16} sx={{ ml: 1 }} />
-                </ListItemButton>
-              ) : chestsHookItems && chestsHookItems.length ? (
-                chestsHookItems.map(ci => (
-                  <ListItemButton key={ci.key} sx={{ pl: 4 }} onClick={() => onSelect(ci.key.split('/'))}>
-                    <ListItemText primary={ci.label} />
-                  </ListItemButton>
-                ))
-              ) : (
-                <ListItemButton sx={{ pl: 4 }}>
-                  <ListItemText primary={'(no items)'} />
-                </ListItemButton>
-              )}
-            </List>
-          </Collapse>
-        </div>
-      );
-    }
-
-    if (hasChildren) {
-      const expanded = openKeys.includes(key);
-      return (
-        <div key={key}>
-          <ListItemButton onClick={() => onToggle(key)} selected={expanded}>
-            <ListItemText primary={it.title} />
-          </ListItemButton>
-          <Collapse in={expanded} timeout="auto" unmountOnExit>
-            <List component="div" disablePadding sx={{ pl: 2 }}>
-              {renderNodes(it.children ?? [], [...base, it.title], openKeys, onToggle, onSelect, chestsHookItems, chestsLoading)}
-            </List>
-          </Collapse>
-        </div>
-      );
-    }
-
-    return (
-      <ListItemButton key={key} onClick={() => onSelect(path)}>
-        <ListItemText primary={it.title} />
-      </ListItemButton>
-    );
-  });
-}
+// renderNodes will be defined inside the component so it can use theme
 
 export default function SidebarMenuMaterial({ menu, selectedMenuPath, onSelect }: SidebarMenuProps) {
   const chests = useDraftMenu({ schemaKey: 'ChestDescriptor' });
+  const theme = useTheme();
+
+  // Render nodes recursively as MUI Lists (moved here to use theme)
+  function renderNodes(
+    items: MenuItem[],
+    base: string[],
+    openKeys: string[],
+    onToggle: (key: string) => void,
+    onSelect: (path: string[]) => void,
+    chestsHookItems: { key: string; label: string }[] | null,
+    chestsLoading: boolean
+  ) {
+    return items.map((it) => {
+      const seg = it.kind === 'form' && it.params && typeof it.params.draftId === 'string' ? it.params.draftId : it.title;
+      const path = [...base, seg];
+      const key = toKey(path);
+      const hasChildren = !!(it.children && it.children.length);
+
+      // Game/Chests special case: show hook-provided children
+      if (isGameChestsNode(it)) {
+        const expanded = openKeys.includes(key);
+        return (
+          <div key={key}>
+            <ListItemButton onClick={() => onToggle(key)} selected={expanded} sx={{ color: theme.palette.text.primary }}>
+              <ListItemText primary={it.title} />
+            </ListItemButton>
+            <Collapse in={expanded} timeout="auto" unmountOnExit>
+              <List component="div" disablePadding>
+                {chestsLoading ? (
+                  <ListItemButton sx={{ pl: 4 }}>
+                    <ListItemText primary={'Loading…'} />
+                    <CircularProgress size={16} sx={{ ml: 1 }} />
+                  </ListItemButton>
+                ) : chestsHookItems && chestsHookItems.length ? (
+                  chestsHookItems.map(ci => (
+                    <ListItemButton key={ci.key} sx={{ pl: 4 }} onClick={() => onSelect(ci.key.split('/'))}>
+                      <ListItemText primary={ci.label} />
+                    </ListItemButton>
+                  ))
+                ) : (
+                  <ListItemButton sx={{ pl: 4 }}>
+                    <ListItemText primary={'(no items)'} />
+                  </ListItemButton>
+                )}
+              </List>
+            </Collapse>
+          </div>
+        );
+      }
+
+      if (hasChildren) {
+        const expanded = openKeys.includes(key);
+        return (
+          <div key={key}>
+            <ListItemButton onClick={() => onToggle(key)} selected={expanded} sx={{ color: theme.palette.text.primary }}>
+              <ListItemText primary={it.title} />
+            </ListItemButton>
+            <Collapse in={expanded} timeout="auto" unmountOnExit>
+              <List component="div" disablePadding sx={{ pl: 2 }}>
+                {renderNodes(it.children ?? [], [...base, it.title], openKeys, onToggle, onSelect, chestsHookItems, chestsLoading)}
+              </List>
+            </Collapse>
+          </div>
+        );
+      }
+
+      return (
+        <ListItemButton key={key} onClick={() => onSelect(path)} sx={{ color: theme.palette.text.primary }}>
+          <ListItemText primary={it.title} />
+        </ListItemButton>
+      );
+    });
+  }
 
   const chestsHookItems = useMemo(() => {
     if (chests.loading && (!chests.items || chests.items.length === 0)) return [];
@@ -153,11 +158,11 @@ export default function SidebarMenuMaterial({ menu, selectedMenuPath, onSelect }
   };
 
   return (
-    <div style={{ height: '100%', overflow: 'auto' }}>
+    <Box sx={{ height: '100%', overflow: 'auto', bgcolor: theme.palette.background.paper, color: theme.palette.text.primary }}>
       <List component="nav">
         {renderNodes(menu, [], openKeys, handleToggle, handleSelect, chestsHookItems.length ? chestsHookItems : null, chests.loading)}
       </List>
-      <Divider />
-    </div>
+      <Divider sx={{ borderColor: theme.palette.divider }} />
+    </Box>
   );
 }

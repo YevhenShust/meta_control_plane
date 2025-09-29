@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTheme } from '@mui/material';
 import { Table, Input, InputNumber, Select, Button, Drawer } from 'antd';
 import useSetups from '../setup/useSetups';
 import { listDraftsV1, updateDraftV1, createDraftV1 } from '../shared/api/drafts';
@@ -61,6 +62,7 @@ function pickSelectConfig(uiSchema?: Record<string, unknown>): Record<string, Se
 
 export default function TableRenderer({ schemaKey, uiSchema }: Props) {
   const { selectedId } = useSetups();
+  const theme = useTheme();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<Row[]>([]);
@@ -254,7 +256,7 @@ export default function TableRenderer({ schemaKey, uiSchema }: Props) {
   }, [cols, flushSave, scheduleSave, selectCfg, selectOptions]);
 
   if (!selectedId) return <div style={{ padding: 8 }}>Select setup</div>;
-  if (error) return <div style={{ padding: 8, color: 'crimson' }}>{error}</div>;
+  if (error) return <div style={{ padding: 8, color: theme.palette.error.main }}>{error}</div>;
   if (!cols.length) return <div style={{ padding: 8 }}>No columns configured</div>;
   return (
     <div className="table-renderer-root">

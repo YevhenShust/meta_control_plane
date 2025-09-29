@@ -5,6 +5,7 @@ import prepareSchemaForJsonForms from '../jsonforms/prepareSchema';
 import MaterialScope from '../theme/MaterialScope';
 import type { UISchemaElement, JsonSchema } from '@jsonforms/core';
 import { Generate } from '@jsonforms/core';
+import { useTheme } from '@mui/material';
 import { getSchemaByIdV1 } from '../shared/api/schema';
 import { updateDraftV1, createDraftV1 } from '../shared/api/drafts';
 import { emitChanged } from '../shared/events/DraftEvents';
@@ -251,6 +252,7 @@ export default function JsonFormsFormRenderer({ setupId, schemaKey, draftId, uiS
   const resolvedUi = uiSchemaProp ? (uiSchemaProp as UISchemaElement) : (uiLocal ?? (schemaForJsonForms ? (Generate.uiSchema(schemaForJsonForms as JsonSchema) as UISchemaElement) : undefined));
 
   const uiRootType = resolvedUi ? (resolvedUi as { type?: unknown }).type : undefined;
+  const theme = useTheme();
   console.info('[JF] materialRenderers length:', Array.isArray(materialRenderers) ? materialRenderers.length : 'not array');
   console.info('[JF] ui root type:', uiRootType);
 
@@ -272,7 +274,7 @@ export default function JsonFormsFormRenderer({ setupId, schemaKey, draftId, uiS
             <div style={{ marginTop: 12 }}>
               <button onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>
             </div>
-            <pre style={{ marginTop: 12, background: '#111', color: '#0f0', padding: 12 }}>{JSON.stringify(data, null, 2)}</pre>
+            <pre style={{ marginTop: 12, background: theme.palette.background.paper, color: theme.palette.text.primary, padding: 12 }}>{JSON.stringify(data, null, 2)}</pre>
           </>
         )}
       </div>
