@@ -1,5 +1,6 @@
 import type { UISchemaElement } from '@jsonforms/core';
 import TableRenderer from '../renderers/TableRenderer';
+import FormRenderer from '../renderers/FormRenderer';
 import useSetups from '../setup/useSetups';
 
 type FormParams = { kind: 'form';  params: { schemaKey: string; draftId: string; uiSchema?: UISchemaElement | Record<string, unknown> } };
@@ -14,13 +15,8 @@ export default function EntityHost({ kind, params }: HostProps) {
     if (!schemaKey || !draftId) return <div className="pad-sm">Missing schemaKey or draftId</div>;
     if (!setupId) return <div className="pad-sm">Select a Setup</div>;
 
-    // Forms are temporarily disabled while migrating off Material UI.
-    return (
-      <div className="content-padding">
-        <strong>Forms disabled</strong>
-        <div className="mt-sm">Form rendering is disabled during the MUI→Blueprint migration. Schema: <code>{schemaKey}</code></div>
-      </div>
-    );
+    // Mount the (possibly stubbed) FormRenderer so forms are actually mounted.
+    return <FormRenderer setupId={setupId} schemaKey={schemaKey} draftId={draftId} />;
   }
 
   if (kind === 'table') {

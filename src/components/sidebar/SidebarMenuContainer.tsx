@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import SidebarMenu from './SidebarMenu';
-import menuStructure, { getDynamicConfig } from './menuStructure';
+import menuStructure, { getDynamicConfig as getDynCfg } from './menuStructure';
 import useSetups from '../../setup/useSetups';
 import { listDraftsV1 } from '../../shared/api/drafts';
 import { resolveSchemaIdByKey } from '../../core/uiLinking';
@@ -11,10 +11,21 @@ import { resolveSchemaIdByKey } from '../../core/uiLinking';
 export default function SidebarMenuContainer({ selectedMenuPath, onSelect }: { selectedMenuPath: string[]; onSelect: (p: string[]) => void }) {
   const { selectedId: setupId } = useSetups();
 
+    const getDynamicConfigForMenu = useCallback((b: string) => {
+    const cfg = getDynCfg(b);
+    if (cfg && typeof cfg === 'object' && 'schemaKey' in cfg) {
+      const maybeSchemaKey = (cfg as { schemaKey: unknown }).schemaKey;
+      if (typeof maybeSchemaKey === 'string') {
+        return { schemaKey: maybeSchemaKey };
+      }
+    }
+    return undefined;
+    }, []);
+
   const loadDynamicChildren = useCallback(async (basePath: string) => {
     // Only handle Game/Chests dynamic form listing here. Keep this logic in the container.
     try {
-      const cfg = getDynamicConfig(basePath);
+  const cfg = getDynCfg(basePath);
       if (!cfg || cfg.kind !== 'form') return [];
       if (!setupId) return [];
       // resolve schema id by key and list drafts, then filter by schemaId
@@ -45,10 +56,7 @@ export default function SidebarMenuContainer({ selectedMenuPath, onSelect }: { s
       menu={menuStructure}
       selectedMenuPath={selectedMenuPath}
       onSelect={onSelect}
-      getDynamicConfig={(b) => {
-        const cfg = getDynamicConfig(b);
-        return cfg && typeof cfg.schemaKey === 'string' ? { schemaKey: cfg.schemaKey } : undefined;
-      }}
+      getDynamicConfig={getDynamicConfigForMenu}
       loadDynamicChildren={loadDynamicChildren}
     />
   );

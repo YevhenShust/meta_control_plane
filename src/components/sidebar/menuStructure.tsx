@@ -33,16 +33,12 @@ export const dynamicRoutes: Record<string, DynRoute> = {
 };
 
 // helpers to read dynamic config from a base path
+
 export const getDynamicConfig = (basePath: string): DynRoute | null => dynamicRoutes[basePath] || null;
-export const getDynamicFormConfig = (basePath: string) => {
-  const r = dynamicRoutes[basePath];
-  return r?.kind === 'form' ? r : null;
-};
 
 /**
- * Find a node by path (array of titles). Returns the MenuItem or null.
- * Now tries dynamicRoutes FIRST to synthesize form/table nodes with params,
- * then falls back to static traversal.
+ * Find a node by a path (array of titles). Tries dynamicRoutes first to synthesize
+ * form/table nodes, then falls back to static traversal of menuStructure.
  */
 export function findNodeByPath(path: string[], tree: MenuItem[] = menuStructure): MenuItem | null {
   if (!path || path.length === 0) return null;

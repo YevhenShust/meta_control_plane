@@ -1,8 +1,8 @@
 import EntityHost from './EntityHost';
-import { findNodeByPath, type MenuItem } from './sidebar/menuStructure';
+import type { MenuItem } from './sidebar/menuStructure';
+import { dynamicRoutes, findNodeByPath } from './sidebar/menuStructure';
 
 export default function MainContent({ selectedMenuPath }: { selectedMenuPath: string[] }) {
-  // URL params placeholder (kept for future use)
   if (!selectedMenuPath || selectedMenuPath.length === 0) {
     return <div>Оберіть пункт меню</div>;
   }
@@ -11,9 +11,11 @@ export default function MainContent({ selectedMenuPath }: { selectedMenuPath: st
 
   if (!node) return <div className="content-padding text-danger">Вузол не знайдено</div>;
 
-  // If the game-chests branch is selected but no specific chest is chosen, show a lightweight placeholder
-  if (node.kind === 'game-chests' && selectedMenuPath.length < 3) {
-    return <div className="content-padding">Оберіть chest у підменю</div>;
+  // If the selected path is exactly a dynamic form base (e.g. "Game/Chests") and no id segment was chosen, show a neutral placeholder
+  const full = selectedMenuPath.join('/');
+  const dyn = dynamicRoutes[full];
+  if (dyn && dyn.kind === 'form' && selectedMenuPath.length === full.split('/').length) {
+    return <div className="content-padding">Оберіть елемент у підменю</div>;
   }
 
   return <EntityHost kind={node.kind} params={node.params} />;

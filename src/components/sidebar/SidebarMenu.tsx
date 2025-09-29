@@ -1,9 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Tree } from '@blueprintjs/core';
 import type { MenuItem as MenuNode } from './menuStructure';
 
-const log = (...args: any[]) => console.debug('[SidebarMenu]', ...args);
 
 type SidebarMenuProps = {
   selectedMenuPath: string[];
@@ -42,47 +41,34 @@ function buildTreeNodes(items: MenuNode[], base: string[], getDynamicConfig?: (b
   });
 }
 
-export default function SidebarMenu({ menu, selectedMenuPath, onSelect, getDynamicConfig, loadDynamicChildren }: SidebarMenuProps) {
-  const [nodes, setNodes] = useState<any[]>(() => {
-    const built = buildTreeNodes(menu, [], getDynamicConfig);
-    log('init nodes', built);
-    return built;
-  });
+export default function SidebarMenu({ menu, selectedMenuPath: _selectedMenuPath, onSelect, getDynamicConfig, loadDynamicChildren }: SidebarMenuProps) {
+  const [nodes, setNodes] = useState<any[]>(() => buildTreeNodes(menu, [], getDynamicConfig));
   const [loadingKeys, setLoadingKeys] = useState<Record<string, boolean>>({});
 
-  const updateNodeById = (items: any[], id: string, updater: (n: any) => any): any[] =>
+  const updateNodeById = useCallback((items: any[], id: string, updater: (n: any) => any): any[] =>
     items.map(n => {
       if (String(n.id) === id) return updater(n);
       if (n.childNodes) return { ...n, childNodes: updateNodeById(n.childNodes, id, updater) };
       return n;
-    });
+    }), []);
 
-  // Reference selectedMenuPath to avoid "declared but its value is never read" / "defined but never used" errors.
-  // This is intentionally a no-op for now; later you can use selectedMenuPath to highlight or expand the tree.
+  // Auto-expand ancestors of the selected path so the tree doesn't collapse after selecting a leaf
   useEffect(() => {
-    void selectedMenuPath;
-  }, [selectedMenuPath]);
+    if (!_selectedMenuPath || _selectedMenuPath.length === 0) return;
+    const expandIds: string[] = [];
+    for (let i = 1; i < _selectedMenuPath.length; i++) {
+      expandIds.push(_selectedMenuPath.slice(0, i).join('/'));
+    }
+    setNodes(prev =>
+      expandIds.reduce((acc, id) => updateNodeById(acc, id, (n) => ({ ...n, isExpanded: true })), prev)
+    );
+  }, [_selectedMenuPath, updateNodeById]);
 
+  // Initialize nodes from menu only when `menu` changes (do NOT rebuild on selection)
   useEffect(() => {
     const built = buildTreeNodes(menu, [], getDynamicConfig);
-    log('rebuild nodes due to props change', built);
     setNodes(built);
   }, [menu, getDynamicConfig]);
-
-  const onNodeClick = (node: any) => {
-    if (!node) return;
-    log('onNodeClick', { id: node.id, hasChildren: !!node.childNodes?.length, hasCaret: !!node.hasCaret, isExpanded: !!node.isExpanded });
-
-    // Якщо є діти (статичні вузли типу Game/Atlas) — перемикаємо розкриття
-    if (node.childNodes && node.childNodes.length > 0) {
-      const id = String(node.id);
-      setNodes(prev => updateNodeById(prev, id, (n) => ({ ...n, isExpanded: !n.isExpanded })));
-      return;
-    }
-
-    // Лист — передаємо шлях нагору
-    onSelect(String(node.id).split('/'));
-  };
 
   const setNodeChildren = (id: string, children: any[]) => {
     function walk(items: any[]): any[] {
@@ -95,6 +81,37 @@ export default function SidebarMenu({ menu, selectedMenuPath, onSelect, getDynam
     setNodes((prev) => walk(prev));
   };
 
+    const onNodeClick = (node: any) => {
+    if (!node) return;
+
+    // Leaf -> select path only. Do not change expansion state here.
+    const isLeaf = !node.hasCaret && (!node.childNodes || node.childNodes.length === 0);
+    if (isLeaf) {
+      onSelect(String(node.id).split('/'));
+      return;
+    }
+
+    // NEW: Dynamic containers (hasCaret) should toggle on title click as well.
+    if (node.hasCaret) {
+      if (node.isExpanded) {
+        onNodeCollapse(node);
+      } else {
+        // This will also lazily load children if they are not loaded yet
+        // (onNodeExpand already handles "load once" & state updates)
+        void onNodeExpand(node);
+      }
+      return;
+    }
+
+    // Static node with children (non-dynamic): toggle expansion on title click
+    const hasStaticChildren = !!node.childNodes && node.childNodes.length > 0 && !node.hasCaret;
+    if (hasStaticChildren) {
+      const id = String(node.id);
+      setNodes(prev => updateNodeById(prev, id, (n) => ({ ...n, isExpanded: !n.isExpanded })));
+      return;
+    }
+  };
+  
   const onNodeExpand = async (node: any) => {
     if (!node) return;
     const id = String(node.id);
