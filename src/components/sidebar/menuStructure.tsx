@@ -65,6 +65,4 @@ export function findNodeByPath(path: string[], tree: MenuItem[] = menuStructure)
   return null;
 }
 
-export const isGameChestsNode = (n: MenuItem) => n.kind === 'game-chests';
-
 export default menuStructure;

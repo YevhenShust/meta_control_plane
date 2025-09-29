@@ -1,4 +1,3 @@
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField } from '@mui/material';
 import { useState } from 'react';
 
 export default function CreateSetupModal({
@@ -10,24 +9,19 @@ export default function CreateSetupModal({
   onSubmit: (name: string) => void;
 }) {
   const [name, setName] = useState('');
+  if (!open) return null;
   return (
-    <Dialog open={open} onClose={onCancel} fullWidth>
-      <DialogTitle>Create setup</DialogTitle>
-      <DialogContent>
-        <TextField
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          label="Setup name"
-          placeholder="e.g. Setup 2025-09-12 12:34"
-          fullWidth
-          variant="standard"
-          margin="normal"
-        />
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onCancel}>Cancel</Button>
-        <Button onClick={() => onSubmit(name)} variant="contained" disabled={loading || !name}>{loading ? 'Creating…' : 'Create'}</Button>
-      </DialogActions>
-    </Dialog>
+    <div role="dialog" aria-modal="true" className="modal-overlay">
+      <div className="modal-panel">
+        <div className="modal-title">Create setup</div>
+        <div>
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Setup name (e.g. My Setup)" className="input-full" />
+        </div>
+        <div className="modal-actions">
+          <button onClick={onCancel}>Cancel</button>
+          <button onClick={() => onSubmit(name)} disabled={loading || !name}>{loading ? 'Creating' : 'Create'}</button>
+        </div>
+      </div>
+    </div>
   );
 }

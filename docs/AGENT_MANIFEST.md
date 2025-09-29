@@ -23,11 +23,11 @@ EntityHost
 • Loads schema, uischema, and data for the entity.
 • Selects the renderer:
   • If "ui:renderer": "table" → use TableRenderer.
-  • Otherwise → JsonFormsFormRenderer.
+  • Otherwise → FormRenderer.
 • Caches schemas for reuse.
 
 Renderers
-• src/renderers/JsonFormsFormRenderer.tsx
+• src/renderers/FormRenderer.tsx
   • Main form renderer based on JSON Forms + MUI renderers.
   • Provides a custom ajv with strict: false, allErrors: true, ajv-formats, and a custom TimeSpan format.
 • src/renderers/TableRenderer.tsx
