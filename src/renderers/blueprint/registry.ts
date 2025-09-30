@@ -1,4 +1,4 @@
-import { rankWith, isStringControl, isNumberControl, isIntegerControl, isBooleanControl, and, isEnumControl, isOneOfEnumControl, isLayout, type UISchemaElement, type JsonSchema, type Tester, type JsonFormsRendererRegistryEntry } from '@jsonforms/core';
+import { rankWith, isStringControl, isNumberControl, isIntegerControl, isBooleanControl, and, isEnumControl, isOneOfEnumControl, uiTypeIs, type UISchemaElement, type JsonSchema, type Tester, type JsonFormsRendererRegistryEntry } from '@jsonforms/core';
 import { BPStringControl } from '../controls/BPStringControl';
 import { BPTextAreaControl } from '../controls/BPTextAreaControl';
 import { BPNumberControl } from '../controls/BPNumberControl';
@@ -19,25 +19,11 @@ function textareaTester(uischema: UISchemaElement, _schema: JsonSchema, _ctx?: u
   return false;
 }
 
-// simple testers for layout kinds (uischema.type === 'VerticalLayout' etc.)
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function verticalLayoutTester(uischema: UISchemaElement, _schema: JsonSchema, _ctx?: unknown): boolean {
-  const u = uischema as unknown as Record<string, unknown>;
-  return u?.type === 'VerticalLayout';
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function horizontalLayoutTester(uischema: UISchemaElement, _schema: JsonSchema, _ctx?: unknown): boolean {
-  const u = uischema as unknown as Record<string, unknown>;
-  return u?.type === 'HorizontalLayout';
-}
+// layout testers use uiTypeIs from jsonforms
 
 export function getBlueprintRenderers(): JsonFormsRendererRegistryEntry[] {
   const list: JsonFormsRendererRegistryEntry[] = [
-    // layout renderers
-    { tester: rankWith(2, verticalLayoutTester as Tester), renderer: BPVerticalLayout as unknown as JsonFormsRendererRegistryEntry['renderer'] },
-    { tester: rankWith(2, horizontalLayoutTester as Tester), renderer: BPHorizontalLayout as unknown as JsonFormsRendererRegistryEntry['renderer'] },
-    { tester: rankWith(2, isLayout), renderer: BPGroupLayout as unknown as JsonFormsRendererRegistryEntry['renderer'] },
+    // control renderers (most-specific first)
     { tester: rankWith(4, and(isStringControl, textareaTester as Tester)), renderer: BPTextAreaControl },
     { tester: rankWith(3, isStringControl), renderer: BPStringControl },
     { tester: rankWith(3, isNumberControl), renderer: BPNumberControl },
@@ -45,6 +31,14 @@ export function getBlueprintRenderers(): JsonFormsRendererRegistryEntry[] {
     { tester: rankWith(3, isBooleanControl), renderer: BPBooleanControl },
     { tester: rankWith(4, isEnumControl), renderer: BPEnumControl },
     { tester: rankWith(4, isOneOfEnumControl), renderer: BPEnumControl },
+    // fallback: any control that reaches here will render as a string control
+    { tester: rankWith(1, uiTypeIs('Control')), renderer: BPStringControl },
+    // layout renderers
+    { tester: rankWith(3, uiTypeIs('VerticalLayout')), renderer: BPVerticalLayout as unknown as JsonFormsRendererRegistryEntry['renderer'] },
+    { tester: rankWith(3, uiTypeIs('HorizontalLayout')), renderer: BPHorizontalLayout as unknown as JsonFormsRendererRegistryEntry['renderer'] },
+    { tester: rankWith(4, uiTypeIs('Group')), renderer: BPGroupLayout as unknown as JsonFormsRendererRegistryEntry['renderer'] },
   ];
+  // debug: expose how many renderers we registered
+  console.debug('[JF] blueprint renderers length:', list.length);
   return list;
 }

@@ -10,6 +10,10 @@ import { listDraftsV1 } from '../shared/api/drafts';
 
 type Props = { setupId: string; schemaKey: string; draftId?: string };
 
+// single blueprint renderers instance (module-level)
+const bpRenderers = getBlueprintRenderers();
+console.debug('[JF] blueprint renderers (count):', bpRenderers.length);
+
 export default function FormRenderer(props: Props) {
   const { setupId, schemaKey, draftId } = props;
   const [data, setData] = useState<Record<string, unknown> | undefined>(undefined);
@@ -67,8 +71,6 @@ export default function FormRenderer(props: Props) {
   if (error) return <div className="content-padding">Error loading form: {error}</div>;
   if (!schema) return <div className="content-padding">No schema available</div>;
 
-  const renderers = getBlueprintRenderers();
-  console.debug('[JF] blueprint renderers:', renderers.length);
 
   if (!schema) throw new Error('No JSON Schema loaded');
   if (!ChestDescriptorUi) throw new Error('UI schema not found for ChestDescriptor');
@@ -80,7 +82,8 @@ export default function FormRenderer(props: Props) {
         schema={schema}
         uischema={(ChestDescriptorUi as unknown) as UISchemaElement}
         data={data}
-        renderers={renderers}
+        renderers={bpRenderers}
+        cells={[]}
         onChange={({ data: d }) => setData(d)}
       />
 
