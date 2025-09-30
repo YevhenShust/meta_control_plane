@@ -1,96 +1,100 @@
-import { useEffect, useState } from 'react';
 import { JsonForms } from '@jsonforms/react';
 import type { JsonSchema, UISchemaElement } from '@jsonforms/core';
-import { createAjv } from './ajvInstance';
+import { generateDefaultUISchema } from '@jsonforms/core';
+import type { FormViewProps } from '../editor/EntityEditor.types';
 import { getBlueprintRenderers } from './blueprint/registry';
-import ChestDescriptorUi from '../schemas/ui/ChestDescriptor.uischema.json';
-import { loadSchemaByKey } from '../core/schemaKeyResolver';
-import { listDraftsV1 } from '../shared/api/drafts';
-// ui schema is hardcoded to ChestDescriptorUi import below
+import { useEffect, useState } from 'react';
+import { Button, ButtonGroup } from '@blueprintjs/core';
 
-type Props = { setupId: string; schemaKey: string; draftId?: string };
-
-// single blueprint renderers instance (module-level)
 const bpRenderers = getBlueprintRenderers();
 console.debug('[JF] blueprint renderers (count):', bpRenderers.length);
 
-export default function FormRenderer(props: Props) {
-  const { setupId, schemaKey, draftId } = props;
-  const [data, setData] = useState<Record<string, unknown> | undefined>(undefined);
-  const [schema, setSchema] = useState<JsonSchema | undefined>(undefined);
-  const [ajv] = useState(() => createAjv());
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | undefined>(undefined);
+export default function FormRenderer(props: FormViewProps) {
+  const { data, schema, uischema, ajv, onChange, onStatus } = props;
 
+  // Mount/unmount tracing: move to effect so StrictMode double-render doesn't confuse logs.
   useEffect(() => {
-    let mounted = true;
-    setLoading(true);
-    setError(undefined);
-  setSchema(undefined);
-    setData(undefined);
-
-    (async () => {
-      try {
-  // Resolve DB schema id and JSON schema by logical schemaKey
-  const { id: resolvedSchemaId, json: jsonSchema } = await loadSchemaByKey(setupId, schemaKey);
-  if (!mounted) return;
-  const parsedSchema = (typeof jsonSchema === 'string') ? JSON.parse(jsonSchema) as JsonSchema : (jsonSchema as JsonSchema);
-  setSchema(parsedSchema);
-
-        // ui schema is hardcoded to ChestDescriptor for now
-
-        // load draft if provided. Ensure the draft belongs to the resolved schema id
-        if (draftId) {
-          const all = await listDraftsV1(setupId);
-          if (!mounted) return;
-          const hit = all.find(d => String(d.id) === String(draftId) && String(d.schemaId || '') === String(resolvedSchemaId));
-          if (hit && hit.content) {
-            try {
-              setData(JSON.parse(hit.content));
-            } catch {
-              setData(hit.content as unknown as Record<string, unknown>);
-            }
-          } else {
-            // draft not found or wrong schema – show empty data to avoid errors
-            setData({});
-          }
-        } else {
-          setData({});
-        }
-      } catch (e) {
-        setError((e as Error)?.message ?? String(e));
-      } finally {
-        if (mounted) setLoading(false);
+    console.debug('[Form] mounted', 'schema?', !!schema, 'uischema?', !!uischema, 'data=', Array.isArray(data) ? `array(${data.length})` : typeof data);
+    // one-time log of schema root keys if schema is an object
+    try {
+      if (schema && typeof schema === 'object') {
+        console.debug('[Form] schema keys:', Object.keys(schema as Record<string, unknown>));
       }
-    })();
+    } catch {
+      // ignore logging errors
+    }
+    return () => console.debug('[Form] unmounted');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-    return () => { mounted = false; };
-  }, [schemaKey, draftId, setupId]);
-
-  if (loading) return <div className="content-padding">Loading form…</div>;
-  if (error) return <div className="content-padding">Error loading form: {error}</div>;
-  if (!schema) return <div className="content-padding">No schema available</div>;
-
-
-  if (!schema) throw new Error('No JSON Schema loaded');
-  if (!ChestDescriptorUi) throw new Error('UI schema not found for ChestDescriptor');
+  const [status, setStatus] = useState<{ dirty: boolean; valid: boolean }>({ dirty: false, valid: true });
+  const [saving, setSaving] = useState(false);
 
   return (
     <div className="content-padding">
+      <div style={{ marginBottom: 12 }}>
+        <ButtonGroup>
+          <Button
+            icon="floppy-disk"
+              intent="primary"
+              disabled={saving}
+              loading={saving}
+            onClick={async () => {
+                setSaving(true);
+                console.debug('[Form] save clicked');
+                try {
+                  const result = await props.onSave();
+                  console.debug('[Form] save result', result);
+                  if (result && (result as { ok?: boolean }).ok) {
+                    // on successful save, mark clean locally and inform parent
+                    setStatus(s => ({ ...s, dirty: false }));
+                    onStatus?.({ dirty: false, valid: status.valid });
+                    console.debug('[Form] save ok');
+                  } else {
+                    console.error('[Form] save outcome indicates failure', result);
+                  }
+                } catch (e) {
+                  console.error('[Form] save failed (exception)', e);
+                } finally {
+                  setSaving(false);
+                }
+              }}
+          >
+            Save
+          </Button>
+          <Button
+            icon="refresh"
+            onClick={() => {
+              props.onReset();
+              setStatus(s => ({ ...s, dirty: false }));
+            }}
+          >
+            Reset
+          </Button>
+        </ButtonGroup>
+      </div>
+
       <JsonForms
         ajv={ajv}
-        schema={schema}
-        uischema={(ChestDescriptorUi as unknown) as UISchemaElement}
-        data={data}
+        schema={(schema as unknown) as JsonSchema}
+        uischema={(uischema ?? (generateDefaultUISchema((schema as unknown) as JsonSchema) as unknown)) as UISchemaElement}
+        data={data as unknown}
         renderers={bpRenderers}
-        cells={[]}
-        onChange={({ data: d }) => setData(d)}
+        onChange={({ data: d }) => {
+          // compute validity via ajv
+          let valid = true;
+          try {
+            valid = ajv.validate((schema as unknown) as JsonSchema, d as unknown) === true;
+          } catch {
+            valid = false;
+          }
+          console.debug('[Form] onChange');
+          onChange(d as unknown);
+          const next = { dirty: true, valid };
+          setStatus(next);
+          onStatus?.(next);
+        }}
       />
-
-      <div style={{ marginTop: 12 }}>
-        <h5>Data preview</h5>
-        <pre style={{ maxHeight: 240, overflow: 'auto', background: '#0b0b0b', color: '#fff', padding: 8 }}>{JSON.stringify(data, null, 2)}</pre>
-      </div>
     </div>
   );
 }
