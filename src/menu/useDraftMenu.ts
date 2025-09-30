@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { onChanged } from '../shared/events/DraftEvents';
 import useSetups from '../setup/useSetups';
-import { resolveSchemaIdByKey } from '../core/uiLinking';
+import { resolveSchemaIdByKey } from '../core/schemaKeyResolver';
 import { listDraftsV1, type DraftDto } from '../shared/api/drafts';
 
 /** Те, що очікує Sidebar: листок, який відкриває форму рендерером */

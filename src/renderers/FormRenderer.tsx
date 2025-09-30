@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react';
 import { JsonForms } from '@jsonforms/react';
 import type { JsonSchema, UISchemaElement } from '@jsonforms/core';
 import { createAjv } from './ajvInstance';
-import { blueprintRenderers } from './blueprint';
-import { getSchemaByIdV1 } from '../shared/api/schema';
+import { getBlueprintRenderers } from './blueprint/registry';
+import ChestDescriptorUi from '../schemas/ui/ChestDescriptor.uischema.json';
+import { loadSchemaByKey } from '../core/schemaKeyResolver';
 import { listDraftsV1 } from '../shared/api/drafts';
-import { getUiSchemaByKey } from '../schemas/ui';
+// ui schema is hardcoded to ChestDescriptorUi import below
 
 type Props = { setupId: string; schemaKey: string; draftId?: string };
 
@@ -13,7 +14,6 @@ export default function FormRenderer(props: Props) {
   const { setupId, schemaKey, draftId } = props;
   const [data, setData] = useState<Record<string, unknown> | undefined>(undefined);
   const [schema, setSchema] = useState<JsonSchema | undefined>(undefined);
-  const [uiSchema, setUiSchema] = useState<UISchemaElement | undefined>(undefined);
   const [ajv] = useState(() => createAjv());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | undefined>(undefined);
@@ -22,39 +22,24 @@ export default function FormRenderer(props: Props) {
     let mounted = true;
     setLoading(true);
     setError(undefined);
-    setSchema(undefined);
-    setUiSchema(undefined);
+  setSchema(undefined);
     setData(undefined);
 
     (async () => {
       try {
-        // Load schema by key (schemaKey maps to schema id in server)
-        const s = await getSchemaByIdV1(schemaKey, setupId);
-        if (!mounted) return;
-        // ensure it's a JsonSchema object
-        const parsedSchema = (typeof s === 'string') ? JSON.parse(s) as JsonSchema : (s as JsonSchema);
-        setSchema(parsedSchema);
+  // Resolve DB schema id and JSON schema by logical schemaKey
+  const { id: resolvedSchemaId, json: jsonSchema } = await loadSchemaByKey(setupId, schemaKey);
+  if (!mounted) return;
+  const parsedSchema = (typeof jsonSchema === 'string') ? JSON.parse(jsonSchema) as JsonSchema : (jsonSchema as JsonSchema);
+  setSchema(parsedSchema);
 
-        // ui schema lookup
-        const u = getUiSchemaByKey(schemaKey) as unknown;
-        if (u && typeof u === 'object') {
-          setUiSchema(u as UISchemaElement);
-        } else {
-          // generate default vertical layout based on top-level properties
-          const parsed = parsedSchema as JsonSchema;
-          const props = parsed && parsed.properties && typeof parsed.properties === 'object' ? Object.keys(parsed.properties) : [];
-          const generated: UISchemaElement = {
-            type: 'VerticalLayout',
-            elements: props.map((k: string) => ({ type: 'Control', scope: `#/properties/${k}` })),
-          } as unknown as UISchemaElement;
-          setUiSchema(generated);
-        }
+        // ui schema is hardcoded to ChestDescriptor for now
 
-        // load draft if provided
+        // load draft if provided. Ensure the draft belongs to the resolved schema id
         if (draftId) {
           const all = await listDraftsV1(setupId);
           if (!mounted) return;
-          const hit = all.find(d => String(d.id) === String(draftId));
+          const hit = all.find(d => String(d.id) === String(draftId) && String(d.schemaId || '') === String(resolvedSchemaId));
           if (hit && hit.content) {
             try {
               setData(JSON.parse(hit.content));
@@ -62,6 +47,7 @@ export default function FormRenderer(props: Props) {
               setData(hit.content as unknown as Record<string, unknown>);
             }
           } else {
+            // draft not found or wrong schema – show empty data to avoid errors
             setData({});
           }
         } else {
@@ -81,14 +67,20 @@ export default function FormRenderer(props: Props) {
   if (error) return <div className="content-padding">Error loading form: {error}</div>;
   if (!schema) return <div className="content-padding">No schema available</div>;
 
+  const renderers = getBlueprintRenderers();
+  console.debug('[JF] blueprint renderers:', renderers.length);
+
+  if (!schema) throw new Error('No JSON Schema loaded');
+  if (!ChestDescriptorUi) throw new Error('UI schema not found for ChestDescriptor');
+
   return (
     <div className="content-padding">
       <JsonForms
         ajv={ajv}
         schema={schema}
-        uischema={uiSchema}
+        uischema={(ChestDescriptorUi as unknown) as UISchemaElement}
         data={data}
-        renderers={blueprintRenderers}
+        renderers={renderers}
         onChange={({ data: d }) => setData(d)}
       />
 
