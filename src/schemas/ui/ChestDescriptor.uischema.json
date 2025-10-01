@@ -68,7 +68,7 @@
             },
             {
               "type": "Control",
-              "scope": "#/properties/DropInfo/properties/Currency/properties/ExpiriencePercent"
+              "scope": "#/properties/DropInfo/properties/Currency/properties/ExperiencePercent"
             }
           ]
         },
