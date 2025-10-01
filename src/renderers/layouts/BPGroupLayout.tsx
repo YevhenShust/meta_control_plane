@@ -16,9 +16,9 @@ const BPGroupLayoutComp: React.FC<LayoutProps> = (props) => {
     const elements = maybe?.elements ?? [];
 
   return (
-    <Card elevation={0} style={{ marginBottom: 8 }}>
+    <Card elevation={0} className="bp-layout-group-card">
       {label && <H5>{label}</H5>}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div className="bp-layout-group-content">
             {elements.map((el, i) => (
               <JsonFormsDispatch
                 key={i}

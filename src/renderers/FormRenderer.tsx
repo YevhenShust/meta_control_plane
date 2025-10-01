@@ -32,14 +32,14 @@ export default function FormRenderer(props: FormViewProps) {
 
   return (
     <div className="content-padding">
-      <div style={{ marginBottom: 12 }}>
+      <div className="form-button-group">
         <ButtonGroup>
           <Button
-            icon="floppy-disk"
+              icon="floppy-disk"
               intent="primary"
               disabled={saving}
               loading={saving}
-            onClick={async () => {
+              onClick={async () => {
                 setSaving(true);
                 console.debug('[Form] save clicked');
                 try {

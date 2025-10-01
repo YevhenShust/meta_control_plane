@@ -11,9 +11,9 @@ const BPHorizontalLayoutComp: React.FC<LayoutProps> = (props) => {
     const maybe = props.uischema as unknown as { elements?: UISchemaElement[] } | undefined;
     const elements = maybe?.elements ?? [];
   return (
-    <div className={Classes.ELEVATION_0} style={{ display: 'flex', flexDirection: 'row', gap: 8, alignItems: 'flex-start' }}>
+    <div className={`${Classes.ELEVATION_0} bp-layout-horizontal`}>
           {elements.map((el, i) => (
-            <div key={i} style={{ minWidth: 0, flex: '1 1 auto' }}>
+            <div key={i} className="bp-layout-horizontal-item">
               <JsonFormsDispatch
                 uischema={el}
                 schema={props.schema}

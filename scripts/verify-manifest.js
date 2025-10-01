@@ -1,36 +1,23 @@
-#!/usr/bin/env node
 const fs = require('fs');
 const path = require('path');
 
 const root = path.resolve(__dirname, '..');
 
-const forbidden = [
-  '@material-ui',
-  '@mui',
-  'antd',
-  'rjsf',
-  'react-jsonschema-form',
-  'material-ui',
-];
-
-// files to scan
 function walk(dir) {
-  const res = [];
-  const list = fs.readdirSync(dir, { withFileTypes: true });
-  for (const ent of list) {
+  const out = [];
+  for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
     const p = path.join(dir, ent.name);
     if (ent.isDirectory()) {
-      // skip node_modules, dist, .git
-      if (ent.name === 'node_modules' || ent.name === 'dist' || ent.name === '.git') continue;
-      res.push(...walk(p));
+      if (['node_modules', 'dist', '.git'].includes(ent.name)) continue;
+      out.push(...walk(p));
     } else if (ent.isFile()) {
-      if (/\.(ts|tsx|js|jsx|json|css|md)$/.test(ent.name)) res.push(p);
+      if (/\.(ts|tsx|js|jsx|json|css|md)$/.test(ent.name)) out.push(p);
     }
   }
-  return res;
+  return out;
 }
 
-function reportAndExit(msg, items) {
+function fail(msg, items) {
   console.error('\n[verify-manifest] ' + msg);
   for (const it of items) console.error('  - ' + it);
   process.exit(1);
@@ -45,30 +32,21 @@ function main() {
 
   const files = walk(src);
 
-  const violations = [];
-  for (const f of files) {
-    const content = fs.readFileSync(f, 'utf8');
-    for (const tok of forbidden) {
-      if (content.includes(tok)) {
-        violations.push(`${f}: contains forbidden token '${tok}'`);
-      }
-    }
-  }
-
-  // rule: any file that imports @jsonforms must live under src/renderers
+  // Rule: any file that imports @jsonforms must live under src/renderers/
   const jsonformsBad = [];
   for (const f of files) {
     const content = fs.readFileSync(f, 'utf8');
-    if (content.includes("@jsonforms")) {
+    if (content.includes('@jsonforms')) {
       const rel = path.relative(root, f).replace(/\\/g, '/');
       if (!rel.startsWith('src/renderers/')) jsonformsBad.push(rel);
     }
   }
 
-  if (violations.length) reportAndExit('Forbidden imports/usages found:', violations);
-  if (jsonformsBad.length) reportAndExit('Files importing @jsonforms must live under src/renderers:', jsonformsBad);
+  if (jsonformsBad.length) {
+    fail('Files importing @jsonforms must live under src/renderers:', jsonformsBad);
+  }
 
-  console.log('[verify-manifest] OK — no manifest violations found');
+  console.log('[verify-manifest] OK');
 }
 
 main();

@@ -12,7 +12,7 @@ const BPVerticalLayoutComp: React.FC<LayoutProps> = (props) => {
   const elements = maybe?.elements ?? [];
 
   return (
-    <div className={Classes.ELEVATION_0} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+    <div className={`${Classes.ELEVATION_0} bp-layout-vertical`}>
       {elements.map((el, i) => (
         <JsonFormsDispatch
           key={i}
