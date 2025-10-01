@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Header from './components/Header';
 import { Card } from '@blueprintjs/core';
 import SidebarMenuContainer from './components/sidebar/SidebarMenuContainer';
@@ -24,10 +24,23 @@ const App: React.FC = () => {
     return () => window.removeEventListener('popstate', onPop);
   }, []);
 
+const wroteOnce = useRef(false);
+
   useEffect(() => {
-    const qp = selectedMenuPath.length ? `?path=${encodeURIComponent(selectedMenuPath.join('/'))}` : '';
-    const cleaned = window.location.search.replace(/\?path=[^&]*/, '');
-    window.history.pushState(null, '', qp || window.location.pathname + cleaned);
+    if (!wroteOnce.current) {
+      wroteOnce.current = true;
+      return;
+    }
+
+    const url = new URL(window.location.href);
+    if (selectedMenuPath.length) {
+      const val = selectedMenuPath.map(s => encodeURIComponent(s)).join('/');
+      url.searchParams.set('path', val);
+    } else {
+      url.searchParams.delete('path');
+    }
+
+    window.history.replaceState(null, '', url.toString());
   }, [selectedMenuPath]);
 
   return (
