@@ -5,9 +5,8 @@ import { withJsonFormsLayoutProps, JsonFormsDispatch } from '@jsonforms/react';
 
 const BPHorizontalLayoutComp: React.FC<LayoutProps> = (props) => {
   useEffect(() => {
-      console.debug('[BP-Layout] BPHorizontalLayout mount', { uischema: props.uischema });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    console.debug('[BP-Layout] BPHorizontalLayout mount', { uischema: props.uischema });
+  }, [props.uischema]);
 
     const maybe = props.uischema as unknown as { elements?: UISchemaElement[] } | undefined;
     const elements = maybe?.elements ?? [];

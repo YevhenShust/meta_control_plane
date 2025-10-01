@@ -10,7 +10,7 @@ const BPStringControlInner: React.FC<ControlProps> = (props) => {
   const value = data ?? '';
   const helperText = Array.isArray(errors) ? joinErrors(errors) : (errors ? String(errors) : undefined);
   return (
-    <FormGroup label={label} helperText={helperText} intent={errors && errors.length ? 'danger' : undefined}>
+    <FormGroup label={label} helperText={helperText} intent={Array.isArray(errors) && errors.length ? 'danger' : undefined}>
       <InputGroup value={String(value)} disabled={enabled === false} onChange={(e) => handleChange(path, e.target.value)} />
     </FormGroup>
   );

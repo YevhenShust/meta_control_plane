@@ -20,16 +20,15 @@ const BPGroupLayoutComp: React.FC<LayoutProps> = (props) => {
       {label && <H5>{label}</H5>}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {elements.map((el, i) => (
-              <div key={i}>{
-                <JsonFormsDispatch
-                  uischema={el}
-                  schema={props.schema}
-                  path={props.path}
-                  enabled={props.enabled}
-                  renderers={props.renderers}
-                  cells={props.cells}
-                />
-              }</div>
+              <JsonFormsDispatch
+                key={i}
+                uischema={el}
+                schema={props.schema}
+                path={props.path}
+                enabled={props.enabled}
+                renderers={props.renderers}
+                cells={props.cells}
+              />
             ))}
       </div>
     </Card>
