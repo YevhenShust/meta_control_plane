@@ -174,5 +174,70 @@ html, body, #root { height: 100%; margin: 0; }
 /* Ensure text on dark backgrounds remains legible everywhere */
 .bp4-dark .bp4-text-muted, .bp4-dark .muted-text { color: rgba(255,255,255,0.65) !important; }
 
+/* Layout classes for JSON Forms renderers */
+.bp-layout-horizontal {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.bp-layout-horizontal-item {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.bp-layout-vertical {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bp-layout-group-card {
+  margin-bottom: 8px;
+}
+
+.bp-layout-group-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Form renderer styles */
+.form-button-group {
+  margin-bottom: 12px;
+}
+
+/* Table renderer styles */
+.table-item {
+  margin-bottom: 8px;
+}
+
+.table-item-content {
+  font-size: 12px;
+  color: #888;
+}
+
+.table-item-actions {
+  margin-top: 6px;
+}
+
+.table-edit-container {
+  margin-top: 6px;
+}
+
+.table-edit-textarea {
+  width: 100%;
+  min-height: 80px;
+}
+
+.table-edit-actions {
+  margin-top: 6px;
+}
+
+.table-action-button-spacing {
+  margin-left: 8px;
+}
+
 
 

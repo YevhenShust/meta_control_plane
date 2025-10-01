@@ -32,7 +32,7 @@ export default function FormRenderer(props: FormViewProps) {
 
   return (
     <div className="content-padding">
-      <div style={{ marginBottom: 12 }}>
+      <div className="form-button-group">
         <ButtonGroup>
           <Button
             icon="floppy-disk"
