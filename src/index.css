@@ -66,31 +66,31 @@ button:focus-visible {
 }
 
 /* Layout resets for app shell */
-html, body, #root { height: 100%; margin: 0; }
-.ant-layout { background: #fff; }
+html, body, #root { height: 100%; margin: 0; background-color: #0b0b0b; }
+.ant-layout { background: #0b0b0b; }
 
-/* App layout variables */
+/* App layout variables - Compact mode */
 :root {
-  --app-header-height: 48px;
+  --app-header-height: 32px;
   --app-sider-width: 260px;
-  --space-sm: 8px;
-  --space-md: 12px;
+  --space-sm: 4px;
+  --space-md: 8px;
 }
 
 /* Layout helpers */
-.app-root { width: 100vw; min-height: 100vh; display: flex; flex-direction: column; }
-.app-shell { height: 100%; display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+.app-root { width: 100vw; min-height: 100vh; display: flex; flex-direction: column; background-color: #0b0b0b; }
+.app-shell { height: 100%; display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; background-color: #0b0b0b; }
 .app-header { min-height: var(--app-header-height); width: 100%; box-sizing: border-box; flex: 0 0 var(--app-header-height); }
-.app-body { display: flex; flex: 1; min-height: 0; }
-.app-sider { width: var(--app-sider-width); border-right: 1px solid rgba(255,255,255,0.08); padding-top: var(--space-sm); box-sizing: border-box; display: flex; flex-direction: column; flex: 0 0 var(--app-sider-width); min-height: 0; }
-.app-main { flex: 1 1 auto; padding: var(--space-md); overflow: auto; min-height: 0; }
+.app-body { display: flex; flex: 1; min-height: 0; background-color: #0b0b0b; }
+.app-sider { width: var(--app-sider-width); border-right: 1px solid rgba(255,255,255,0.08); padding-top: var(--space-sm); box-sizing: border-box; display: flex; flex-direction: column; flex: 0 0 var(--app-sider-width); min-height: 0; background-color: #0b0b0b; }
+.app-main { flex: 1 1 auto; padding: var(--space-md); overflow: auto; min-height: 0; background-color: #0b0b0b; }
 
 /* Spacing & text */
 .content-padding { padding: var(--space-md); }
-.pad-sm { padding: 8px; }
+.pad-sm { padding: 4px; }
 .mt-sm { margin-top: var(--space-sm); }
 .muted-text { color: var(--bp4-text-muted); }
-.current-setup-id { color: #0b0b0b; margin-left: 8px; font-weight: 600; }
+.current-setup-id { color: rgba(255,255,255,0.9); margin-left: 8px; font-weight: 600; }
 .header-heading { font-weight: 700; }
 .small-gap { gap: 8px; display: flex; align-items: center; }
 .select-minwidth { min-width: 200px; }
@@ -120,14 +120,18 @@ html, body, #root { height: 100%; margin: 0; }
 .text-danger { color: var(--bp4-intent-danger-text); }
 
 /* Blueprint compact overrides (merged from blueprint-compact.css) */
-.bp4-input, .bp4-button { min-height: 26px; padding-top: 2px; padding-bottom: 2px; }
-.bp4-menu-item { padding-top: 4px; padding-bottom: 4px; }
-.bp4-navbar { min-height: 32px; }
+.bp4-input, .bp4-button { min-height: 24px; padding: 2px 8px; font-size: 13px; }
+.bp4-menu-item { padding: 3px 8px; font-size: 13px; }
+.bp4-navbar { min-height: 32px; padding: 2px 8px; }
+.bp4-form-group { margin-bottom: 8px; }
+.bp4-label { margin-bottom: 4px; font-size: 13px; }
+.bp4-card { padding: 8px; }
 
 /* Blueprint dark theme tweaks (small, intentional overrides) */
 /* These ensure the Navbar, menus and panels use dark backgrounds and high-contrast text */
 .bp4-dark {
   color: rgba(255,255,255,0.92);
+  background-color: #0b0b0b;
 }
 .bp4-dark .bp4-navbar,
 .bp4-dark .app-header.bp4-navbar {
@@ -162,23 +166,52 @@ html, body, #root { height: 100%; margin: 0; }
 }
 .bp4-dark .bp4-button:hover { border-color: rgba(255,255,255,0.07); }
 
+/* Dark theme for form inputs and controls */
+.bp4-dark .bp4-input,
+.bp4-dark .bp4-input:focus {
+  background-color: rgba(255,255,255,0.05) !important;
+  color: rgba(255,255,255,0.9) !important;
+  border-color: rgba(255,255,255,0.1) !important;
+  box-shadow: none !important;
+}
+.bp4-dark .bp4-input::placeholder {
+  color: rgba(255,255,255,0.4);
+}
+.bp4-dark .bp4-form-group {
+  margin-bottom: 8px;
+}
+.bp4-dark .bp4-form-group label.bp4-label {
+  color: rgba(255,255,255,0.85);
+  margin-bottom: 4px;
+}
+.bp4-dark .bp4-form-helper-text {
+  color: rgba(255,255,255,0.6);
+  font-size: 12px;
+  margin-top: 2px;
+}
+.bp4-dark .bp4-card {
+  background-color: rgba(255,255,255,0.02) !important;
+  box-shadow: none;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
 /* App specific tweaks */
-.app-sider { background: transparent; }
-.app-main { background: transparent; }
+.app-sider { background: #0b0b0b; }
+.app-main { background: #0b0b0b; }
 
 /* Header visual polish similar to Blueprint docs */
-.app-header.bp4-navbar { padding-left: 12px; padding-right: 12px; }
-.bp4-navbar .bp4-group { align-items: center; }
-.bp4-navbar .bp4-heading { margin-right: 8px; }
+.app-header.bp4-navbar { padding: 4px 8px; }
+.bp4-navbar .bp4-group { align-items: center; gap: 4px; }
+.bp4-navbar .bp4-heading { margin-right: 4px; margin-bottom: 0; font-size: 14px; }
 
 /* Ensure text on dark backgrounds remains legible everywhere */
 .bp4-dark .bp4-text-muted, .bp4-dark .muted-text { color: rgba(255,255,255,0.65) !important; }
 
-/* Layout classes for JSON Forms renderers */
+/* Layout classes for JSON Forms renderers - Compact mode */
 .bp-layout-horizontal {
   display: flex;
   flex-direction: row;
-  gap: 8px;
+  gap: 4px;
   align-items: flex-start;
 }
 
@@ -190,53 +223,58 @@ html, body, #root { height: 100%; margin: 0; }
 .bp-layout-vertical {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
 }
 
 .bp-layout-group-card {
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .bp-layout-group-content {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
 }
 
-/* Form renderer styles */
+/* Form renderer styles - Compact mode */
 .form-button-group {
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
-/* Table renderer styles */
+/* Table renderer styles - Compact mode */
 .table-item {
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .table-item-content {
   font-size: 12px;
-  color: #888;
+  color: rgba(255,255,255,0.6);
 }
 
 .table-item-actions {
-  margin-top: 6px;
+  margin-top: 4px;
 }
 
 .table-edit-container {
-  margin-top: 6px;
+  margin-top: 4px;
 }
 
 .table-edit-textarea {
   width: 100%;
-  min-height: 80px;
+  min-height: 60px;
+  background-color: rgba(255,255,255,0.05);
+  color: rgba(255,255,255,0.9);
+  border: 1px solid rgba(255,255,255,0.1);
+  padding: 4px;
+  font-size: 12px;
 }
 
 .table-edit-actions {
-  margin-top: 6px;
+  margin-top: 4px;
 }
 
 .table-action-button-spacing {
-  margin-left: 8px;
+  margin-left: 4px;
 }
 
 
