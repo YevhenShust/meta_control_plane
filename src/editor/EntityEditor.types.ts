@@ -55,6 +55,7 @@ export interface FormViewProps<T = unknown> {
 export interface TableViewProps<Row = unknown> {
   rows: Row[];
   schema: object;
+  uischema?: object;
   ajv: import('ajv').Ajv;
 
   onEdit(rowId: string, patch: Partial<Row> | Row): void;

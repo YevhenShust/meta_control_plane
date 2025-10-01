@@ -190,6 +190,7 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
   const tableProps: TableViewProps = {
   rows: Array.isArray(state.data) ? (state.data as TableRow[]) : [],
     schema: schema ?? {},
+    uischema: uischema ?? undefined,
     ajv,
     onEdit(rowId, patch) {
       log('[Table] onEdit', rowId);
@@ -231,6 +232,7 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
         <TableRenderer
           rows={tableProps.rows}
           schema={tableProps.schema}
+          uischema={tableProps.uischema}
           ajv={tableProps.ajv}
           onEdit={tableProps.onEdit}
           onSaveRow={tableProps.onSaveRow}
