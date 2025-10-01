@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { TableViewProps } from '../editor/EntityEditor.types';
+import { Button, TextArea } from '@blueprintjs/core';
 
 export default function TableRenderer<Row = unknown>({ rows, onEdit, onSaveRow }: TableViewProps & { rows?: Row[] }) {
   useEffect(() => {
@@ -19,20 +20,20 @@ export default function TableRenderer<Row = unknown>({ rows, onEdit, onSaveRow }
             <strong>{r.id}</strong>
             <div className="table-item-content">{JSON.stringify(r.content ?? {})}</div>
             <div className="table-item-actions">
-              <button onClick={() => { setEditingId(String(r.id)); setEditValue(JSON.stringify(r.content ?? {}, null, 2)); console.debug('[Table] onEdit', r.id); onEdit?.(String(r.id), r.content as Partial<Row> ?? {} as Partial<Row>); }}>Edit</button>
+              <Button small minimal onClick={() => { setEditingId(String(r.id)); setEditValue(JSON.stringify(r.content ?? {}, null, 2)); console.debug('[Table] onEdit', r.id); onEdit?.(String(r.id), r.content as Partial<Row> ?? {} as Partial<Row>); }}>Edit</Button>
             </div>
             {editingId === String(r.id) && (
               <div className="table-edit-container">
-                <textarea value={editValue} onChange={e => setEditValue(e.target.value)} className="table-edit-textarea" />
+                <TextArea growVertically fill value={editValue} onChange={e => setEditValue((e.target as HTMLTextAreaElement).value)} className="table-edit-textarea" />
                 <div className="table-edit-actions">
-                  <button onClick={async () => {
+                  <Button small onClick={async () => {
                     let parsed: unknown = editValue;
                     try { parsed = JSON.parse(editValue); } catch { parsed = editValue; }
                     console.debug('[Table] onSaveRow', editingId);
                     await onSaveRow(editingId as string, parsed as Row);
                     setEditingId(null);
-                  }}>Save</button>
-                  <button onClick={() => setEditingId(null)} className="table-action-button-spacing">Cancel</button>
+                  }}>Save</Button>
+                  <Button small className="table-action-button-spacing" onClick={() => setEditingId(null)}>Cancel</Button>
                 </div>
               </div>
             )}

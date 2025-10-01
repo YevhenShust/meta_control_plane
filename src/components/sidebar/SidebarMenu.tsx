@@ -153,10 +153,6 @@ export default function SidebarMenu({ menu, selectedMenuPath: _selectedMenuPath,
   };
 
   return (
-    <div className="sidebar-menu">
-      {/* use a single any-cast to avoid heavy Blueprint typing here */}
-      {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
-      {/* @ts-ignore */}
       <Tree
         {...({
           contents: nodes,
@@ -167,7 +163,6 @@ export default function SidebarMenu({ menu, selectedMenuPath: _selectedMenuPath,
           className: 'bp4-small',
         } as any)}
       />
-    </div>
   );
 }
 

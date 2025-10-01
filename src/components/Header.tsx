@@ -4,11 +4,11 @@ import useSetups from '../setup/useSetups';
 export default function Header() {
   const { setups, selectedId, setSelectedId, createSetup } = useSetups();
 
-  // keep DOM structure similar: left area with label+select, right area with actions and current id
+  // Header using Blueprint Navbar; theme classes are applied globally via body
   return (
-    <Navbar className="app-header">
-      <Navbar.Group align={Alignment.LEFT}>
-        <Navbar.Heading className="header-heading">Setup:</Navbar.Heading>
+    <Navbar>
+      <Navbar.Group align={Alignment.START}>
+        <Navbar.Heading>Setup:</Navbar.Heading>
         <Menu>
           <MenuItem text={selectedId ? (setups.find(s => s.id === selectedId)?.name ?? selectedId) : 'Select setup'} disabled={false}>
             {setups.map(s => (
@@ -18,7 +18,7 @@ export default function Header() {
         </Menu>
       </Navbar.Group>
 
-      <Navbar.Group align={Alignment.RIGHT}>
+      <Navbar.Group align={Alignment.END}>
         <ButtonGroup minimal>
           <Button icon={<Icon icon="add" />} onClick={async () => {
             const name = prompt('Setup name');
@@ -26,7 +26,7 @@ export default function Header() {
           }} />
         </ButtonGroup>
         <div className="muted-text">Current ID:</div>
-        <div aria-label="current-setup-id" className="current-setup-id">{selectedId ?? ''}</div>
+        <div aria-label="current-setup-id" className="current-setup-id">{selectedId ?? '\u0014'}</div>
       </Navbar.Group>
     </Navbar>
   );

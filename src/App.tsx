@@ -1,65 +1,45 @@
 import { useEffect, useState } from 'react';
 import Header from './components/Header';
+import { Card } from '@blueprintjs/core';
 import SidebarMenuContainer from './components/sidebar/SidebarMenuContainer';
 import MainContent from './components/MainContent';
-
-// layout constants moved to CSS variables
 
 const App: React.FC = () => {
   const [selectedMenuPath, setSelectedMenuPath] = useState<string[]>([]);
 
-  // On mount: read ?path= from URL and restore selection
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const raw = params.get('path');
-    if (raw) {
+    const readPath = () => {
+      const p = new URLSearchParams(window.location.search).get('path') || '';
+      if (!p) return setSelectedMenuPath([]);
       try {
-        const arr = raw.split('/').map((s) => decodeURIComponent(s));
-        if (arr.length > 0) setSelectedMenuPath(arr);
-      } catch {
-        // ignore malformed
-      }
-    }
-
-    const onPop = () => {
-      const p = new URLSearchParams(window.location.search).get('path');
-      if (!p) {
-        setSelectedMenuPath([]);
-        return;
-      }
-      try {
-        const arr = p.split('/').map((s) => decodeURIComponent(s));
-        setSelectedMenuPath(arr);
+        setSelectedMenuPath(p.split('/').map(s => decodeURIComponent(s)));
       } catch {
         setSelectedMenuPath([]);
       }
     };
 
+    readPath();
+    const onPop = () => readPath();
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, []);
 
-  // Update URL when selection changes
   useEffect(() => {
-    const qp = selectedMenuPath.length
-      ? '?path=' + encodeURIComponent(selectedMenuPath.join('/'))
-      : '';
+    const qp = selectedMenuPath.length ? `?path=${encodeURIComponent(selectedMenuPath.join('/'))}` : '';
     const cleaned = window.location.search.replace(/\?path=[^&]*/, '');
     window.history.pushState(null, '', qp || window.location.pathname + cleaned);
   }, [selectedMenuPath]);
 
   return (
     <div className="app-shell">
-      <div>
-        <Header />
-      </div>
+      <Header />
       <div className="app-body">
-        <div className="app-sider">
+        <Card elevation={1} className="sider-card">
           <SidebarMenuContainer selectedMenuPath={selectedMenuPath} onSelect={setSelectedMenuPath} />
-        </div>
-        <div className="app-main">
+        </Card>
+        <Card elevation={1} className="main-card">
           <MainContent selectedMenuPath={selectedMenuPath} />
-        </div>
+        </Card>
       </div>
     </div>
   );
