@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
+import { onChanged } from '../shared/events/DraftEvents';
 import type { EntityEditorProps, EditorDataState, EditorSaveOutcome, FormViewProps, TableViewProps } from './EntityEditor.types';
-import { loadSchemaByKey } from '../core/schemaKeyResolver';
+// loadSchemaByKey already imported above
 import { createAjv } from '../renderers/ajvInstance';
 import FormRenderer from '../renderers/FormRenderer';
 import TableRenderer from '../renderers/TableRenderer';
 import { listDraftsV1, updateDraftV1 } from '../shared/api/drafts';
+import NewDraftDrawer from '../components/NewDraftDrawer';
+import { emitChanged } from '../shared/events/DraftEvents';
+import { loadSchemaByKey } from '../core/schemaKeyResolver';
 
 type DraftContent = unknown;
 
@@ -28,6 +32,10 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
 
   // snapshot to support reset
   const [snapshot, setSnapshot] = useState<DraftContent | null>(null);
+
+  // Drawer state for creating new drafts from table
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerSchema, setDrawerSchema] = useState<object | null>(null);
 
   // resolve schema id and JSON
   useEffect(() => {
@@ -84,10 +92,12 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
           log('load drafts list start', { setupId, schemaId: resolved.schemaId });
           const rows = await listDraftsV1(setupId);
           if (!mounted) return;
+          log('raw drafts loaded:', rows.length, 'total');
           const items = rows.filter(r => String(r.schemaId || '') === String(resolved.schemaId)).map(r => ({ id: String(r.id ?? ''), content: tryParseContent(r.content) }));
+          log('filtered and mapped items:', items.length, 'for schemaId', resolved.schemaId);
           setState({ data: items, isDirty: false, isValid: true, loading: false });
           setSnapshot(items as unknown as DraftContent);
-          log('load drafts list done', { count: items.length });
+          log('load drafts list done', { count: items.length, items: items.map(i => i.id) });
         }
       } catch (e) {
         if (!mounted) return;
@@ -96,6 +106,55 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
     })();
     return () => { mounted = false; };
   }, [resolved?.schemaId, view, draftId, setupId]);
+
+  // Listen for external draft changes and reload rows when in table view
+  useEffect(() => {
+    if (view !== 'table' || !resolved?.schemaId) return;
+    const off = onChanged((payload) => {
+      try {
+        console.debug('[Editor] onChanged event', payload);
+        if (!payload || payload.setupId !== setupId) return;
+        // find if this change pertains to our schemaKey (not schemaId) to avoid resolving ids
+        if (payload.schemaKey === schemaKey) {
+          // force reload: replicate the list-loading logic
+          (async () => {
+            try {
+              const rows = await listDraftsV1(setupId);
+              const items = rows.filter(r => String(r.schemaId || '') === String(resolved.schemaId)).map(r => ({ id: String(r.id ?? ''), content: tryParseContent(r.content) }));
+              setState({ data: items, isDirty: false, isValid: true, loading: false });
+              setSnapshot(items as unknown as DraftContent);
+              console.debug('[Editor] reloaded table rows after change', items.length);
+            } catch (e) {
+              console.debug('[Editor] reload rows failed', e);
+            }
+          })();
+        }
+      } catch { /* ignore */ }
+    });
+    return off;
+  }, [view, resolved?.schemaId, setupId, schemaKey]);
+
+  // Listen for table 'new' requests from TableRenderer (simple DOM event bridge)
+  useEffect(() => {
+    if (view !== 'table') return;
+    const handler = () => {
+      // open drawer and load schema for new draft
+      (async () => {
+        try {
+          setDrawerSchema(null);
+          if (!setupId || !schemaKey) throw new Error('Missing context for new draft');
+          const { json } = await loadSchemaByKey(setupId, schemaKey);
+          const parsed = typeof json === 'string' ? JSON.parse(json) : json;
+          setDrawerSchema(parsed as object);
+          setDrawerOpen(true);
+        } catch {
+          setDrawerOpen(false);
+        }
+      })();
+    };
+    window.addEventListener('table-new-request', handler as EventListener);
+    return () => window.removeEventListener('table-new-request', handler as EventListener);
+  }, [view, setupId, schemaKey]);
 
   function tryParseContent(content: unknown): unknown {
     if (!content) return {};
@@ -190,6 +249,7 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
   const tableProps: TableViewProps = {
   rows: Array.isArray(state.data) ? (state.data as TableRow[]) : [],
     schema: schema ?? {},
+    uischema: uischema ?? undefined,
     ajv,
     onEdit(rowId, patch) {
       log('[Table] onEdit', rowId);
@@ -211,6 +271,8 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
     },
   };
 
+  log('Preparing to render view:', view, 'with', Array.isArray(state.data) ? (state.data as TableRow[]).length : 0, 'rows');
+
   if (state.loading) return <div className="content-padding">Loading…</div>;
   if (state.error) return <div className="content-padding">Error: {state.error}</div>;
 
@@ -231,9 +293,27 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
         <TableRenderer
           rows={tableProps.rows}
           schema={tableProps.schema}
+          uischema={tableProps.uischema}
           ajv={tableProps.ajv}
           onEdit={tableProps.onEdit}
           onSaveRow={tableProps.onSaveRow}
+          setupId={setupId}
+          schemaKey={schemaKey}
+        />
+      )}
+
+      {drawerSchema && (
+        <NewDraftDrawer
+          isOpen={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          setupId={setupId}
+          schemaKey={schemaKey}
+          schema={drawerSchema}
+          uischema={uischema}
+          onSuccess={() => {
+            // After successful create, emit change so table/menu refresh
+            emitChanged({ schemaKey, setupId });
+          }}
         />
       )}
     </div>

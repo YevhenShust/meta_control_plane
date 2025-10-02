@@ -3,20 +3,85 @@ import type { components } from '../../types/openapi.d.ts';
 
 export type DraftDto = components['schemas']['DraftDto'];
 
+// Check if we should use mock data
+const useMock = import.meta.env.VITE_USE_MOCK === '1';
+
+function log(...args: unknown[]) {
+  console.debug('[Drafts API]', ...args);
+}
+
 // List drafts for a setup (v1): GET /api/v1/Drafts/{setupId}
 export async function listDraftsV1(setupId: string, params?: { skip?: number; limit?: number }): Promise<DraftDto[]> {
-  const res = await http.get(`/api/v1/Drafts/${encodeURIComponent(setupId)}`, { params });
-  return (res.data?.drafts ?? []) as DraftDto[];
+  log('listDraftsV1', { setupId, params, useMock });
+  
+  if (useMock) {
+    log('Using mock data (VITE_USE_MOCK=1)');
+    try {
+      const mockData = await import('../../../data/Drafts.data.json');
+      const filtered = (mockData.drafts || []).filter((d: DraftDto) => String(d.setupId) === String(setupId));
+      log('Mock data loaded:', filtered.length, 'drafts for setupId', setupId);
+      return filtered as DraftDto[];
+    } catch (e) {
+      log('Error loading mock data:', e);
+      return [];
+    }
+  }
+
+  try {
+    const res = await http.get(`/api/v1/Drafts/${encodeURIComponent(setupId)}`, { params });
+    const drafts = (res.data?.drafts ?? []) as DraftDto[];
+    log('API response:', drafts.length, 'drafts');
+    return drafts;
+  } catch (e) {
+    log('API error, falling back to mock data:', e);
+    // Fallback to local data when dev server cannot reach backend
+    try {
+      const mockData = await import('../../../data/Drafts.data.json');
+      const filtered = (mockData.drafts || []).filter((d: DraftDto) => String(d.setupId) === String(setupId));
+      log('Fallback mock data loaded:', filtered.length, 'drafts');
+      return filtered as DraftDto[];
+    } catch (fallbackError) {
+      log('Fallback also failed:', fallbackError);
+      return [];
+    }
+  }
 }
 
 // Create draft for a setup (v1): POST /api/v1/Drafts/{setupId}
 export async function createDraftV1(setupId: string, body: { schemaId?: string; content?: string }): Promise<DraftDto> {
+  log('createDraftV1', { setupId, body, useMock });
+  
+  if (useMock) {
+    log('[mock] createDraftV1 - returning stub');
+    return {
+      id: `mock-draft-${Date.now()}`,
+      setupId,
+      schemaId: body.schemaId || '',
+      content: body.content || '{}',
+      created: new Date().toISOString(),
+      modified: new Date().toISOString(),
+    } as DraftDto;
+  }
+
   const res = await http.post(`/api/v1/Drafts/${encodeURIComponent(setupId)}`, body);
   return res.data?.draft as DraftDto;
 }
 
 // Update draft (v1): PUT /api/v1/Drafts/{draftId}?content=...
 export async function updateDraftV1(draftId: string, content: string): Promise<DraftDto> {
+  log('updateDraftV1', { draftId, contentLength: content.length, useMock });
+  
+  if (useMock) {
+    log('[mock] updateDraftV1 - no-op in mock mode');
+    return {
+      id: draftId,
+      setupId: '',
+      schemaId: '',
+      content,
+      modified: new Date().toISOString(),
+    } as DraftDto;
+  }
+
   const res = await http.put(`/api/v1/Drafts/${encodeURIComponent(draftId)}`, null, { params: { content } });
   return res.data?.draft as DraftDto;
 }

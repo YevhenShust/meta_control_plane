@@ -55,8 +55,15 @@ export interface FormViewProps<T = unknown> {
 export interface TableViewProps<Row = unknown> {
   rows: Row[];
   schema: object;
+  uischema?: object;
   ajv: import('ajv').Ajv;
+  /** setupId for backend requests (optional) */
+  setupId?: string;
+  /** schemaKey of the current table (optional) */
+  schemaKey?: string;
 
   onEdit(rowId: string, patch: Partial<Row> | Row): void;
   onSaveRow(rowId: string, nextRow: Row): Promise<EditorSaveOutcome>;
+  /** Optional: invoked when the user wants to create a new draft from the table UI */
+  onCreate?: () => void;
 }
