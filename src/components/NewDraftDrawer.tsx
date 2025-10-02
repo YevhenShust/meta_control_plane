@@ -7,6 +7,8 @@ import { getBlueprintRenderers } from '../renderers/blueprint/registry';
 import { createAjv } from '../renderers/ajvInstance';
 import { generateDefaultContent } from '../jsonforms/generateDefaults';
 import { createDraftV1 } from '../shared/api/drafts';
+import { resolveSchemaIdByKey } from '../core/schemaKeyResolver';
+import { emitChanged } from '../shared/events/DraftEvents';
 import { AppToaster } from './AppToaster';
 
 const bpRenderers = getBlueprintRenderers();
@@ -66,10 +68,19 @@ export default function NewDraftDrawer({
 
     setSaving(true);
     try {
-      log('creating draft', { setupId, schemaKey });
+      log('resolving schemaId for schemaKey:', schemaKey);
+      const schemaId = await resolveSchemaIdByKey(setupId, schemaKey);
+      if (!schemaId) {
+        throw new Error(`Could not resolve schema ID for key: ${schemaKey}`);
+      }
+      
+      log('creating draft', { setupId, schemaId });
       const content = JSON.stringify(data ?? {});
-      const result = await createDraftV1(setupId, { schemaId: schemaKey, content });
+      const result = await createDraftV1(setupId, { schemaId, content });
       log('draft created', result);
+
+      // Emit event to refresh menu
+      emitChanged({ schemaKey, setupId });
 
       AppToaster.show({
         message: `Draft created: ${result.id}`,
