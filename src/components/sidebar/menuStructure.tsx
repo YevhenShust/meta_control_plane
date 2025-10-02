@@ -3,6 +3,7 @@
 export type NodeKind =
   | 'form'
   | 'table'
+  | 'new-draft'
   | 'game-root'
   | 'game-chests'
   | 'atlas-root'
@@ -43,6 +44,13 @@ export const getDynamicConfig = (basePath: string): DynRoute | null => dynamicRo
 export function findNodeByPath(path: string[], tree: MenuItem[] = menuStructure): MenuItem | null {
   if (!path || path.length === 0) return null;
   const full = path.join('/');
+
+  // Check for "new" route: base + /new
+  for (const [base, route] of Object.entries(dynamicRoutes)) {
+    if (route.kind === 'form' && full === base + '/new') {
+      return { title: 'New', kind: 'new-draft', params: { schemaKey: route.schemaKey, uiSchema: route.uiSchema } } as MenuItem;
+    }
+  }
 
   // form dynamic: base + /id
   for (const [base, route] of Object.entries(dynamicRoutes)) {

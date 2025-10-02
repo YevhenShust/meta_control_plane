@@ -33,7 +33,7 @@ export default function SidebarMenuContainer({ selectedMenuPath, onSelect }: { s
       if (!schemaId) return [];
       const drafts = await listDraftsV1(setupId);
       const filtered = drafts.filter(d => String(d.schemaId || '') === String(schemaId));
-      return filtered.map(d => {
+      const items = filtered.map(d => {
         let label = String(d.id ?? '');
         try {
           const parsed: unknown = typeof d.content === 'string' ? JSON.parse(d.content) : d.content;
@@ -46,6 +46,8 @@ export default function SidebarMenuContainer({ selectedMenuPath, onSelect }: { s
         }
         return { key: String(d.id ?? ''), label };
       });
+      // Prepend "New" item
+      return [{ key: 'new', label: 'New' }, ...items];
     } catch {
       return [];
     }
