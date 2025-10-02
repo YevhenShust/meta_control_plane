@@ -72,6 +72,66 @@ export default function TableRenderer({ rows, schema, uischema, onSaveRow, setup
     });
   }, [columns, columnOptions]);
 
+  const handleCellChange = useCallback((rowId: string, path: string[], value: unknown) => {
+    // Get the current row state before update
+    const currentRow = localRows.find(r => r.id === rowId);
+    if (!currentRow) return;
+
+    // Optimistic update
+    const updatedContent = { ...currentRow.content };
+    setNestedValue(updatedContent, path, value);
+    
+    setLocalRows(prev => prev.map(r => {
+      if (r.id !== rowId) return r;
+      return { ...r, content: updatedContent };
+    }));
+
+    // Track this change for debounced save
+    pendingChangesRef.current.set(rowId, {
+      content: updatedContent,
+      timestamp: Date.now(),
+    });
+
+    // Clear existing timeout and set a new one
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    saveTimeoutRef.current = setTimeout(async () => {
+      // Process all pending saves
+      const toSave = Array.from(pendingChangesRef.current.entries());
+      if (toSave.length === 0) return;
+
+      // Clear the pending changes
+      pendingChangesRef.current.clear();
+
+      // Save each changed row
+      for (const [saveRowId, { content: saveContent }] of toSave) {
+        log('autosave', saveRowId);
+        const result = await onSaveRow(saveRowId, saveContent);
+
+        if (!result.ok) {
+          // Revert on error
+          toaster.show({
+            message: `Save failed for ${saveRowId}: ${result.error || 'Unknown error'}`,
+            intent: Intent.DANGER,
+            timeout: 3000,
+          });
+          
+          // Revert to original row content
+          const originalRow = rows.find(r => (r as unknown as RowData).id === saveRowId) as unknown as RowData | undefined;
+          if (originalRow) {
+            setLocalRows(prev => prev.map(r => r.id === saveRowId ? originalRow : r));
+            // Also refresh the grid
+            if (gridRef.current?.api) {
+              gridRef.current.api.refreshCells({ force: true });
+            }
+          }
+        }
+      }
+    }, 700); // 700ms debounce
+  }, [localRows, onSaveRow, rows]);
+
   // Convert to ag-grid column definitions
   const columnDefs = useMemo<ColDef[]>(() => {
     return renderedColumns.map(col => {
@@ -180,66 +240,6 @@ export default function TableRenderer({ rows, schema, uischema, onSaveRow, setup
       })();
     });
   }, [columns, setupId, schemaKey]);
-
-  const handleCellChange = useCallback((rowId: string, path: string[], value: unknown) => {
-    // Get the current row state before update
-    const currentRow = localRows.find(r => r.id === rowId);
-    if (!currentRow) return;
-
-    // Optimistic update
-    const updatedContent = { ...currentRow.content };
-    setNestedValue(updatedContent, path, value);
-    
-    setLocalRows(prev => prev.map(r => {
-      if (r.id !== rowId) return r;
-      return { ...r, content: updatedContent };
-    }));
-
-    // Track this change for debounced save
-    pendingChangesRef.current.set(rowId, {
-      content: updatedContent,
-      timestamp: Date.now(),
-    });
-
-    // Clear existing timeout and set a new one
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-
-    saveTimeoutRef.current = setTimeout(async () => {
-      // Process all pending saves
-      const toSave = Array.from(pendingChangesRef.current.entries());
-      if (toSave.length === 0) return;
-
-      // Clear the pending changes
-      pendingChangesRef.current.clear();
-
-      // Save each changed row
-      for (const [saveRowId, { content: saveContent }] of toSave) {
-        log('autosave', saveRowId);
-        const result = await onSaveRow(saveRowId, saveContent);
-
-        if (!result.ok) {
-          // Revert on error
-          toaster.show({
-            message: `Save failed for ${saveRowId}: ${result.error || 'Unknown error'}`,
-            intent: Intent.DANGER,
-            timeout: 3000,
-          });
-          
-          // Revert to original row content
-          const originalRow = rows.find(r => (r as unknown as RowData).id === saveRowId) as unknown as RowData | undefined;
-          if (originalRow) {
-            setLocalRows(prev => prev.map(r => r.id === saveRowId ? originalRow : r));
-            // Also refresh the grid
-            if (gridRef.current?.api) {
-              gridRef.current.api.refreshCells({ force: true });
-            }
-          }
-        }
-      }
-    }, 700); // 700ms debounce
-  }, [localRows, onSaveRow, rows]);
 
   // Apply quick filter when search term changes
   useEffect(() => {
