@@ -11,6 +11,8 @@ type SidebarMenuProps = {
   getDynamicConfig?: (basePath: string) => { schemaKey: string } | undefined;
   /** Load dynamic children for a container id (e.g. 'Game/Chests') */
   loadDynamicChildren?: (basePath: string) => Promise<{ key: string; label: string }[]>;
+  /** Optional: when set to a basePath, force-reload that container's children */
+  refreshBasePath?: string | null;
 };
 
 function joinPath(parts: string[]) {
@@ -54,6 +56,7 @@ export default function SidebarMenu({
   onSelect,
   getDynamicConfig,
   loadDynamicChildren,
+  refreshBasePath,
 }: SidebarMenuProps) {
   const [nodes, setNodes] = useState<any[]>(() => buildTreeNodes(menu, [], getDynamicConfig));
   const [loadingKeys, setLoadingKeys] = useState<Record<string, boolean>>({});
@@ -156,6 +159,32 @@ export default function SidebarMenu({
       }
     })();
   }, [pathFromUrl, findNode, ensureExpandedAndLoaded, updateNodeById]);
+
+  /** If a parent asked to refresh a basePath, force reload its children */
+  useEffect(() => {
+    if (!refreshBasePath) return;
+    (async () => {
+      try {
+        console.debug('[SidebarMenu] refresh requested for', refreshBasePath);
+        const node = findNode(nodesRef.current, refreshBasePath);
+        if (!node || !node.hasCaret || !loadDynamicChildren) return;
+        setLoadingKeys((p) => ({ ...p, [refreshBasePath]: true }));
+        const items = await loadDynamicChildren(refreshBasePath);
+        const children = items.map((it) => ({ id: `${refreshBasePath}/${it.key}`, label: it.label, icon: 'document' }));
+        setNodeChildren(refreshBasePath, children);
+        setNodes((prev) => updateNodeById(prev, refreshBasePath, (n) => ({ ...n, isExpanded: true })));
+        console.debug('[SidebarMenu] refreshed children for', refreshBasePath, 'count=', children.length);
+      } catch {
+        console.debug('[SidebarMenu] refresh failed for', refreshBasePath);
+      } finally {
+        setLoadingKeys((p) => {
+          const next = { ...p };
+          delete next[refreshBasePath];
+          return next;
+        });
+      }
+    })();
+  }, [refreshBasePath, findNode, loadDynamicChildren, setNodeChildren, updateNodeById]);
 
   /** Клік по вузлу */
   const onNodeClick = (node: any) => {

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { onChanged } from '../shared/events/DraftEvents';
 import type { EntityEditorProps, EditorDataState, EditorSaveOutcome, FormViewProps, TableViewProps } from './EntityEditor.types';
 import { loadSchemaByKey } from '../core/schemaKeyResolver';
 import { createAjv } from '../renderers/ajvInstance';
@@ -98,6 +99,33 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
     })();
     return () => { mounted = false; };
   }, [resolved?.schemaId, view, draftId, setupId]);
+
+  // Listen for external draft changes and reload rows when in table view
+  useEffect(() => {
+    if (view !== 'table' || !resolved?.schemaId) return;
+    const off = onChanged((payload) => {
+      try {
+        console.debug('[Editor] onChanged event', payload);
+        if (!payload || payload.setupId !== setupId) return;
+        // find if this change pertains to our schemaKey (not schemaId) to avoid resolving ids
+        if (payload.schemaKey === schemaKey) {
+          // force reload: replicate the list-loading logic
+          (async () => {
+            try {
+              const rows = await listDraftsV1(setupId);
+              const items = rows.filter(r => String(r.schemaId || '') === String(resolved.schemaId)).map(r => ({ id: String(r.id ?? ''), content: tryParseContent(r.content) }));
+              setState({ data: items, isDirty: false, isValid: true, loading: false });
+              setSnapshot(items as unknown as DraftContent);
+              console.debug('[Editor] reloaded table rows after change', items.length);
+            } catch (e) {
+              console.debug('[Editor] reload rows failed', e);
+            }
+          })();
+        }
+      } catch { /* ignore */ }
+    });
+    return off;
+  }, [view, resolved?.schemaId, setupId, schemaKey]);
 
   function tryParseContent(content: unknown): unknown {
     if (!content) return {};
