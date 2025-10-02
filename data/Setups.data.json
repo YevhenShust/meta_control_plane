@@ -1,12 +1,12 @@
 {
   "setups": [
     {
-      "id": "string",
-      "name": "string",
-      "created": "2025-10-02T00:21:14.677Z",
-      "branchToCopyFromId": "string",
-      "copyingMode": "string",
-      "copyVersionMinimalStage": "string"
+      "id": "68d15776e869ac7481ac92e2",
+      "name": "Development Setup",
+      "created": "2025-09-21T10:00:00.000Z",
+      "branchToCopyFromId": null,
+      "copyingMode": null,
+      "copyVersionMinimalStage": null
     }
   ]
 }

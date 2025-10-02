@@ -84,10 +84,12 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
           log('load drafts list start', { setupId, schemaId: resolved.schemaId });
           const rows = await listDraftsV1(setupId);
           if (!mounted) return;
+          log('raw drafts loaded:', rows.length, 'total');
           const items = rows.filter(r => String(r.schemaId || '') === String(resolved.schemaId)).map(r => ({ id: String(r.id ?? ''), content: tryParseContent(r.content) }));
+          log('filtered and mapped items:', items.length, 'for schemaId', resolved.schemaId);
           setState({ data: items, isDirty: false, isValid: true, loading: false });
           setSnapshot(items as unknown as DraftContent);
-          log('load drafts list done', { count: items.length });
+          log('load drafts list done', { count: items.length, items: items.map(i => i.id) });
         }
       } catch (e) {
         if (!mounted) return;
@@ -211,6 +213,8 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
       }
     },
   };
+
+  log('Preparing to render view:', view, 'with', Array.isArray(state.data) ? (state.data as TableRow[]).length : 0, 'rows');
 
   if (state.loading) return <div className="content-padding">Loading…</div>;
   if (state.error) return <div className="content-padding">Error: {state.error}</div>;

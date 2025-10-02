@@ -46,12 +46,15 @@ export default function TableRenderer({ rows, schema, uischema, onSaveRow }: Tab
   // Sync rows to local state
   useEffect(() => {
     const typedRows = Array.isArray(rows) ? (rows as unknown as RowData[]) : [];
+    log('Rows synced to local state:', typedRows.length, 'rows');
     setLocalRows(typedRows);
   }, [rows]);
 
   // Extract columns from schema
   const columns = useMemo(() => {
-    return extractColumns(schema, uischema);
+    const cols = extractColumns(schema, uischema);
+    log('Columns extracted:', cols.length, 'columns', cols.map(c => c.key));
+    return cols;
   }, [schema, uischema]);
 
   // Filter rows based on search term
