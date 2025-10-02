@@ -100,15 +100,23 @@ export default function TableRenderer({ rows, schema, uischema, onSaveRow, setup
           const opts = drafts
             .filter(d => String(d.schemaId || '') === String(schemaId))
             .map(d => {
-                let label = String(d.id ?? '');
-              try {
-                const parsed = typeof d.content === 'string' ? JSON.parse(d.content) : d.content;
-                if (parsed && typeof parsed === 'object') {
-                  const asObj = parsed as Record<string, unknown>;
+                let label: string;
+                try {
+                  const parsed = typeof d.content === 'string' ? JSON.parse(d.content) : d.content;
+                  if (parsed && typeof parsed === 'object') {
+                    const asObj = parsed as Record<string, unknown>;
                     const nice = String(asObj['Id'] ?? asObj['name'] ?? '');
-                    if (nice) label = `${nice} (${d.id})`;
+                    if (nice) {
+                      label = `${nice} (${d.id})`;
+                    } else {
+                      label = String(d.id ?? '');
+                    }
+                  } else {
+                    label = String(d.id ?? '');
                   }
-              } catch { /* ignore */ }
+                } catch {
+                  label = String(d.id ?? '');
+                }
                 // prefer descriptor's internal Id property as the option value if present
                 try {
                   const parsed = typeof d.content === 'string' ? JSON.parse(d.content) : d.content;
