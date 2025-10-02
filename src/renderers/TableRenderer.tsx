@@ -1,9 +1,17 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import type { TableViewProps } from '../editor/EntityEditor.types';
-import { Button, HTMLTable, InputGroup, NumericInput, Checkbox, HTMLSelect, NonIdealState, Intent, Position, Toaster } from '@blueprintjs/core';
+import { Button, InputGroup, NonIdealState, Intent, Position, Toaster } from '@blueprintjs/core';
 import type { JsonSchema } from '@jsonforms/core';
 import { resolveSchemaIdByKey } from '../core/schemaKeyResolver';
 import { listDraftsV1 } from '../shared/api/drafts';
+import { AgGridReact } from 'ag-grid-react';
+import type { ColDef } from 'ag-grid-community';
+import BooleanCellEditor from './table/BooleanCellEditor';
+import SelectCellEditor from './table/SelectCellEditor';
+import NumberCellEditor from './table/NumberCellEditor';
+import StringCellEditor from './table/StringCellEditor';
+import 'ag-grid-community/styles/ag-grid.css';
+import 'ag-grid-community/styles/ag-theme-alpine.css';
 
 interface OptionItem { label: string; value: string }
 
@@ -29,10 +37,7 @@ function log(...args: unknown[]) {
 export default function TableRenderer({ rows, schema, uischema, onSaveRow, setupId, schemaKey }: TableViewProps) {
   const [localRows, setLocalRows] = useState<RowData[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortColumn, setSortColumn] = useState<string | null>(null);
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
-  const [currentPage, setCurrentPage] = useState(0);
-  const pageSize = 25;
+  const gridRef = useRef<AgGridReact>(null);
 
   // Track changes that need to be saved
   const pendingChangesRef = useRef<Map<string, { content: Record<string, unknown>; timestamp: number }>>(new Map());
@@ -70,6 +75,108 @@ export default function TableRenderer({ rows, schema, uischema, onSaveRow, setup
       return { ...c, enumValues: opts } as ColumnDef;
     });
   }, [columns, columnOptions]);
+
+  const handleCellChange = useCallback((rowId: string, path: string[], value: unknown) => {
+    // Get the current row state before update
+    const currentRow = localRows.find(r => r.id === rowId);
+    if (!currentRow) return;
+
+    // Optimistic update
+    const updatedContent = { ...currentRow.content };
+    setNestedValue(updatedContent, path, value);
+    
+    setLocalRows(prev => prev.map(r => {
+      if (r.id !== rowId) return r;
+      return { ...r, content: updatedContent };
+    }));
+
+    // Track this change for debounced save
+    pendingChangesRef.current.set(rowId, {
+      content: updatedContent,
+      timestamp: Date.now(),
+    });
+
+    // Clear existing timeout and set a new one
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    saveTimeoutRef.current = setTimeout(async () => {
+      // Process all pending saves
+      const toSave = Array.from(pendingChangesRef.current.entries());
+      if (toSave.length === 0) return;
+
+      // Clear the pending changes
+      pendingChangesRef.current.clear();
+
+      // Save each changed row
+      for (const [saveRowId, { content: saveContent }] of toSave) {
+        log('autosave', saveRowId);
+        const result = await onSaveRow(saveRowId, saveContent);
+
+        if (!result.ok) {
+          // Revert on error
+          toaster.show({
+            message: `Save failed for ${saveRowId}: ${result.error || 'Unknown error'}`,
+            intent: Intent.DANGER,
+            timeout: 3000,
+          });
+          
+          // Revert to original row content
+          const originalRow = rows.find(r => (r as unknown as RowData).id === saveRowId) as unknown as RowData | undefined;
+          if (originalRow) {
+            setLocalRows(prev => prev.map(r => r.id === saveRowId ? originalRow : r));
+            // Also refresh the grid
+            if (gridRef.current?.api) {
+              gridRef.current.api.refreshCells({ force: true });
+            }
+          }
+        }
+      }
+    }, 700); // 700ms debounce
+  }, [localRows, onSaveRow, rows]);
+
+  // Convert to ag-grid column definitions
+  const columnDefs = useMemo<ColDef[]>(() => {
+    return renderedColumns.map(col => {
+      const colDef: ColDef = {
+        field: col.key,
+        headerName: col.label,
+        sortable: true,
+        filter: true,
+        editable: true,
+        valueGetter: (params) => {
+          if (!params.data) return undefined;
+          return getNestedValue(params.data.content, col.path);
+        },
+        valueSetter: (params) => {
+          if (!params.data) return false;
+          const updatedContent = { ...params.data.content };
+          setNestedValue(updatedContent, col.path, params.newValue);
+          params.data.content = updatedContent;
+          handleCellChange(params.data.id, col.path, params.newValue);
+          return true;
+        },
+      };
+
+      // Set appropriate cell editor based on column type
+      if (col.type === 'boolean') {
+        colDef.cellEditor = BooleanCellEditor;
+        colDef.cellRenderer = (params: { value: unknown }) => {
+          return params.value ? '✓' : '';
+        };
+      } else if (col.enumValues && col.enumValues.length > 0) {
+        colDef.cellEditor = SelectCellEditor;
+        colDef.cellEditorParams = { enumValues: col.enumValues };
+      } else if (col.type === 'number') {
+        colDef.cellEditor = NumberCellEditor;
+      } else {
+        colDef.cellEditor = StringCellEditor;
+      }
+
+      return colDef;
+    });
+  }, [renderedColumns, handleCellChange]);
 
   useEffect(() => {
     if (!setupId || !schemaKey) return;
@@ -138,118 +245,19 @@ export default function TableRenderer({ rows, schema, uischema, onSaveRow, setup
     });
   }, [columns, setupId, schemaKey]);
 
-  // Filter rows based on search term
-  const filteredRows = useMemo(() => {
-    if (!searchTerm) return localRows;
-    const lower = searchTerm.toLowerCase();
-    return localRows.filter(row => {
-      return columns.some(col => {
-        const val = getNestedValue(row.content, col.path);
-        return String(val ?? '').toLowerCase().includes(lower);
-      });
-    });
-  }, [localRows, searchTerm, columns]);
-
-  // Sort rows
-  const sortedRows = useMemo(() => {
-    if (!sortColumn) return filteredRows;
-    const col = columns.find(c => c.key === sortColumn);
-    if (!col) return filteredRows;
-    
-    return [...filteredRows].sort((a, b) => {
-      const valA = getNestedValue(a.content, col.path);
-      const valB = getNestedValue(b.content, col.path);
-      
-      let cmp = 0;
-      if (valA == null && valB == null) cmp = 0;
-      else if (valA == null) cmp = 1;
-      else if (valB == null) cmp = -1;
-      else if (typeof valA === 'number' && typeof valB === 'number') cmp = valA - valB;
-      else cmp = String(valA).localeCompare(String(valB));
-      
-      return sortDirection === 'asc' ? cmp : -cmp;
-    });
-  }, [filteredRows, sortColumn, sortDirection, columns]);
-
-  // Paginate
-  const paginatedRows = useMemo(() => {
-    const start = currentPage * pageSize;
-    return sortedRows.slice(start, start + pageSize);
-  }, [sortedRows, currentPage, pageSize]);
-
-  const totalPages = Math.ceil(sortedRows.length / pageSize);
-
-  const handleSort = useCallback((colKey: string) => {
-    if (sortColumn === colKey) {
-      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortColumn(colKey);
-      setSortDirection('asc');
+  // Apply quick filter when search term changes
+  useEffect(() => {
+    if (gridRef.current?.api) {
+      gridRef.current.api.setGridOption('quickFilterText', searchTerm);
     }
-  }, [sortColumn]);
-
-  const handleCellChange = useCallback((rowId: string, path: string[], value: unknown) => {
-    // Get the current row state before update
-    const currentRow = localRows.find(r => r.id === rowId);
-    if (!currentRow) return;
-
-    // Optimistic update
-    const updatedContent = { ...currentRow.content };
-    setNestedValue(updatedContent, path, value);
-    
-    setLocalRows(prev => prev.map(r => {
-      if (r.id !== rowId) return r;
-      return { ...r, content: updatedContent };
-    }));
-
-    // Track this change for debounced save
-    pendingChangesRef.current.set(rowId, {
-      content: updatedContent,
-      timestamp: Date.now(),
-    });
-
-    // Clear existing timeout and set a new one
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-
-    saveTimeoutRef.current = setTimeout(async () => {
-      // Process all pending saves
-      const toSave = Array.from(pendingChangesRef.current.entries());
-      if (toSave.length === 0) return;
-
-      // Clear the pending changes
-      pendingChangesRef.current.clear();
-
-      // Save each changed row
-      for (const [saveRowId, { content: saveContent }] of toSave) {
-        log('autosave', saveRowId);
-        const result = await onSaveRow(saveRowId, saveContent);
-
-        if (!result.ok) {
-          // Revert on error
-          toaster.show({
-            message: `Save failed for ${saveRowId}: ${result.error || 'Unknown error'}`,
-            intent: Intent.DANGER,
-            timeout: 3000,
-          });
-          
-          // Revert to original row content
-          const originalRow = rows.find(r => (r as unknown as RowData).id === saveRowId) as unknown as RowData | undefined;
-          if (originalRow) {
-            setLocalRows(prev => prev.map(r => r.id === saveRowId ? originalRow : r));
-          }
-        }
-      }
-    }, 700); // 700ms debounce
-  }, [localRows, onSaveRow, rows]);
+  }, [searchTerm]);
 
   if (localRows.length === 0) {
     return <NonIdealState icon="inbox" title="No items" description="No drafts found for this container." />;
   }
 
   return (
-    <div className="content-padding">
+    <div className="content-padding" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div style={{ marginBottom: '12px', display: 'flex', gap: '8px', alignItems: 'center' }}>
         <InputGroup
           leftIcon="search"
@@ -260,7 +268,7 @@ export default function TableRenderer({ rows, schema, uischema, onSaveRow, setup
         />
         <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px', alignItems: 'center' }}>
           <span style={{ fontSize: '12px', color: 'var(--bp5-text-color-muted)' }}>
-            {sortedRows.length} items
+            {localRows.length} items
           </span>
           <Button small icon="plus" text="New" onClick={() => {
             // delegate to optional onCreate prop via DOM event
@@ -270,53 +278,24 @@ export default function TableRenderer({ rows, schema, uischema, onSaveRow, setup
         </div>
       </div>
 
-      <HTMLTable striped interactive bordered style={{ width: '100%' }}>
-        <thead>
-          <tr>
-            {renderedColumns.map(col => (
-              <th key={col.key} onClick={() => handleSort(col.key)} style={{ cursor: 'pointer', userSelect: 'none' }}>
-                {col.label}
-                {sortColumn === col.key && (sortDirection === 'asc' ? ' ▲' : ' ▼')}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {paginatedRows.map(row => (
-            <tr key={row.id}>
-              {renderedColumns.map(col => (
-                <td key={col.key}>
-                  <CellEditor
-                    value={getNestedValue(row.content, col.path)}
-                    column={col}
-                    onChange={(val) => handleCellChange(row.id, col.path, val)}
-                  />
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </HTMLTable>
-
-      {totalPages > 1 && (
-        <div style={{ marginTop: '12px', display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <Button
-            small
-            icon="chevron-left"
-            disabled={currentPage === 0}
-            onClick={() => setCurrentPage(p => p - 1)}
-          />
-          <span style={{ fontSize: '12px' }}>
-            Page {currentPage + 1} of {totalPages}
-          </span>
-          <Button
-            small
-            icon="chevron-right"
-            disabled={currentPage >= totalPages - 1}
-            onClick={() => setCurrentPage(p => p + 1)}
-          />
-        </div>
-      )}
+  <div className="ag-theme-alpine-dark" style={{ height: '600px', width: '100%' }}>
+        <AgGridReact
+          ref={gridRef}
+          rowData={localRows}
+          columnDefs={columnDefs}
+          defaultColDef={{
+            flex: 1,
+            minWidth: 100,
+            resizable: true,
+          }}
+          pagination={true}
+          paginationPageSize={25}
+          paginationPageSizeSelector={[10, 25, 50, 100]}
+          suppressMovableColumns={false}
+          enableCellTextSelection={true}
+          ensureDomOrder={true}
+        />
+      </div>
     </div>
   );
 }
@@ -453,66 +432,4 @@ function setNestedValue(obj: Record<string, unknown>, path: string[], value: unk
   setNestedValue(obj[first] as Record<string, unknown>, rest, value);
 }
 
-interface CellEditorProps {
-  value: unknown;
-  column: ColumnDef;
-  onChange: (value: unknown) => void;
-}
-
-function CellEditor({ value, column, onChange }: CellEditorProps) {
-  const [localValue, setLocalValue] = useState(value);
-
-  useEffect(() => {
-    setLocalValue(value);
-  }, [value]);
-
-  const handleChange = (newValue: unknown) => {
-    setLocalValue(newValue);
-    onChange(newValue);
-  };
-
-  if (column.type === 'boolean') {
-    return (
-      <Checkbox
-        checked={Boolean(localValue)}
-        onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleChange(e.target.checked)}
-        style={{ margin: 0 }}
-      />
-    );
-  }
-
-  // If enumValues are present for this column, render a dropdown (covers DescriptorId patches)
-  if (column.enumValues && column.enumValues.length > 0) {
-    const opts = column.enumValues.map(v => typeof v === 'string' ? v : { label: v.label, value: v.value });
-    return (
-      <HTMLSelect
-        value={String(localValue ?? '')}
-        onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleChange(e.target.value)}
-        options={opts}
-        fill
-      />
-    );
-  }
-
-  if (column.type === 'number') {
-    return (
-      <NumericInput
-        value={localValue as number | undefined}
-        onValueChange={handleChange}
-        fill
-        buttonPosition="none"
-        small
-      />
-    );
-  }
-
-  // Default: string
-  return (
-    <InputGroup
-      value={String(localValue ?? '')}
-      onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleChange(e.target.value)}
-      fill
-      small
-    />
-  );
-}
+// editors moved to src/renderers/table/*.tsx
