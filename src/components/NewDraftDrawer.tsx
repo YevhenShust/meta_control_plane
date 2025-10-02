@@ -118,7 +118,7 @@ export default function NewDraftDrawer({
     <Drawer
       isOpen={isOpen}
       onClose={handleClose}
-      title="New ChestDescriptor"
+      title={`New ${schemaKey}`}
       size="50%"
       canOutsideClickClose={!saving}
       canEscapeKeyClose={!saving}
