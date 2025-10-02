@@ -62,8 +62,8 @@ export default function NewDraftDrawer({
 
     (async () => {
       try {
-  const jsonSchema = schema as unknown as Record<string, unknown>;
-  const props = jsonSchema.properties as Record<string, unknown> | undefined;
+  const jsonSchema = schema as JsonSchema;
+  const props = jsonSchema.properties as { [key: string]: JsonSchema } | undefined;
         if (!props) return;
         // find candidate property names that look like DescriptorId
         const keys = Object.keys(props).filter(k => /DescriptorId$/i.test(k));
