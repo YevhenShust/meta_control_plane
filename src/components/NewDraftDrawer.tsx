@@ -8,6 +8,7 @@ import { createAjv } from '../renderers/ajvInstance';
 import { generateDefaultContent } from '../jsonforms/generateDefaults';
 import { createDraftV1 } from '../shared/api/drafts';
 import { resolveSchemaIdByKey } from '../core/schemaKeyResolver';
+import { listDraftsV1 } from '../shared/api/drafts';
 import { emitChanged } from '../shared/events/DraftEvents';
 import { AppToaster } from './AppToaster';
 
@@ -50,6 +51,71 @@ export default function NewDraftDrawer({
       setData(defaults);
     }
   }, [isOpen, schema]);
+
+  // If schema has DescriptorId (or *DescriptorId) property, fetch descriptor drafts and patch schema.enum
+  const [patchedSchema, setPatchedSchema] = useState<object | null>(null);
+  useEffect(() => {
+    if (!isOpen || !schema || !setupId || !schemaKey) {
+      setPatchedSchema(null);
+      return;
+    }
+
+    (async () => {
+      try {
+  const jsonSchema = schema as unknown as Record<string, unknown>;
+  const props = jsonSchema.properties as Record<string, unknown> | undefined;
+        if (!props) return;
+        // find candidate property names that look like DescriptorId
+        const keys = Object.keys(props).filter(k => /DescriptorId$/i.test(k));
+        if (keys.length === 0) return;
+
+        // heuristics for descriptor schemaKey
+        const candidates: string[] = [];
+        if (schemaKey.endsWith('Spawn')) candidates.push(schemaKey.replace(/Spawn$/, 'Descriptor'));
+        // also try base property name
+        const propBase = keys[0].replace(/Id$/i, '');
+        if (propBase) candidates.push(propBase);
+
+        let resolved: string | null = null;
+        for (const c of candidates) {
+          try {
+            const id = await resolveSchemaIdByKey(setupId, c);
+            if (id) { resolved = id; break; }
+          } catch { /* continue */ }
+        }
+        if (!resolved) return;
+
+        const drafts = await listDraftsV1(setupId);
+        const options = drafts
+          .filter(d => String(d.schemaId || '') === String(resolved))
+          .map(d => {
+            try {
+              const parsed = typeof d.content === 'string' ? JSON.parse(d.content) : d.content;
+              if (parsed && typeof parsed === 'object') {
+                const asObj = parsed as Record<string, unknown>;
+                const descriptorId = String(asObj['Id'] ?? asObj['id'] ?? '');
+                if (descriptorId) return descriptorId;
+              }
+            } catch {
+              // ignore
+            }
+            return String(d.id ?? '');
+          });
+        if (options.length === 0) return;
+
+        // shallow clone schema and inject enum into the matching property
+        const clone = JSON.parse(JSON.stringify(jsonSchema));
+        for (const k of keys) {
+          if (!clone.properties) clone.properties = {};
+          clone.properties[k] = { ...(clone.properties[k] || {}), enum: options };
+        }
+        setPatchedSchema(clone as object);
+      } catch (e) {
+        console.debug('[NewDraftDrawer] failed to fetch descriptor options', e);
+        setPatchedSchema(null);
+      }
+    })();
+  }, [isOpen, schema, setupId, schemaKey]);
 
   const handleClose = useCallback(() => {
     if (!saving) {
@@ -127,9 +193,9 @@ export default function NewDraftDrawer({
         <div className="bp5-dialog-body">
           <JsonForms
             ajv={ajv}
-            schema={schema as unknown as JsonSchema}
+            schema={(patchedSchema ?? schema) as unknown as JsonSchema}
             uischema={
-              (uischema ?? generateDefaultUISchema(schema as unknown as JsonSchema)) as unknown as UISchemaElement
+              (uischema ?? generateDefaultUISchema((patchedSchema ?? schema) as unknown as JsonSchema)) as unknown as UISchemaElement
             }
             data={data as unknown}
             renderers={bpRenderers}
@@ -138,7 +204,7 @@ export default function NewDraftDrawer({
               // Validate
               let isValid = true;
               try {
-                isValid = ajv.validate(schema as unknown as JsonSchema, d as unknown) === true;
+                isValid = ajv.validate((patchedSchema ?? schema) as unknown as JsonSchema, d as unknown) === true;
               } catch {
                 isValid = false;
               }

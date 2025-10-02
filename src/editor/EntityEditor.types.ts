@@ -57,6 +57,10 @@ export interface TableViewProps<Row = unknown> {
   schema: object;
   uischema?: object;
   ajv: import('ajv').Ajv;
+  /** setupId for backend requests (optional) */
+  setupId?: string;
+  /** schemaKey of the current table (optional) */
+  schemaKey?: string;
 
   onEdit(rowId: string, patch: Partial<Row> | Row): void;
   onSaveRow(rowId: string, nextRow: Row): Promise<EditorSaveOutcome>;

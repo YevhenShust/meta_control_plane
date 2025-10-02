@@ -297,6 +297,8 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
           ajv={tableProps.ajv}
           onEdit={tableProps.onEdit}
           onSaveRow={tableProps.onSaveRow}
+          setupId={setupId}
+          schemaKey={schemaKey}
         />
       )}
 

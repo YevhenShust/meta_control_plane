@@ -2,13 +2,17 @@ import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import type { TableViewProps } from '../editor/EntityEditor.types';
 import { Button, HTMLTable, InputGroup, NumericInput, Checkbox, HTMLSelect, NonIdealState, Intent, Position, Toaster } from '@blueprintjs/core';
 import type { JsonSchema } from '@jsonforms/core';
+import { resolveSchemaIdByKey } from '../core/schemaKeyResolver';
+import { listDraftsV1 } from '../shared/api/drafts';
+
+interface OptionItem { label: string; value: string }
 
 interface ColumnDef {
   key: string;
   label: string;
   path: string[];
   type: 'string' | 'number' | 'boolean' | 'enum';
-  enumValues?: string[];
+  enumValues?: Array<string | OptionItem>;
 }
 
 interface RowData {
@@ -22,7 +26,7 @@ function log(...args: unknown[]) {
   console.debug('[Table]', ...args);
 }
 
-export default function TableRenderer({ rows, schema, uischema, onSaveRow }: TableViewProps) {
+export default function TableRenderer({ rows, schema, uischema, onSaveRow, setupId, schemaKey }: TableViewProps) {
   const [localRows, setLocalRows] = useState<RowData[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortColumn, setSortColumn] = useState<string | null>(null);
@@ -56,6 +60,75 @@ export default function TableRenderer({ rows, schema, uischema, onSaveRow }: Tab
     log('Columns extracted:', cols.length, 'columns', cols.map(c => c.key));
     return cols;
   }, [schema, uischema]);
+
+  const [columnOptions, setColumnOptions] = useState<Record<string, Array<string | OptionItem>>>({});
+
+  // merge in options into columns for rendering
+  const renderedColumns = useMemo(() => {
+    return columns.map(c => {
+      const opts = (columnOptions && columnOptions[c.key]) ? columnOptions[c.key] : c.enumValues;
+      return { ...c, enumValues: opts } as ColumnDef;
+    });
+  }, [columns, columnOptions]);
+
+  useEffect(() => {
+    if (!setupId || !schemaKey) return;
+    // for each column that ends with DescriptorId, try to resolve descriptor schema and fetch its drafts
+    columns.forEach((col) => {
+      const last = col.path[col.path.length - 1];
+      if (!last || !/DescriptorId$/i.test(last)) return;
+
+      (async () => {
+        // heuristics: try replacing 'Spawn' suffix in schemaKey with 'Descriptor', else try the property base name
+        const candidates: string[] = [];
+        if (schemaKey.endsWith('Spawn')) candidates.push(schemaKey.replace(/Spawn$/, 'Descriptor'));
+        const propBase = last.replace(/Id$/i, '');
+        if (propBase) candidates.push(propBase);
+
+        let resolvedKey: string | null = null;
+        for (const cand of candidates) {
+          try {
+            const id = await resolveSchemaIdByKey(setupId, cand);
+            if (id) { resolvedKey = cand; break; }
+          } catch { /* try next */ }
+        }
+        if (!resolvedKey) return;
+
+        try {
+          const schemaId = await resolveSchemaIdByKey(setupId, resolvedKey!);
+          const drafts = await listDraftsV1(setupId);
+          const opts = drafts
+            .filter(d => String(d.schemaId || '') === String(schemaId))
+            .map(d => {
+                let label = String(d.id ?? '');
+              try {
+                const parsed = typeof d.content === 'string' ? JSON.parse(d.content) : d.content;
+                if (parsed && typeof parsed === 'object') {
+                  const asObj = parsed as Record<string, unknown>;
+                    const nice = String(asObj['Id'] ?? asObj['name'] ?? '');
+                    if (nice) label = `${nice} (${d.id})`;
+                  }
+              } catch { /* ignore */ }
+                // prefer descriptor's internal Id property as the option value if present
+                try {
+                  const parsed = typeof d.content === 'string' ? JSON.parse(d.content) : d.content;
+                  if (parsed && typeof parsed === 'object') {
+                    const asObj = parsed as Record<string, unknown>;
+                    const descriptorId = String(asObj['Id'] ?? asObj['id'] ?? '');
+                    if (descriptorId) return { label, value: descriptorId } as OptionItem;
+                  }
+                } catch {
+                  // fallback
+                }
+                return { label, value: String(d.id ?? '') } as OptionItem;
+            });
+          setColumnOptions(prev => ({ ...prev, [col.key]: opts }));
+        } catch (e) {
+          console.debug('[Table] failed to fetch descriptor drafts', e);
+        }
+      })();
+    });
+  }, [columns, setupId, schemaKey]);
 
   // Filter rows based on search term
   const filteredRows = useMemo(() => {
@@ -192,7 +265,7 @@ export default function TableRenderer({ rows, schema, uischema, onSaveRow }: Tab
       <HTMLTable striped interactive bordered style={{ width: '100%' }}>
         <thead>
           <tr>
-            {columns.map(col => (
+            {renderedColumns.map(col => (
               <th key={col.key} onClick={() => handleSort(col.key)} style={{ cursor: 'pointer', userSelect: 'none' }}>
                 {col.label}
                 {sortColumn === col.key && (sortDirection === 'asc' ? ' ▲' : ' ▼')}
@@ -203,7 +276,7 @@ export default function TableRenderer({ rows, schema, uischema, onSaveRow }: Tab
         <tbody>
           {paginatedRows.map(row => (
             <tr key={row.id}>
-              {columns.map(col => (
+              {renderedColumns.map(col => (
                 <td key={col.key}>
                   <CellEditor
                     value={getNestedValue(row.content, col.path)}
@@ -400,12 +473,14 @@ function CellEditor({ value, column, onChange }: CellEditorProps) {
     );
   }
 
-  if (column.type === 'enum' && column.enumValues) {
+  // If enumValues are present for this column, render a dropdown (covers DescriptorId patches)
+  if (column.enumValues && column.enumValues.length > 0) {
+    const opts = column.enumValues.map(v => typeof v === 'string' ? v : { label: v.label, value: v.value });
     return (
       <HTMLSelect
         value={String(localValue ?? '')}
         onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleChange(e.target.value)}
-        options={column.enumValues}
+        options={opts}
         fill
       />
     );
