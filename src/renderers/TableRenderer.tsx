@@ -1,11 +1,15 @@
-import { useCallback, useEffect, useMemo, useState, useRef, forwardRef, useImperativeHandle } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import type { TableViewProps } from '../editor/EntityEditor.types';
-import { Button, InputGroup, NumericInput, Checkbox, HTMLSelect, NonIdealState, Intent, Position, Toaster } from '@blueprintjs/core';
+import { Button, InputGroup, NonIdealState, Intent, Position, Toaster } from '@blueprintjs/core';
 import type { JsonSchema } from '@jsonforms/core';
 import { resolveSchemaIdByKey } from '../core/schemaKeyResolver';
 import { listDraftsV1 } from '../shared/api/drafts';
 import { AgGridReact } from 'ag-grid-react';
-import type { ColDef, ICellEditorParams, ICellEditorComp } from 'ag-grid-community';
+import type { ColDef } from 'ag-grid-community';
+import BooleanCellEditor from './table/BooleanCellEditor';
+import SelectCellEditor from './table/SelectCellEditor';
+import NumberCellEditor from './table/NumberCellEditor';
+import StringCellEditor from './table/StringCellEditor';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
 
@@ -274,7 +278,7 @@ export default function TableRenderer({ rows, schema, uischema, onSaveRow, setup
         </div>
       </div>
 
-      <div className="ag-theme-alpine" style={{ height: '600px', width: '100%' }}>
+  <div className="ag-theme-alpine-dark" style={{ height: '600px', width: '100%' }}>
         <AgGridReact
           ref={gridRef}
           rowData={localRows}
@@ -428,116 +432,4 @@ function setNestedValue(obj: Record<string, unknown>, path: string[], value: unk
   setNestedValue(obj[first] as Record<string, unknown>, rest, value);
 }
 
-// Blueprint-based cell editor for boolean
-const BooleanCellEditor = forwardRef<ICellEditorComp, ICellEditorParams>((props, ref) => {
-  const [value, setValue] = useState(Boolean(props.value));
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useImperativeHandle(ref, () => ({
-    getValue: () => value,
-    getGui: () => containerRef.current!,
-    isCancelBeforeStart: () => false,
-    isCancelAfterEnd: () => false,
-  }));
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setValue(e.target.checked);
-  };
-
-  return (
-    <div ref={containerRef} style={{ padding: '4px' }}>
-      <Checkbox
-        checked={value}
-        onChange={handleChange}
-        style={{ margin: 0 }}
-      />
-    </div>
-  );
-});
-
-// Blueprint-based cell editor for enum/select
-const SelectCellEditor = forwardRef<ICellEditorComp, ICellEditorParams & { enumValues: Array<string | OptionItem> }>((props, ref) => {
-  const [value, setValue] = useState(String(props.value ?? ''));
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useImperativeHandle(ref, () => ({
-    getValue: () => value,
-    getGui: () => containerRef.current!,
-    isCancelBeforeStart: () => false,
-    isCancelAfterEnd: () => false,
-  }));
-
-  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setValue(e.target.value);
-  };
-
-  const opts = props.enumValues.map(v => typeof v === 'string' ? v : { label: v.label, value: v.value });
-
-  return (
-    <div ref={containerRef}>
-      <HTMLSelect
-        value={value}
-        onChange={handleChange}
-        options={opts}
-        fill
-      />
-    </div>
-  );
-});
-
-// Blueprint-based cell editor for number
-const NumberCellEditor = forwardRef<ICellEditorComp, ICellEditorParams>((props, ref) => {
-  const [value, setValue] = useState(props.value as number | undefined);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useImperativeHandle(ref, () => ({
-    getValue: () => value,
-    getGui: () => containerRef.current!,
-    isCancelBeforeStart: () => false,
-    isCancelAfterEnd: () => false,
-  }));
-
-  const handleChange = (val: number) => {
-    setValue(val);
-  };
-
-  return (
-    <div ref={containerRef}>
-      <NumericInput
-        value={value}
-        onValueChange={handleChange}
-        fill
-        buttonPosition="none"
-        small
-      />
-    </div>
-  );
-});
-
-// Blueprint-based cell editor for string
-const StringCellEditor = forwardRef<ICellEditorComp, ICellEditorParams>((props, ref) => {
-  const [value, setValue] = useState(String(props.value ?? ''));
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useImperativeHandle(ref, () => ({
-    getValue: () => value,
-    getGui: () => containerRef.current!,
-    isCancelBeforeStart: () => false,
-    isCancelAfterEnd: () => false,
-  }));
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setValue(e.target.value);
-  };
-
-  return (
-    <div ref={containerRef}>
-      <InputGroup
-        value={value}
-        onChange={handleChange}
-        fill
-        small
-      />
-    </div>
-  );
-});
+// editors moved to src/renderers/table/*.tsx
