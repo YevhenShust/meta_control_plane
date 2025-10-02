@@ -1,0 +1,12 @@
+{
+  "setups": [
+    {
+      "id": "string",
+      "name": "string",
+      "created": "2025-10-02T00:21:14.677Z",
+      "branchToCopyFromId": "string",
+      "copyingMode": "string",
+      "copyVersionMinimalStage": "string"
+    }
+  ]
+}
