@@ -24,21 +24,26 @@ export default function EntityHost({ kind, params }: HostProps) {
   // State for new-draft drawer
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [schema, setSchema] = useState<object | null>(null);
+  const [schemaError, setSchemaError] = useState<string | null>(null);
   const uischema = (params || {})?.uiSchema as object | undefined;
 
   // Open drawer when kind is new-draft
   useEffect(() => {
     if (kind === 'new-draft' && setupId && schemaKey) {
       setDrawerOpen(true);
+      setSchemaError(null);
       // Load schema for the drawer
       loadSchemaByKey(setupId, schemaKey).then(({ json }) => {
         const parsed = typeof json === 'string' ? JSON.parse(json) : json;
         setSchema(parsed as object);
       }).catch(e => {
         console.error('[Host] failed to load schema for new-draft', e);
+        setSchemaError((e as Error).message);
       });
     } else {
       setDrawerOpen(false);
+      setSchema(null);
+      setSchemaError(null);
     }
   }, [kind, setupId, schemaKey]);
 
@@ -50,7 +55,9 @@ export default function EntityHost({ kind, params }: HostProps) {
     
     return (
       <>
-        <div className="content-padding">Creating new {schemaKey}...</div>
+        <div className="content-padding">
+          {schemaError ? `Error loading schema: ${schemaError}` : 'Opening new draft form...'}
+        </div>
         {schema && (
           <NewDraftDrawer
             isOpen={drawerOpen}

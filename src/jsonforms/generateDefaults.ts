@@ -1,6 +1,15 @@
 /**
  * Generate sensible default values from a JSON Schema.
  * Used for initializing new draft forms.
+ * 
+ * Default generation strategy:
+ * - Numbers/integers: 0
+ * - Booleans: false
+ * - Strings: "" (empty), or "00:00:45" if field name contains time/duration/cooldown/delay
+ * - Enums: first option, or "Common" if field name suggests rarity
+ * - Arrays: []
+ * - Objects: recurse through properties
+ * - Null: null
  */
 
 type JsonSchemaType = 'string' | 'number' | 'integer' | 'boolean' | 'array' | 'object' | 'null';

@@ -46,8 +46,8 @@ export default function SidebarMenuContainer({ selectedMenuPath, onSelect }: { s
         }
         return { key: String(d.id ?? ''), label };
       });
-      // Prepend "New" item
-      return [{ key: 'new', label: 'New' }, ...items];
+      // Prepend "New" item with plus icon hint
+      return [{ key: 'new', label: '+ New' }, ...items];
     } catch {
       return [];
     }
