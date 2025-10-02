@@ -177,9 +177,16 @@ export default function TableRenderer({ rows, schema, uischema, onSaveRow }: Tab
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
           small
         />
-        <span style={{ marginLeft: 'auto', fontSize: '12px', color: 'var(--bp5-text-color-muted)' }}>
-          {sortedRows.length} items
-        </span>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <span style={{ fontSize: '12px', color: 'var(--bp5-text-color-muted)' }}>
+            {sortedRows.length} items
+          </span>
+          <Button small icon="plus" text="New" onClick={() => {
+            // delegate to optional onCreate prop via DOM event
+            const ev = new CustomEvent('table-new-request');
+            window.dispatchEvent(ev);
+          }} />
+        </div>
       </div>
 
       <HTMLTable striped interactive bordered style={{ width: '100%' }}>

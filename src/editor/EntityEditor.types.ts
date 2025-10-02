@@ -60,4 +60,6 @@ export interface TableViewProps<Row = unknown> {
 
   onEdit(rowId: string, patch: Partial<Row> | Row): void;
   onSaveRow(rowId: string, nextRow: Row): Promise<EditorSaveOutcome>;
+  /** Optional: invoked when the user wants to create a new draft from the table UI */
+  onCreate?: () => void;
 }
