@@ -162,15 +162,18 @@ export default function SidebarMenu({
     if (!node) return;
     const id = String(node.id);
 
-    // Лист → просто select
+    // 1) Завжди оновлюємо selection → URL синхронізується
+    onSelect(id.split('/'));
+
+    // 2) Далі поведінка вузла
     const isLeaf = !node.hasCaret && (!node.childNodes || node.childNodes.length === 0);
+
     if (isLeaf) {
-      onSelect(id.split('/'));
-      return;
+      return; // для листка більше нічого
     }
 
-    // Динамічний контейнер: toggle з lazy-load
     if (node.hasCaret) {
+      // динамічний контейнер: лінивий лоад + розгортання
       if (node.isExpanded) {
         onNodeCollapse(node);
       } else {
@@ -179,7 +182,7 @@ export default function SidebarMenu({
       return;
     }
 
-    // Статичний контейнер: просте toggle
+    // статичний контейнер: просто toggle
     const hasStaticChildren = !!node.childNodes && node.childNodes.length > 0 && !node.hasCaret;
     if (hasStaticChildren) {
       setNodes((prev) => updateNodeById(prev, id, (n) => ({ ...n, isExpanded: !n.isExpanded })));
