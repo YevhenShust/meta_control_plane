@@ -1,4 +1,5 @@
 import { listSchemasV1, type SchemaDto } from '../shared/api/schema';
+import { tryParseContent } from './parse';
 
 const cache = new Map<string, { id: string; json: unknown }>();
 
@@ -25,12 +26,7 @@ export async function loadSchemaByKey(setupId: string, schemaKey: string): Promi
   const list = await listSchemasV1(setupId);
   for (const s of list as SchemaDto[]) {
     if (!s?.content) continue;
-    let parsed: unknown;
-    try {
-      parsed = typeof s.content === 'string' ? JSON.parse(s.content) : s.content;
-    } catch {
-      continue;
-    }
+    const parsed = tryParseContent(s.content);
     if (parsed && typeof parsed === 'object' && ('$id' in parsed) && (parsed as Record<string, unknown>)['$id'] === schemaKey) {
       // cache and return
       const id = String(s.id ?? '');

@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import NewDraftDrawer from './NewDraftDrawer';
 import { loadSchemaByKey } from '../core/schemaKeyResolver';
 import { useNavigate } from '../hooks/useNavigate';
+import { tryParseContent } from '../core/parse';
 
 type FormParams = { kind: 'form';  params: { schemaKey: string; draftId: string; uiSchema?: UISchemaElement | Record<string, unknown> } };
 type TableParams = { kind: 'table'; params: { schemaKey: string; uiSchema?: Record<string, unknown> } };
@@ -34,8 +35,8 @@ export default function EntityHost({ kind, params }: HostProps) {
       setSchemaError(null);
       // Load schema for the drawer
       loadSchemaByKey(setupId, schemaKey).then(({ json }) => {
-        const parsed = typeof json === 'string' ? JSON.parse(json) : json;
-        setSchema(parsed as object);
+        const parsed = tryParseContent(json) as object;
+        setSchema(parsed);
       }).catch(e => {
         console.error('[Host] failed to load schema for new-draft', e);
         setSchemaError((e as Error).message);

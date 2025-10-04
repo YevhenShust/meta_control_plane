@@ -1,5 +1,6 @@
 import { listSchemasV1 } from '../shared/api/schema';
 import { listDraftsV1 } from '../shared/api/drafts';
+import { tryParseContent } from './parse';
 
 // cache resolved schema ids by key `${setupId}:${schemaKey}`
 const resolvedSchemaIdCache = new Map<string, string | null>();
@@ -14,14 +15,10 @@ export async function resolveSchemaIdByKey(setupId: string, schemaKey: string): 
     try {
       const schemas = await listSchemasV1(setupId);
       for (const s of schemas) {
-        try {
-          const raw = typeof s.content === 'string' ? (JSON.parse(s.content) as unknown) : (s.content as unknown);
-          if (raw && typeof raw === 'object' && (raw as Record<string, unknown>)['$id'] === schemaKey) {
-            resolvedSchemaIdCache.set(cacheKey, String(s.id));
-            return String(s.id);
-          }
-        } catch {
-          // ignore malformed content
+        const raw = tryParseContent(s.content);
+        if (raw && typeof raw === 'object' && (raw as Record<string, unknown>)['$id'] === schemaKey) {
+          resolvedSchemaIdCache.set(cacheKey, String(s.id));
+          return String(s.id);
         }
       }
       resolvedSchemaIdCache.set(cacheKey, null);
@@ -64,14 +61,12 @@ export async function buildSelectOptions(
   const seen = new Set<string>();
   const out: Array<{ label: string; value: string }> = [];
   for (const d of filtered) {
-    try {
-      const c = typeof d.content === 'string' ? (JSON.parse(d.content) as unknown) : (d.content as unknown);
-      const value = String(getByPath(c, cfg.valuePath || 'Id') ?? '');
-      if (!value || seen.has(value)) continue;
-      seen.add(value);
-      const label = String(getByPath(c, cfg.labelPath || 'Id') ?? value);
-      out.push({ label: label || value, value });
-    } catch { /* ignore */ }
+    const c = tryParseContent(d.content);
+    const value = String(getByPath(c, cfg.valuePath || 'Id') ?? '');
+    if (!value || seen.has(value)) continue;
+    seen.add(value);
+    const label = String(getByPath(c, cfg.labelPath || 'Id') ?? value);
+    out.push({ label: label || value, value });
   }
   if (cfg.sort) out.sort((a, b) => a.label.localeCompare(b.label));
   return out;

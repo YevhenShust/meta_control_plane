@@ -1,6 +1,7 @@
 import { http } from './http';
 import type { components } from '../../types/openapi.d.ts';
 import { useMock, loadMockData } from './utils';
+import { tryParseContent } from '../../core/parse';
 
 export type SchemaDto = NonNullable<components['schemas']['SchemaDto']>;
 export type SchemaListResponse = NonNullable<components['schemas']['SchemaListResponse']>;
@@ -48,12 +49,8 @@ export async function getSchemaByIdV1(schemaId: string, setupId: string): Promis
   const list = await listSchemasV1(setupId);
   const hit = list.find(s => s.id === schemaId);
   if (!hit || !hit.content) throw new Error(`Schema not found or empty: ${schemaId}`);
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(hit.content);
-  } catch {
-    parsed = hit.content as unknown;
-  }
+  
+  const parsed = tryParseContent(hit.content);
   _schemaCache.set(schemaId, parsed);
   log('Schema cached and returned');
   return parsed;
