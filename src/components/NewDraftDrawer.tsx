@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import { Drawer, Button, ButtonGroup, Intent } from '@blueprintjs/core';
 import { JsonForms } from '@jsonforms/react';
 import type { JsonSchema, UISchemaElement } from '@jsonforms/core';
@@ -6,8 +6,8 @@ import { generateDefaultUISchema } from '@jsonforms/core';
 import { getBlueprintRenderers } from '../renderers/blueprint/registry';
 import { createAjv } from '../renderers/ajvInstance';
 import { generateDefaultContent } from '../jsonforms/generateDefaults';
-import { createDraft, listDrafts } from '../shared/api';
-import { resolveSchemaIdByKey } from '../core/schemaKeyResolver';
+import { createDraft } from '../shared/api';
+import { useDescriptorOptions } from '../hooks/useDescriptorOptions';
 import { emitChanged } from '../shared/events/DraftEvents';
 import { AppToaster } from './AppToaster';
 
@@ -51,66 +51,46 @@ export default function NewDraftDrawer({
     }
   }, [isOpen, schema]);
 
-  // If schema has DescriptorId (or *DescriptorId) property, fetch descriptor drafts and patch schema.enum
-  const [patchedSchema, setPatchedSchema] = useState<object | null>(null);
-  useEffect(() => {
-    if (!isOpen || !schema || !setupId || !schemaKey) {
-      setPatchedSchema(null);
-      return;
+  // Find descriptor property names in schema
+  const descriptorPropertyKeys = useMemo(() => {
+    if (!schema) return [];
+    const jsonSchema = schema as JsonSchema;
+    const props = jsonSchema.properties as { [key: string]: JsonSchema } | undefined;
+    if (!props) return [];
+    return Object.keys(props).filter(k => /DescriptorId$/i.test(k));
+  }, [schema]);
+
+  // Use hook to load descriptor options for the first descriptor property
+  // (most schemas have only one descriptor property)
+  const firstDescriptorKey = descriptorPropertyKeys[0];
+  const descriptorPropertyName = firstDescriptorKey ? firstDescriptorKey.replace(/Id$/i, '') : undefined;
+  
+  const { options: descriptorOptions } = useDescriptorOptions(
+    isOpen ? setupId : undefined,
+    isOpen ? schemaKey : undefined,
+    descriptorPropertyName
+  );
+
+  // Patch schema with descriptor options when available
+  const patchedSchema = useMemo(() => {
+    if (!schema || descriptorPropertyKeys.length === 0 || descriptorOptions.length === 0) {
+      return null;
     }
 
-    (async () => {
-      try {
-  const jsonSchema = schema as JsonSchema;
-  const props = jsonSchema.properties as { [key: string]: JsonSchema } | undefined;
-        if (!props) return;
-        // find candidate property names that look like DescriptorId
-        const keys = Object.keys(props).filter(k => /DescriptorId$/i.test(k));
-        if (keys.length === 0) return;
-
-        // heuristics for descriptor schemaKey
-        const candidates: string[] = [];
-        if (schemaKey.endsWith('Spawn')) candidates.push(schemaKey.replace(/Spawn$/, 'Descriptor'));
-        // also try base property name
-        const propBase = keys[0].replace(/Id$/i, '');
-        if (propBase) candidates.push(propBase);
-
-        let resolved: string | null = null;
-        for (const c of candidates) {
-          try {
-            const id = await resolveSchemaIdByKey(setupId, c);
-            if (id) { resolved = id; break; }
-          } catch { /* continue */ }
-        }
-        if (!resolved) return;
-
-        const drafts = await listDrafts(setupId);
-        const options = drafts
-          .filter(d => String(d.schemaId || '') === String(resolved))
-          .map(d => {
-            const parsed = d.content;
-            if (parsed && typeof parsed === 'object') {
-              const asObj = parsed as Record<string, unknown>;
-              const descriptorId = String(asObj['Id'] ?? asObj['id'] ?? '');
-              if (descriptorId) return descriptorId;
-            }
-            return String(d.id ?? '');
-          });
-        if (options.length === 0) return;
-
-        // deep clone schema and inject enum into the matching property
-        const clone = structuredClone(jsonSchema);
-        for (const k of keys) {
-          if (!clone.properties) clone.properties = {};
-          clone.properties[k] = { ...(clone.properties[k] || {}), enum: options };
-        }
-        setPatchedSchema(clone as object);
-      } catch (e) {
-        console.debug('[NewDraftDrawer] failed to fetch descriptor options', e);
-        setPatchedSchema(null);
-      }
-    })();
-  }, [isOpen, schema, setupId, schemaKey]);
+    const jsonSchema = schema as JsonSchema;
+    const clone = structuredClone(jsonSchema);
+    
+    // Extract just the values from descriptor options
+    const optionValues = descriptorOptions.map(opt => opt.value);
+    
+    // Inject enum into all descriptor properties
+    for (const k of descriptorPropertyKeys) {
+      if (!clone.properties) clone.properties = {};
+      clone.properties[k] = { ...(clone.properties[k] || {}), enum: optionValues };
+    }
+    
+    return clone as object;
+  }, [schema, descriptorPropertyKeys, descriptorOptions]);
 
   const handleClose = useCallback(() => {
     if (!saving) {

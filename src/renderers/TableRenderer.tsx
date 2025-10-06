@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import type { TableViewProps } from '../editor/EntityEditor.types';
 import { Button, InputGroup, NonIdealState, Intent, Position, Toaster } from '@blueprintjs/core';
-import type { JsonSchema } from '@jsonforms/core';
-import { resolveSchemaIdByKey } from '../core/schemaKeyResolver';
-import { listDrafts } from '../shared/api';
+import { flattenSchemaToColumns, orderColumnsByUISchema } from '../core/schemaTools';
+import { useDescriptorOptionsForColumns } from '../hooks/useDescriptorOptions';
 import { AgGridReact } from 'ag-grid-react';
 import type { ColDef } from 'ag-grid-community';
 import BooleanCellEditor from './table/BooleanCellEditor';
@@ -17,9 +16,9 @@ interface OptionItem { label: string; value: string }
 
 interface ColumnDef {
   key: string;
-  label: string;
+  title: string;
   path: string[];
-  type: 'string' | 'number' | 'boolean' | 'enum';
+  type: string;
   enumValues?: Array<string | OptionItem>;
 }
 
@@ -61,20 +60,52 @@ export default function TableRenderer({ rows, schema, uischema, onSaveRow, setup
 
   // Extract columns from schema
   const columns = useMemo(() => {
-    const cols = extractColumns(schema, uischema);
-    log('Columns extracted:', cols.length, 'columns', cols.map(c => c.key));
-    return cols;
+    const cols = flattenSchemaToColumns(schema).map(col => ({
+      key: col.key,
+      title: col.title,
+      path: col.path || [col.key],
+      type: col.type,
+      enumValues: col.enumValues,
+    }));
+    const ordered = orderColumnsByUISchema(cols, uischema);
+    log('Columns extracted:', ordered.length, 'columns', ordered.map(c => c.key));
+    return ordered;
   }, [schema, uischema]);
 
-  const [columnOptions, setColumnOptions] = useState<Record<string, Array<string | OptionItem>>>({});
+  // Identify descriptor columns (columns ending with DescriptorId)
+  const descriptorColumns = useMemo(() => {
+    return columns.filter(col => {
+      const last = col.path && col.path.length > 0 ? col.path[col.path.length - 1] : undefined;
+      return last && /DescriptorId$/i.test(last);
+    });
+  }, [columns]);
+
+  // Batch-load descriptor options for all descriptor columns.
+  // Filter out any undefined names and dedupe so the hook only runs necessary requests.
+  const descriptorPropertyNames = useMemo(() => {
+    const names = descriptorColumns
+      .map(col => (col.path && col.path.length > 0 ? col.path[col.path.length - 1]?.replace(/Id$/i, '') : undefined))
+      .filter((n): n is string => !!n);
+    return Array.from(new Set(names));
+  }, [descriptorColumns]);
+
+  const { map: descriptorOptionsMap } = useDescriptorOptionsForColumns(setupId, schemaKey, descriptorPropertyNames);
 
   // merge in options into columns for rendering
   const renderedColumns = useMemo(() => {
     return columns.map(c => {
-      const opts = (columnOptions && columnOptions[c.key]) ? columnOptions[c.key] : c.enumValues;
+      // Check if this is a descriptor column and if we have options for it
+      let opts = c.enumValues;
+      
+      // If this column corresponds to a descriptor property, load options from the map
+      const last = c.path && c.path.length > 0 ? c.path[c.path.length - 1]?.replace(/Id$/i, '') : undefined;
+      if (last && descriptorOptionsMap && descriptorOptionsMap[last] && descriptorOptionsMap[last].length > 0) {
+        opts = descriptorOptionsMap[last];
+      }
+      
       return { ...c, enumValues: opts } as ColumnDef;
     });
-  }, [columns, columnOptions]);
+  }, [columns, descriptorOptionsMap]);
 
   const handleCellChange = useCallback((rowId: string, path: string[], value: unknown) => {
     // Get the current row state before update
@@ -141,7 +172,7 @@ export default function TableRenderer({ rows, schema, uischema, onSaveRow, setup
     return renderedColumns.map(col => {
       const colDef: ColDef = {
         field: col.key,
-        headerName: col.label,
+        headerName: col.title,
         sortable: true,
         filter: true,
         editable: true,
@@ -177,64 +208,6 @@ export default function TableRenderer({ rows, schema, uischema, onSaveRow, setup
       return colDef;
     });
   }, [renderedColumns, handleCellChange]);
-
-  useEffect(() => {
-    if (!setupId || !schemaKey) return;
-    // for each column that ends with DescriptorId, try to resolve descriptor schema and fetch its drafts
-    columns.forEach((col) => {
-      const last = col.path[col.path.length - 1];
-      if (!last || !/DescriptorId$/i.test(last)) return;
-
-      (async () => {
-        // heuristics: try replacing 'Spawn' suffix in schemaKey with 'Descriptor', else try the property base name
-        const candidates: string[] = [];
-        if (schemaKey.endsWith('Spawn')) candidates.push(schemaKey.replace(/Spawn$/, 'Descriptor'));
-        const propBase = last.replace(/Id$/i, '');
-        if (propBase) candidates.push(propBase);
-
-        let resolvedKey: string | null = null;
-        for (const cand of candidates) {
-          try {
-            const id = await resolveSchemaIdByKey(setupId, cand);
-            if (id) { resolvedKey = cand; break; }
-          } catch { /* try next */ }
-        }
-        if (!resolvedKey) return;
-
-        try {
-          const schemaId = await resolveSchemaIdByKey(setupId, resolvedKey!);
-          const drafts = await listDrafts(setupId);
-          const opts = drafts
-            .filter(d => String(d.schemaId || '') === String(schemaId))
-            .map(d => {
-                let label: string;
-                const parsed = d.content;
-                if (parsed && typeof parsed === 'object') {
-                  const asObj = parsed as Record<string, unknown>;
-                  const nice = String(asObj['Id'] ?? asObj['name'] ?? '');
-                  if (nice) {
-                    label = `${nice} (${d.id})`;
-                  } else {
-                    label = String(d.id ?? '');
-                  }
-                } else {
-                  label = String(d.id ?? '');
-                }
-                // prefer descriptor's internal Id property as the option value if present
-                if (parsed && typeof parsed === 'object') {
-                  const asObj = parsed as Record<string, unknown>;
-                  const descriptorId = String(asObj['Id'] ?? asObj['id'] ?? '');
-                  if (descriptorId) return { label, value: descriptorId } as OptionItem;
-                }
-                return { label, value: String(d.id ?? '') } as OptionItem;
-            });
-          setColumnOptions(prev => ({ ...prev, [col.key]: opts }));
-        } catch (e) {
-          console.debug('[Table] failed to fetch descriptor drafts', e);
-        }
-      })();
-    });
-  }, [columns, setupId, schemaKey]);
 
   // Apply quick filter when search term changes
   useEffect(() => {
@@ -291,112 +264,7 @@ export default function TableRenderer({ rows, schema, uischema, onSaveRow, setup
   );
 }
 
-// Extract columns from JSON Schema, optionally respecting UISchema order
-function extractColumns(schema: object, uischema?: object): ColumnDef[] {
-  const cols: ColumnDef[] = [];
-  const jsonSchema = schema as JsonSchema;
-  
-  if (!jsonSchema.properties) return cols;
-
-  const props = jsonSchema.properties as Record<string, JsonSchema>;
-  
-  // Try to get order from UISchema if available
-  const orderedKeys = uischema ? extractOrderFromUISchema(uischema, props) : Object.keys(props);
-
-  for (const key of orderedKeys) {
-    const propSchema = props[key];
-    if (!propSchema) continue;
-
-    // Resolve $ref if present
-    const resolvedSchema = propSchema.$ref ? resolveRef(propSchema.$ref, jsonSchema) : propSchema;
-    
-    if (resolvedSchema.type === 'object' && resolvedSchema.properties) {
-      // Flatten nested objects
-      const nestedProps = resolvedSchema.properties as Record<string, JsonSchema>;
-      for (const [nestedKey, nestedSchema] of Object.entries(nestedProps)) {
-        cols.push({
-          key: `${key}.${nestedKey}`,
-          label: `${key}.${nestedKey}`,
-          path: [key, nestedKey],
-          type: inferType(nestedSchema),
-          enumValues: nestedSchema.enum as string[] | undefined,
-        });
-      }
-    } else {
-      cols.push({
-        key,
-        label: key,
-        path: [key],
-        type: inferType(resolvedSchema),
-        enumValues: resolvedSchema.enum as string[] | undefined,
-      });
-    }
-  }
-
-  return cols;
-}
-
-// Extract property order from UISchema
-function extractOrderFromUISchema(uischema: object, props: Record<string, JsonSchema>): string[] {
-  const order: string[] = [];
-  const ui = uischema as { elements?: Array<{ scope?: string; elements?: unknown[] }> };
-  
-  if (!ui.elements) return Object.keys(props);
-
-  const extractScopes = (elements: unknown[]): void => {
-    for (const el of elements) {
-      if (typeof el === 'object' && el !== null) {
-        const elem = el as { scope?: string; elements?: unknown[] };
-        if (elem.scope && typeof elem.scope === 'string') {
-          // Extract property name from scope like "#/properties/Id"
-          const match = elem.scope.match(/#\/properties\/([^/]+)/);
-          if (match && match[1] && props[match[1]]) {
-            if (!order.includes(match[1])) {
-              order.push(match[1]);
-            }
-          }
-        }
-        if (elem.elements && Array.isArray(elem.elements)) {
-          extractScopes(elem.elements);
-        }
-      }
-    }
-  };
-
-  extractScopes(ui.elements);
-  
-  // Add any remaining properties not in UISchema
-  for (const key of Object.keys(props)) {
-    if (!order.includes(key)) {
-      order.push(key);
-    }
-  }
-
-  return order;
-}
-
-// Resolve $ref within schema
-function resolveRef(ref: string, schema: JsonSchema): JsonSchema {
-  if (!ref.startsWith('#/$defs/')) return { type: 'string' };
-  
-  const defName = ref.slice(8); // Remove "#/$defs/"
-  const schemaAny = schema as unknown as { $defs?: Record<string, JsonSchema> };
-  const defs = schemaAny.$defs;
-  
-  if (defs && defs[defName]) {
-    return defs[defName];
-  }
-  
-  return { type: 'string' };
-}
-
-function inferType(schema: JsonSchema): 'string' | 'number' | 'boolean' | 'enum' {
-  if (schema.enum) return 'enum';
-  if (schema.type === 'number' || schema.type === 'integer') return 'number';
-  if (schema.type === 'boolean') return 'boolean';
-  return 'string';
-}
-
+// Helper functions for nested value access
 function getNestedValue(obj: Record<string, unknown>, path: string[]): unknown {
   let current: unknown = obj;
   for (const key of path) {
@@ -422,5 +290,3 @@ function setNestedValue(obj: Record<string, unknown>, path: string[], value: unk
   }
   setNestedValue(obj[first] as Record<string, unknown>, rest, value);
 }
-
-// editors moved to src/renderers/table/*.tsx
