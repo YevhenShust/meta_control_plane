@@ -26,17 +26,19 @@ export interface ColumnDef {
  */
 export function flattenSchemaToColumns(schema: unknown): ColumnDef[] {
   const cols: ColumnDef[] = [];
-  const jsonSchema = schema as JsonSchema;
-  
-  if (!jsonSchema.properties) return cols;
 
-  const props = jsonSchema.properties as Record<string, JsonSchema>;
+  // Basic runtime guard: we expect a plain object-like JSON schema with a 'properties' field
+  if (!schema || typeof schema !== 'object') return cols;
+  const schemaAny = schema as Record<string, unknown>;
+  if (!schemaAny.properties || typeof schemaAny.properties !== 'object') return cols;
+
+  const props = schemaAny.properties as Record<string, JsonSchema>;
 
   for (const [key, propSchema] of Object.entries(props)) {
     if (!propSchema) continue;
 
-    // Resolve $ref if present
-    const resolvedSchema = propSchema.$ref ? resolveRef(propSchema.$ref, jsonSchema) : propSchema;
+  // Resolve $ref if present
+  const resolvedSchema = propSchema.$ref ? resolveRef(propSchema.$ref, schemaAny as unknown as JsonSchema) : propSchema;
     
     if (resolvedSchema.type === 'object' && resolvedSchema.properties) {
       // Flatten nested objects
