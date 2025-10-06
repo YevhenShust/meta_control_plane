@@ -75,7 +75,7 @@ export default function TableRenderer({ rows, schema, uischema, onSaveRow, setup
   // Identify descriptor columns (columns ending with DescriptorId)
   const descriptorColumns = useMemo(() => {
     return columns.filter(col => {
-      const last = col.path[col.path.length - 1];
+      const last = col.path && col.path.length > 0 ? col.path[col.path.length - 1] : undefined;
       return last && /DescriptorId$/i.test(last);
     });
   }, [columns]);
@@ -90,19 +90,25 @@ export default function TableRenderer({ rows, schema, uischema, onSaveRow, setup
   const descriptor0Options = useDescriptorOptions(
     setupId,
     schemaKey,
-    descriptorColumn0 ? descriptorColumn0.path[descriptorColumn0.path.length - 1]?.replace(/Id$/i, '') : undefined
+    descriptorColumn0 && descriptorColumn0.path && descriptorColumn0.path.length > 0
+      ? descriptorColumn0.path[descriptorColumn0.path.length - 1]?.replace(/Id$/i, '')
+      : undefined
   );
   
   const descriptor1Options = useDescriptorOptions(
     setupId,
     schemaKey,
-    descriptorColumn1 ? descriptorColumn1.path[descriptorColumn1.path.length - 1]?.replace(/Id$/i, '') : undefined
+    descriptorColumn1 && descriptorColumn1.path && descriptorColumn1.path.length > 0
+      ? descriptorColumn1.path[descriptorColumn1.path.length - 1]?.replace(/Id$/i, '')
+      : undefined
   );
   
   const descriptor2Options = useDescriptorOptions(
     setupId,
     schemaKey,
-    descriptorColumn2 ? descriptorColumn2.path[descriptorColumn2.path.length - 1]?.replace(/Id$/i, '') : undefined
+    descriptorColumn2 && descriptorColumn2.path && descriptorColumn2.path.length > 0
+      ? descriptorColumn2.path[descriptorColumn2.path.length - 1]?.replace(/Id$/i, '')
+      : undefined
   );
 
   // merge in options into columns for rendering
