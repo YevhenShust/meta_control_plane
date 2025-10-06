@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import type { TableViewProps } from '../editor/EntityEditor.types';
 import { Button, InputGroup, NonIdealState, Intent, Position, Toaster } from '@blueprintjs/core';
 import { flattenSchemaToColumns, orderColumnsByUISchema } from '../core/schemaTools';
-import { useDescriptorOptions } from '../hooks/useDescriptorOptions';
+import { useDescriptorOptionsForColumns } from '../hooks/useDescriptorOptions';
 import { AgGridReact } from 'ag-grid-react';
 import type { ColDef } from 'ag-grid-community';
 import BooleanCellEditor from './table/BooleanCellEditor';
@@ -80,36 +80,16 @@ export default function TableRenderer({ rows, schema, uischema, onSaveRow, setup
     });
   }, [columns]);
 
-  // Use hook to load descriptor options for each descriptor column
-  // We'll collect all the hook results and merge them into columnOptions
-  // Note: We need to call hooks unconditionally, so we'll use a fixed approach
-  const descriptorColumn0 = descriptorColumns[0];
-  const descriptorColumn1 = descriptorColumns[1];
-  const descriptorColumn2 = descriptorColumns[2];
-  
-  const descriptor0Options = useDescriptorOptions(
-    setupId,
-    schemaKey,
-    descriptorColumn0 && descriptorColumn0.path && descriptorColumn0.path.length > 0
-      ? descriptorColumn0.path[descriptorColumn0.path.length - 1]?.replace(/Id$/i, '')
-      : undefined
-  );
-  
-  const descriptor1Options = useDescriptorOptions(
-    setupId,
-    schemaKey,
-    descriptorColumn1 && descriptorColumn1.path && descriptorColumn1.path.length > 0
-      ? descriptorColumn1.path[descriptorColumn1.path.length - 1]?.replace(/Id$/i, '')
-      : undefined
-  );
-  
-  const descriptor2Options = useDescriptorOptions(
-    setupId,
-    schemaKey,
-    descriptorColumn2 && descriptorColumn2.path && descriptorColumn2.path.length > 0
-      ? descriptorColumn2.path[descriptorColumn2.path.length - 1]?.replace(/Id$/i, '')
-      : undefined
-  );
+  // Batch-load descriptor options for all descriptor columns.
+  // Filter out any undefined names and dedupe so the hook only runs necessary requests.
+  const descriptorPropertyNames = useMemo(() => {
+    const names = descriptorColumns
+      .map(col => (col.path && col.path.length > 0 ? col.path[col.path.length - 1]?.replace(/Id$/i, '') : undefined))
+      .filter((n): n is string => !!n);
+    return Array.from(new Set(names));
+  }, [descriptorColumns]);
+
+  const { map: descriptorOptionsMap } = useDescriptorOptionsForColumns(setupId, schemaKey, descriptorPropertyNames);
 
   // merge in options into columns for rendering
   const renderedColumns = useMemo(() => {
@@ -117,17 +97,15 @@ export default function TableRenderer({ rows, schema, uischema, onSaveRow, setup
       // Check if this is a descriptor column and if we have options for it
       let opts = c.enumValues;
       
-      if (descriptorColumn0 && c.key === descriptorColumn0.key && descriptor0Options.options.length > 0) {
-        opts = descriptor0Options.options;
-      } else if (descriptorColumn1 && c.key === descriptorColumn1.key && descriptor1Options.options.length > 0) {
-        opts = descriptor1Options.options;
-      } else if (descriptorColumn2 && c.key === descriptorColumn2.key && descriptor2Options.options.length > 0) {
-        opts = descriptor2Options.options;
+      // If this column corresponds to a descriptor property, load options from the map
+      const last = c.path && c.path.length > 0 ? c.path[c.path.length - 1]?.replace(/Id$/i, '') : undefined;
+      if (last && descriptorOptionsMap && descriptorOptionsMap[last] && descriptorOptionsMap[last].length > 0) {
+        opts = descriptorOptionsMap[last];
       }
       
       return { ...c, enumValues: opts } as ColumnDef;
     });
-  }, [columns, descriptorColumn0, descriptorColumn1, descriptorColumn2, descriptor0Options.options, descriptor1Options.options, descriptor2Options.options]);
+  }, [columns, descriptorOptionsMap]);
 
   const handleCellChange = useCallback((rowId: string, path: string[], value: unknown) => {
     // Get the current row state before update

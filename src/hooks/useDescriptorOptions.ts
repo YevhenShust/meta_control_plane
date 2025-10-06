@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { resolveSchemaIdByKey } from '../core/schemaKeyResolver';
 import { listDrafts } from '../shared/api';
 import { resolveDescriptorSchemaKeyHeuristics } from '../core/schemaTools';
@@ -16,6 +16,9 @@ interface CacheEntry {
 // Global cache to persist across hook instances
 const globalCache = new Map<string, CacheEntry>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+// Track in-flight fetches per cache key so concurrent callers share the same promise
+const inFlightRequests = new Map<string, Promise<DescriptorOption[]>>();
 
 /**
  * Hook to load descriptor options for a given schema key.
@@ -70,80 +73,9 @@ export function useDescriptorOptions(
 
     (async () => {
       try {
-        // Get descriptor schema key candidates using heuristics
-        const candidates = resolveDescriptorSchemaKeyHeuristics(
-          propertyName || baseSchemaKey
-        );
-
-        // Try to resolve one of the candidates
-        let resolvedSchemaId: string | null = null;
-        for (const candidate of candidates) {
-          try {
-            const id = await resolveSchemaIdByKey(setupId, candidate);
-            if (id) {
-              resolvedSchemaId = id;
-              break;
-            }
-          } catch {
-            // Continue to next candidate
-          }
-        }
-
-        if (!resolvedSchemaId) {
-          setOptions([]);
-          setLoading(false);
-          return;
-        }
-
-        // Check if aborted
-        if (abortController.signal.aborted) return;
-
-        // Fetch drafts for the resolved schema
-        const drafts = await listDrafts(setupId);
-
-        // Check if aborted
-        if (abortController.signal.aborted) return;
-
-        // Filter and map drafts to options
-        const descriptorOptions = drafts
-          .filter(d => String(d.schemaId || '') === String(resolvedSchemaId))
-          .map(d => {
-            let label: string;
-            const parsed = d.content;
-
-            if (parsed && typeof parsed === 'object') {
-              const asObj = parsed as Record<string, unknown>;
-              const nice = String(asObj['Id'] ?? asObj['name'] ?? '');
-              if (nice) {
-                label = `${nice} (${d.id})`;
-              } else {
-                label = String(d.id ?? '');
-              }
-            } else {
-              label = String(d.id ?? '');
-            }
-
-            // Prefer descriptor's internal Id property as the option value
-            let value: string = String(d.id ?? '');
-            if (parsed && typeof parsed === 'object') {
-              const asObj = parsed as Record<string, unknown>;
-              const descriptorId = String(asObj['Id'] ?? asObj['id'] ?? '');
-              if (descriptorId) {
-                value = descriptorId;
-              }
-            }
-
-            return { label, value };
-          });
-
-        // Cache the result
-        globalCache.set(cacheKey, {
-          options: descriptorOptions,
-          timestamp: Date.now(),
-        });
-
+        const opts = await loadDescriptorOptions(setupId, baseSchemaKey, propertyName, abortController.signal);
         if (!abortController.signal.aborted) {
-          setOptions(descriptorOptions);
+          setOptions(opts);
           setLoading(false);
         }
       } catch (e) {
@@ -162,4 +94,142 @@ export function useDescriptorOptions(
   }, [setupId, baseSchemaKey, propertyName]);
 
   return { options, loading, error };
+}
+
+/**
+ * Helper to load descriptor options for a single property. Separated so it can be reused
+ * by batch hooks / server-side transforms.
+ */
+export async function loadDescriptorOptions(
+  setupId: string,
+  baseSchemaKey: string,
+  propertyName: string | undefined,
+  signal?: AbortSignal
+): Promise<DescriptorOption[]> {
+  // Use a stable cache key for both caching and in-flight dedupe
+  const cacheKey = `${setupId}:${baseSchemaKey}:${propertyName || ''}`;
+
+  // Return cached if still fresh
+  const cached = globalCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.options;
+  }
+
+  // If another caller already started the same fetch, reuse that promise
+  const existing = inFlightRequests.get(cacheKey);
+  if (existing) {
+    return existing;
+  }
+
+  if (signal?.aborted) return [];
+
+  // Create the fetch promise and store it so concurrent callers reuse it
+  const promise = (async (): Promise<DescriptorOption[]> => {
+    // Heuristics candidates
+    const candidates = resolveDescriptorSchemaKeyHeuristics(propertyName || baseSchemaKey);
+
+    // Resolve one candidate to schemaId
+    let resolvedSchemaId: string | null = null;
+    for (const candidate of candidates) {
+      try {
+        const id = await resolveSchemaIdByKey(setupId, candidate);
+        if (id) { resolvedSchemaId = id; break; }
+      } catch { /* continue */ }
+    }
+
+    if (!resolvedSchemaId) return [];
+    if (signal?.aborted) return [];
+
+    const drafts = await listDrafts(setupId);
+    if (signal?.aborted) return [];
+
+    const descriptorOptions = drafts
+      .filter(d => String(d.schemaId || '') === String(resolvedSchemaId))
+      .map(d => {
+        let label: string;
+        const parsed = d.content;
+        if (parsed && typeof parsed === 'object') {
+          const asObj = parsed as Record<string, unknown>;
+          const nice = String(asObj['Id'] ?? asObj['name'] ?? '');
+          label = nice ? `${nice} (${d.id})` : String(d.id ?? '');
+        } else {
+          label = String(d.id ?? '');
+        }
+        let value = String(d.id ?? '');
+        if (parsed && typeof parsed === 'object') {
+          const asObj = parsed as Record<string, unknown>;
+          const descriptorId = String(asObj['Id'] ?? asObj['id'] ?? '');
+          if (descriptorId) value = descriptorId;
+        }
+        return { label, value } as DescriptorOption;
+      });
+
+    // Atomically update cache for this key
+    try {
+      globalCache.set(cacheKey, { options: descriptorOptions, timestamp: Date.now() });
+    } catch {
+      // non-fatal: if cache set fails for some reason, still return the data
+    }
+
+    return descriptorOptions;
+  })();
+
+  inFlightRequests.set(cacheKey, promise);
+  // Ensure removal of the in-flight record regardless of success/failure
+  promise.finally(() => { inFlightRequests.delete(cacheKey); });
+
+  return promise;
+}
+
+/**
+ * Batch hook: return descriptor options for an array of descriptor column keys.
+ * Returns a map keyed by the propertyName (the base property name without 'Id').
+ */
+export function useDescriptorOptionsForColumns(
+  setupId: string | undefined,
+  baseSchemaKey: string | undefined,
+  propertyNames: Array<string | undefined>
+): { map: Record<string, DescriptorOption[]>; loading: boolean; error: string | null } {
+  const [map, setMap] = useState<Record<string, DescriptorOption[]>>({});
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const propNamesKey = useMemo(() => (propertyNames || []).map(p => p ?? '').join('|'), [propertyNames]);
+
+  useEffect(() => {
+    if (!setupId || !baseSchemaKey) { setMap({}); setLoading(false); setError(null); return; }
+    if (!propertyNames || propertyNames.length === 0) { setMap({}); setLoading(false); setError(null); return; }
+
+    if (abortRef.current) abortRef.current.abort();
+    const ac = new AbortController(); abortRef.current = ac;
+    setLoading(true); setError(null);
+
+    (async () => {
+      try {
+        const entries: [string, DescriptorOption[]][] = [];
+        for (const pn of propertyNames) {
+          if (!pn) continue;
+          const opts = await loadDescriptorOptions(setupId, baseSchemaKey, pn, ac.signal);
+          if (ac.signal.aborted) return;
+          entries.push([pn, opts]);
+        }
+        const result: Record<string, DescriptorOption[]> = {};
+        for (const [k, v] of entries) result[k] = v;
+        if (!ac.signal.aborted) {
+          setMap(result);
+          setLoading(false);
+        }
+      } catch (e) {
+        if (!ac.signal.aborted) {
+          setError(e instanceof Error ? e.message : String(e));
+          setMap({});
+          setLoading(false);
+        }
+      }
+    })();
+
+    return () => { ac.abort(); };
+  }, [setupId, baseSchemaKey, propNamesKey, propertyNames]);
+
+  return { map, loading, error };
 }
