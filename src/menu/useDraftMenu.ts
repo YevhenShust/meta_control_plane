@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { onChanged } from '../shared/events/DraftEvents';
 import useSetups from '../setup/useSetups';
 import { resolveSchemaIdByKey } from '../core/schemaKeyResolver';
-import { listDrafts, type DraftDto } from '../shared/api';
+import { listDrafts, type DraftParsed } from '../shared/api';
 
 /** Те, що очікує Sidebar: листок, який відкриває форму рендерером */
 export type DraftMenuItem = {
@@ -18,7 +18,7 @@ type UseDraftMenuOptions = {
   /**
    * Як отримати заголовок з контенту. За замовчуванням: content.Id || draft.id
    */
-  titleSelector?: (content: unknown, draft: DraftDto) => string;
+  titleSelector?: (content: unknown, draft: DraftParsed) => string;
 };
 
 type UseDraftMenuResult = {
@@ -50,7 +50,7 @@ export function useDraftMenu(options: UseDraftMenuOptions): UseDraftMenuResult {
   const mountedRef = useRef(true);
   useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
 
-  const buildTitle = useCallback((content: unknown, d: DraftDto): string => {
+  const buildTitle = useCallback((content: unknown, d: DraftParsed): string => {
     if (titleSelector) {
       const t = (titleSelector(content, d) || '').trim();
       if (t) return t;

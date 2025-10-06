@@ -1,2 +1,2 @@
-// Re-export the canonical DraftDto from the API module (generated from OpenAPI)
-export type { DraftDto } from '../shared/api/drafts';
+// Facade: expose parsed draft shape to the application as DraftDto
+export type { DraftParsed as DraftDto } from '../shared/api';

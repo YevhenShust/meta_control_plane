@@ -1,5 +1,4 @@
-import { listSchemasV1 } from '../shared/api/schema';
-import { listDrafts } from '../shared/api';
+import { listSchemasV1, listDrafts } from '../shared/api';
 import { tryParseContent } from './parse';
 
 // cache resolved schema ids by key `${setupId}:${schemaKey}`

@@ -1,5 +1,5 @@
 import React, { createContext, useEffect, useState, useCallback } from 'react';
-import { listSetups, createSetup as apiCreateSetup, getSetupById, type SetupDto } from '../shared/api/setup';
+import { listSetups, createSetup as apiCreateSetup, getSetupById, type SetupParsed } from '../shared/api';
 
 export type Setup = { id: string; name: string };
 
@@ -29,7 +29,7 @@ export const SetupsProvider: React.FC<React.PropsWithChildren<unknown>> = ({ chi
   const fetchSetups = useCallback(async () => {
     try {
       const data = await listSetups();
-      setSetups(Array.isArray(data) ? data.map((d: SetupDto) => ({ id: d.id as string, name: (d.name as string) || (d.id as string) })) : []);
+  setSetups(Array.isArray(data) ? data.map((d: SetupParsed) => ({ id: String(d.id), name: String(d.name ?? d.id ?? '') })) : []);
     } catch {
       setSetups([]);
     }
