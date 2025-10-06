@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { onChanged } from '../shared/events/DraftEvents';
 import useSetups from '../setup/useSetups';
 import { resolveSchemaIdByKey } from '../core/schemaKeyResolver';
-import { listDraftsV1, type DraftDto } from '../shared/api/drafts';
+import { listDrafts, type DraftDto } from '../shared/api';
 
 /** Те, що очікує Sidebar: листок, який відкриває форму рендерером */
 export type DraftMenuItem = {
@@ -67,11 +67,10 @@ export function useDraftMenu(options: UseDraftMenuOptions): UseDraftMenuResult {
     try {
       const schemaId = await resolveSchemaIdByKey(selectedId, schemaKey);
       if (!schemaId) return [];
-      const all = await listDraftsV1(selectedId);
+      const all = await listDrafts(selectedId);
       const filtered = all.filter(d => String(d.schemaId || '') === String(schemaId));
       const mapped = filtered.map(d => {
-        let content: unknown = {};
-        try { content = typeof d.content === 'string' ? JSON.parse(d.content) : d.content ?? {}; } catch { content = {}; }
+        const content = d.content ?? {};
         return { title: buildTitle(content, d), kind: 'form' as const, params: { schemaKey, draftId: String(d.id) } } as DraftMenuItem;
       });
       if (mountedRef.current) setItems(mapped);

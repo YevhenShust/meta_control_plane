@@ -1,5 +1,5 @@
 import { listSchemasV1 } from '../shared/api/schema';
-import { listDraftsV1 } from '../shared/api/drafts';
+import { listDrafts } from '../shared/api';
 import { tryParseContent } from './parse';
 
 // cache resolved schema ids by key `${setupId}:${schemaKey}`
@@ -56,12 +56,12 @@ export async function buildSelectOptions(
 ): Promise<Array<{ label: string; value: string }>> {
   const schemaId = await resolveSchemaIdByKey(setupId, cfg.schemaKey);
   if (!schemaId) return [];
-  const drafts = await listDraftsV1(setupId);
+  const drafts = await listDrafts(setupId);
   const filtered = drafts.filter(d => String(d.schemaId || '') === String(schemaId));
   const seen = new Set<string>();
   const out: Array<{ label: string; value: string }> = [];
   for (const d of filtered) {
-    const c = tryParseContent(d.content);
+    const c = d.content;
     const value = String(getByPath(c, cfg.valuePath || 'Id') ?? '');
     if (!value || seen.has(value)) continue;
     seen.add(value);

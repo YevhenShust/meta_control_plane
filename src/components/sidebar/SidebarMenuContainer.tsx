@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import SidebarMenu from './SidebarMenu';
 import menuStructure, { getDynamicConfig as getDynCfg } from './menuStructure';
 import useSetups from '../../setup/useSetups';
-import { listDraftsV1 } from '../../shared/api/drafts';
+import { listDrafts } from '../../shared/api';
 import { resolveSchemaIdByKey } from '../../core/uiLinking';
 import { onChanged } from '../../shared/events/DraftEvents';
 import { dynamicRoutes } from './menuStructure';
@@ -64,18 +64,14 @@ export default function SidebarMenuContainer({ selectedMenuPath, onSelect }: { s
       // resolve schema id by key and list drafts, then filter by schemaId
       const schemaId = await resolveSchemaIdByKey(setupId, cfg.schemaKey);
       if (!schemaId) return [];
-      const drafts = await listDraftsV1(setupId);
+      const drafts = await listDrafts(setupId);
       const filtered = drafts.filter(d => String(d.schemaId || '') === String(schemaId));
       const items = filtered.map(d => {
         let label = String(d.id ?? '');
-        try {
-          const parsed: unknown = typeof d.content === 'string' ? JSON.parse(d.content) : d.content;
-          if (parsed && typeof parsed === 'object') {
-            const asObj = parsed as Record<string, unknown>;
-            label = String(asObj['Id'] ?? asObj['name'] ?? label);
-          }
-        } catch {
-          // ignore parse errors and keep fallback label
+        const parsed = d.content;
+        if (parsed && typeof parsed === 'object') {
+          const asObj = parsed as Record<string, unknown>;
+          label = String(asObj['Id'] ?? asObj['name'] ?? label);
         }
         return { key: String(d.id ?? ''), label };
       });
