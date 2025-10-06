@@ -6,9 +6,8 @@ import { generateDefaultUISchema } from '@jsonforms/core';
 import { getBlueprintRenderers } from '../renderers/blueprint/registry';
 import { createAjv } from '../renderers/ajvInstance';
 import { generateDefaultContent } from '../jsonforms/generateDefaults';
-import { createDraftV1 } from '../shared/api/drafts';
+import { createDraft, listDrafts } from '../shared/api';
 import { resolveSchemaIdByKey } from '../core/schemaKeyResolver';
-import { listDraftsV1 } from '../shared/api/drafts';
 import { emitChanged } from '../shared/events/DraftEvents';
 import { AppToaster } from './AppToaster';
 
@@ -85,26 +84,22 @@ export default function NewDraftDrawer({
         }
         if (!resolved) return;
 
-        const drafts = await listDraftsV1(setupId);
+        const drafts = await listDrafts(setupId);
         const options = drafts
           .filter(d => String(d.schemaId || '') === String(resolved))
           .map(d => {
-            try {
-              const parsed = typeof d.content === 'string' ? JSON.parse(d.content) : d.content;
-              if (parsed && typeof parsed === 'object') {
-                const asObj = parsed as Record<string, unknown>;
-                const descriptorId = String(asObj['Id'] ?? asObj['id'] ?? '');
-                if (descriptorId) return descriptorId;
-              }
-            } catch {
-              // ignore
+            const parsed = d.content;
+            if (parsed && typeof parsed === 'object') {
+              const asObj = parsed as Record<string, unknown>;
+              const descriptorId = String(asObj['Id'] ?? asObj['id'] ?? '');
+              if (descriptorId) return descriptorId;
             }
             return String(d.id ?? '');
           });
         if (options.length === 0) return;
 
-        // shallow clone schema and inject enum into the matching property
-        const clone = JSON.parse(JSON.stringify(jsonSchema));
+        // deep clone schema and inject enum into the matching property
+        const clone = structuredClone(jsonSchema);
         for (const k of keys) {
           if (!clone.properties) clone.properties = {};
           clone.properties[k] = { ...(clone.properties[k] || {}), enum: options };
@@ -134,15 +129,8 @@ export default function NewDraftDrawer({
 
     setSaving(true);
     try {
-      log('resolving schemaId for schemaKey:', schemaKey);
-      const schemaId = await resolveSchemaIdByKey(setupId, schemaKey);
-      if (!schemaId) {
-        throw new Error(`Could not resolve schema ID for key: ${schemaKey}`);
-      }
-      
-      log('creating draft', { setupId, schemaId });
-      const content = JSON.stringify(data ?? {});
-      const result = await createDraftV1(setupId, { schemaId, content });
+      log('creating draft', { setupId, schemaKey });
+      const result = await createDraft(setupId, schemaKey, data ?? {});
       log('draft created', result);
 
       // Emit event to refresh menu

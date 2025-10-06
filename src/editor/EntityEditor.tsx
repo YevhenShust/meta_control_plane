@@ -5,7 +5,7 @@ import type { EntityEditorProps, EditorDataState, EditorSaveOutcome, FormViewPro
 import { createAjv } from '../renderers/ajvInstance';
 import FormRenderer from '../renderers/FormRenderer';
 import TableRenderer from '../renderers/TableRenderer';
-import { listDraftsV1, updateDraftV1 } from '../shared/api/drafts';
+import { listDrafts, updateDraft } from '../shared/api';
 import NewDraftDrawer from '../components/NewDraftDrawer';
 import { emitChanged } from '../shared/events/DraftEvents';
 import { loadSchemaByKey } from '../core/schemaKeyResolver';
@@ -82,19 +82,19 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
         if (view === 'form') {
           if (!draftId) throw new Error('draftId required for form view');
           log('load draft start', draftId);
-          const all = await listDraftsV1(setupId);
+          const all = await listDrafts(setupId);
           if (!mounted) return;
           const hit = all.find(d => String(d.id) === String(draftId) && String(d.schemaId || '') === String(resolved.schemaId));
-          const content = hit?.content ? tryParseContent(hit.content) : {};
+          const content = hit?.content ?? {};
           setState({ data: content, isDirty: false, isValid: true, loading: false });
           setSnapshot(content ?? null);
           log('load draft done', draftId);
         } else {
           log('load drafts list start', { setupId, schemaId: resolved.schemaId });
-          const rows = await listDraftsV1(setupId);
+          const rows = await listDrafts(setupId);
           if (!mounted) return;
           log('raw drafts loaded:', rows.length, 'total');
-          const items = rows.filter(r => String(r.schemaId || '') === String(resolved.schemaId)).map(r => ({ id: String(r.id ?? ''), content: tryParseContent(r.content) }));
+          const items = rows.filter(r => String(r.schemaId || '') === String(resolved.schemaId)).map(r => ({ id: String(r.id ?? ''), content: r.content }));
           log('filtered and mapped items:', items.length, 'for schemaId', resolved.schemaId);
           setState({ data: items, isDirty: false, isValid: true, loading: false });
           setSnapshot(items as unknown as DraftContent);
@@ -120,8 +120,8 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
           // force reload: replicate the list-loading logic
           (async () => {
             try {
-              const rows = await listDraftsV1(setupId);
-              const items = rows.filter(r => String(r.schemaId || '') === String(resolved.schemaId)).map(r => ({ id: String(r.id ?? ''), content: tryParseContent(r.content) }));
+              const rows = await listDrafts(setupId);
+              const items = rows.filter(r => String(r.schemaId || '') === String(resolved.schemaId)).map(r => ({ id: String(r.id ?? ''), content: r.content }));
               setState({ data: items, isDirty: false, isValid: true, loading: false });
               setSnapshot(items as unknown as DraftContent);
               console.debug('[Editor] reloaded table rows after change', items.length);
@@ -165,7 +165,7 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
         if (!draftId) return { ok: false, error: 'No draftId' };
         try {
           log('save start', { draftId });
-          await updateDraftV1(draftId, JSON.stringify(state.data ?? {}));
+          await updateDraft(draftId, state.data ?? {});
           setState(s => ({ ...s, isDirty: false }));
           setSnapshot(state.data ?? null);
           log('save done', { draftId });
@@ -181,7 +181,7 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
     async function saveRow(rowId: string, nextRow: unknown): Promise<EditorSaveOutcome> {
       try {
         log('saveRow start', rowId);
-        await updateDraftV1(rowId, JSON.stringify(nextRow));
+        await updateDraft(rowId, nextRow);
         setState(s => ({ ...s, isDirty: false }));
         log('saveRow done', rowId);
         return { ok: true };
@@ -255,7 +255,7 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
     async onSaveRow(rowId, nextRow) {
       log('[Table] onSaveRow', rowId);
       try {
-        await updateDraftV1(rowId, JSON.stringify(nextRow));
+        await updateDraft(rowId, nextRow);
         setState(s => ({ ...s, isDirty: false }));
         return { ok: true };
       } catch (e) {

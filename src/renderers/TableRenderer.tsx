@@ -3,7 +3,7 @@ import type { TableViewProps } from '../editor/EntityEditor.types';
 import { Button, InputGroup, NonIdealState, Intent, Position, Toaster } from '@blueprintjs/core';
 import type { JsonSchema } from '@jsonforms/core';
 import { resolveSchemaIdByKey } from '../core/schemaKeyResolver';
-import { listDraftsV1 } from '../shared/api/drafts';
+import { listDrafts } from '../shared/api';
 import { AgGridReact } from 'ag-grid-react';
 import type { ColDef } from 'ag-grid-community';
 import BooleanCellEditor from './table/BooleanCellEditor';
@@ -203,37 +203,28 @@ export default function TableRenderer({ rows, schema, uischema, onSaveRow, setup
 
         try {
           const schemaId = await resolveSchemaIdByKey(setupId, resolvedKey!);
-          const drafts = await listDraftsV1(setupId);
+          const drafts = await listDrafts(setupId);
           const opts = drafts
             .filter(d => String(d.schemaId || '') === String(schemaId))
             .map(d => {
                 let label: string;
-                try {
-                  const parsed = typeof d.content === 'string' ? JSON.parse(d.content) : d.content;
-                  if (parsed && typeof parsed === 'object') {
-                    const asObj = parsed as Record<string, unknown>;
-                    const nice = String(asObj['Id'] ?? asObj['name'] ?? '');
-                    if (nice) {
-                      label = `${nice} (${d.id})`;
-                    } else {
-                      label = String(d.id ?? '');
-                    }
+                const parsed = d.content;
+                if (parsed && typeof parsed === 'object') {
+                  const asObj = parsed as Record<string, unknown>;
+                  const nice = String(asObj['Id'] ?? asObj['name'] ?? '');
+                  if (nice) {
+                    label = `${nice} (${d.id})`;
                   } else {
                     label = String(d.id ?? '');
                   }
-                } catch {
+                } else {
                   label = String(d.id ?? '');
                 }
                 // prefer descriptor's internal Id property as the option value if present
-                try {
-                  const parsed = typeof d.content === 'string' ? JSON.parse(d.content) : d.content;
-                  if (parsed && typeof parsed === 'object') {
-                    const asObj = parsed as Record<string, unknown>;
-                    const descriptorId = String(asObj['Id'] ?? asObj['id'] ?? '');
-                    if (descriptorId) return { label, value: descriptorId } as OptionItem;
-                  }
-                } catch {
-                  // fallback
+                if (parsed && typeof parsed === 'object') {
+                  const asObj = parsed as Record<string, unknown>;
+                  const descriptorId = String(asObj['Id'] ?? asObj['id'] ?? '');
+                  if (descriptorId) return { label, value: descriptorId } as OptionItem;
                 }
                 return { label, value: String(d.id ?? '') } as OptionItem;
             });
