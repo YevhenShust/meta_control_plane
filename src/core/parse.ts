@@ -3,13 +3,27 @@
 /**
  * Try to parse content as JSON. Returns parsed object if successful, otherwise returns the original value.
  */
-export function tryParseContent(content: unknown): unknown {
-  if (typeof content === 'string') {
+export function tryParseContent<T = unknown>(raw: unknown): T | null {
+  if (typeof raw === 'string') {
     try {
-      return JSON.parse(content);
+      return JSON.parse(raw) as T;
     } catch {
-      return content;
+      return null;
     }
   }
-  return content;
+  if (raw === null || raw === undefined) {
+    return null;
+  }
+  return raw as T;
+}
+
+/**
+ * Safely stringify an object to JSON. Returns empty string on error.
+ */
+export function safeStringify(obj: unknown): string {
+  try {
+    return JSON.stringify(obj, null, 2);
+  } catch {
+    return '';
+  }
 }
