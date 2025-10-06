@@ -1,11 +1,10 @@
 import { http } from './http';
 import type { components } from '../../types/openapi.d.ts';
+import { useMock, loadMockData } from './utils';
+import { tryParseContent } from '../../core/parse';
 
 export type SchemaDto = NonNullable<components['schemas']['SchemaDto']>;
 export type SchemaListResponse = NonNullable<components['schemas']['SchemaListResponse']>;
-
-// Check if we should use mock data
-const useMock = import.meta.env.VITE_USE_MOCK === '1';
 
 function log(...args: unknown[]) {
   console.debug('[Schemas API]', ...args);
@@ -16,15 +15,10 @@ export async function listSchemasV1(setupId: string, params?: { skip?: number; l
   
   if (useMock) {
     log('Using mock data (VITE_USE_MOCK=1)');
-    try {
-      const mockData = await import('../../../data/Schemas.data.json');
-      const filtered = (mockData.schemas || []).filter((s: SchemaDto) => String(s.setupId) === String(setupId));
-      log('Mock data loaded:', filtered.length, 'schemas for setupId', setupId);
-      return filtered as SchemaDto[];
-    } catch (e) {
-      log('Error loading mock data:', e);
-      return [];
-    }
+    const allSchemas = await loadMockData<SchemaDto>('Schemas', 'schemas');
+    const filtered = allSchemas.filter((s: SchemaDto) => String(s.setupId) === String(setupId));
+    log('Mock data loaded:', filtered.length, 'schemas for setupId', setupId);
+    return filtered;
   }
 
   try {
@@ -34,16 +28,10 @@ export async function listSchemasV1(setupId: string, params?: { skip?: number; l
     return schemas;
   } catch (e) {
     log('API error, falling back to mock data:', e);
-    // Fallback to local data when dev server cannot reach backend
-    try {
-      const mockData = await import('../../../data/Schemas.data.json');
-      const filtered = (mockData.schemas || []).filter((s: SchemaDto) => String(s.setupId) === String(setupId));
-      log('Fallback mock data loaded:', filtered.length, 'schemas');
-      return filtered as SchemaDto[];
-    } catch (fallbackError) {
-      log('Fallback also failed:', fallbackError);
-      return [];
-    }
+    const allSchemas = await loadMockData<SchemaDto>('Schemas', 'schemas');
+    const filtered = allSchemas.filter((s: SchemaDto) => String(s.setupId) === String(setupId));
+    log('Fallback mock data loaded:', filtered.length, 'schemas');
+    return filtered;
   }
 }
 
@@ -61,12 +49,8 @@ export async function getSchemaByIdV1(schemaId: string, setupId: string): Promis
   const list = await listSchemasV1(setupId);
   const hit = list.find(s => s.id === schemaId);
   if (!hit || !hit.content) throw new Error(`Schema not found or empty: ${schemaId}`);
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(hit.content);
-  } catch {
-    parsed = hit.content as unknown;
-  }
+  
+  const parsed = tryParseContent(hit.content);
   _schemaCache.set(schemaId, parsed);
   log('Schema cached and returned');
   return parsed;

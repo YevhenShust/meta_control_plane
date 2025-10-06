@@ -9,6 +9,7 @@ import { listDraftsV1, updateDraftV1 } from '../shared/api/drafts';
 import NewDraftDrawer from '../components/NewDraftDrawer';
 import { emitChanged } from '../shared/events/DraftEvents';
 import { loadSchemaByKey } from '../core/schemaKeyResolver';
+import { tryParseContent } from '../core/parse';
 
 type DraftContent = unknown;
 
@@ -48,8 +49,8 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
         const { id: sId, json } = await loadSchemaByKey(setupId, schemaKey);
         if (!alive) return;
         setResolved({ schemaId: String(sId) });
-        const parsed = typeof json === 'string' ? JSON.parse(json) : (json as object);
-        setSchema(parsed as object);
+        const parsed = tryParseContent(json) as object;
+        setSchema(parsed);
         // try to load a matching ui schema file from the ui folder using schemaKey
         try {
           // First try: ui schema files under src/schemas/ui/<SchemaKey>.uischema.json
@@ -144,8 +145,8 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
           setDrawerSchema(null);
           if (!setupId || !schemaKey) throw new Error('Missing context for new draft');
           const { json } = await loadSchemaByKey(setupId, schemaKey);
-          const parsed = typeof json === 'string' ? JSON.parse(json) : json;
-          setDrawerSchema(parsed as object);
+          const parsed = tryParseContent(json) as object;
+          setDrawerSchema(parsed);
           setDrawerOpen(true);
         } catch {
           setDrawerOpen(false);
@@ -155,14 +156,6 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
     window.addEventListener('table-new-request', handler as EventListener);
     return () => window.removeEventListener('table-new-request', handler as EventListener);
   }, [view, setupId, schemaKey]);
-
-  function tryParseContent(content: unknown): unknown {
-    if (!content) return {};
-    if (typeof content === 'string') {
-      try { return JSON.parse(content); } catch { return content; }
-    }
-    return content;
-  }
 
   type TableRow = { id: string; content: unknown };
 

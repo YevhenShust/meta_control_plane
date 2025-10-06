@@ -1,12 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { http } from './http';
 import type { components } from '../../types/openapi.d.ts';
+import { useMock, loadMockData } from './utils';
 
 export type SetupDto = NonNullable<components['schemas']['SetupDto']>;
 export type SetupCreateRequest = NonNullable<components['schemas']['SetupCreateRequest']>;
-
-// Check if we should use mock data
-const useMock = import.meta.env.VITE_USE_MOCK === '1';
 
 function log(...args: unknown[]) {
   console.debug('[Setups API]', ...args);
@@ -36,15 +34,9 @@ export async function listSetups(params?: { skip?: number; limit?: number }): Pr
   
   if (useMock) {
     log('Using mock data (VITE_USE_MOCK=1)');
-    try {
-      const mockData = await import('../../../data/Setups.data.json');
-      const setups = (mockData.setups || []) as SetupDto[];
-      log('Mock data loaded:', setups.length, 'setups');
-      return setups;
-    } catch (e) {
-      log('Error loading mock data:', e);
-      return [];
-    }
+    const setups = await loadMockData<SetupDto>('Setups', 'setups');
+    log('Mock data loaded:', setups.length, 'setups');
+    return setups;
   }
 
   try {
@@ -54,16 +46,9 @@ export async function listSetups(params?: { skip?: number; limit?: number }): Pr
     return setups;
   } catch (e) {
     log('API error, falling back to mock data:', e);
-    // Fallback to local data when dev server cannot reach backend
-    try {
-      const mockData = await import('../../../data/Setups.data.json');
-      const setups = (mockData.setups || []) as SetupDto[];
-      log('Fallback mock data loaded:', setups.length, 'setups');
-      return setups;
-    } catch (fallbackError) {
-      log('Fallback also failed:', fallbackError);
-      return [];
-    }
+    const setups = await loadMockData<SetupDto>('Setups', 'setups');
+    log('Fallback mock data loaded:', setups.length, 'setups');
+    return setups;
   }
 }
 
@@ -73,15 +58,10 @@ export async function getSetupById(setupId: string): Promise<SetupDto | null> {
   
   if (useMock) {
     log('Using mock data (VITE_USE_MOCK=1)');
-    try {
-      const mockData = await import('../../../data/Setups.data.json');
-      const setup = (mockData.setups || []).find((s: SetupDto) => String(s.id) === String(setupId));
-      log('Mock setup found:', !!setup);
-      return (setup as SetupDto) || null;
-    } catch (e) {
-      log('Error loading mock data:', e);
-      return null;
-    }
+    const setups = await loadMockData<SetupDto>('Setups', 'setups');
+    const setup = setups.find((s: SetupDto) => String(s.id) === String(setupId));
+    log('Mock setup found:', !!setup);
+    return setup || null;
   }
 
   try {
@@ -89,14 +69,9 @@ export async function getSetupById(setupId: string): Promise<SetupDto | null> {
     return ((res.data as unknown as any)?.setup ?? null) as SetupDto | null;
   } catch (e) {
     log('API error, falling back to mock data:', e);
-    try {
-      const mockData = await import('../../../data/Setups.data.json');
-      const setup = (mockData.setups || []).find((s: SetupDto) => String(s.id) === String(setupId));
-      log('Fallback mock setup found:', !!setup);
-      return (setup as SetupDto) || null;
-    } catch (fallbackError) {
-      log('Fallback also failed:', fallbackError);
-      return null;
-    }
+    const setups = await loadMockData<SetupDto>('Setups', 'setups');
+    const setup = setups.find((s: SetupDto) => String(s.id) === String(setupId));
+    log('Fallback mock setup found:', !!setup);
+    return setup || null;
   }
 }

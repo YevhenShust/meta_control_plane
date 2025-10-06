@@ -1,10 +1,8 @@
 import { http } from './http';
 import type { components } from '../../types/openapi.d.ts';
+import { useMock, loadMockData } from './utils';
 
 export type DraftDto = components['schemas']['DraftDto'];
-
-// Check if we should use mock data
-const useMock = import.meta.env.VITE_USE_MOCK === '1';
 
 function log(...args: unknown[]) {
   console.debug('[Drafts API]', ...args);
@@ -16,15 +14,10 @@ export async function listDraftsV1(setupId: string, params?: { skip?: number; li
   
   if (useMock) {
     log('Using mock data (VITE_USE_MOCK=1)');
-    try {
-      const mockData = await import('../../../data/Drafts.data.json');
-      const filtered = (mockData.drafts || []).filter((d: DraftDto) => String(d.setupId) === String(setupId));
-      log('Mock data loaded:', filtered.length, 'drafts for setupId', setupId);
-      return filtered as DraftDto[];
-    } catch (e) {
-      log('Error loading mock data:', e);
-      return [];
-    }
+    const allDrafts = await loadMockData<DraftDto>('Drafts', 'drafts');
+    const filtered = allDrafts.filter((d: DraftDto) => String(d.setupId) === String(setupId));
+    log('Mock data loaded:', filtered.length, 'drafts for setupId', setupId);
+    return filtered;
   }
 
   try {
@@ -34,16 +27,10 @@ export async function listDraftsV1(setupId: string, params?: { skip?: number; li
     return drafts;
   } catch (e) {
     log('API error, falling back to mock data:', e);
-    // Fallback to local data when dev server cannot reach backend
-    try {
-      const mockData = await import('../../../data/Drafts.data.json');
-      const filtered = (mockData.drafts || []).filter((d: DraftDto) => String(d.setupId) === String(setupId));
-      log('Fallback mock data loaded:', filtered.length, 'drafts');
-      return filtered as DraftDto[];
-    } catch (fallbackError) {
-      log('Fallback also failed:', fallbackError);
-      return [];
-    }
+    const allDrafts = await loadMockData<DraftDto>('Drafts', 'drafts');
+    const filtered = allDrafts.filter((d: DraftDto) => String(d.setupId) === String(setupId));
+    log('Fallback mock data loaded:', filtered.length, 'drafts');
+    return filtered;
   }
 }
 
