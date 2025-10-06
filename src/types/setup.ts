@@ -1,7 +1,2 @@
-// Setup data transfer object - unified type for setups across the app
-export interface SetupDto {
-  id: string;
-  name?: string | null;
-  created?: string;
-  modified?: string;
-}
+// Re-export the canonical SetupDto from the API module to avoid duplicate definitions.
+export type { SetupDto } from '../shared/api/setup';

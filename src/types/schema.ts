@@ -1,9 +1,3 @@
-// Schema record - unified type for schemas across the app
-export interface SchemaRecord {
-  id: string;
-  setupId: string;
-  name?: string | null;
-  content: string | Record<string, unknown>;
-  created?: string;
-  modified?: string;
-}
+// Re-export canonical SchemaDto from the API module (generated from OpenAPI).
+// Code that previously consumed SchemaRecord can import SchemaRecord and it will refer to SchemaDto.
+export type { SchemaDto as SchemaRecord } from '../shared/api/schema';
