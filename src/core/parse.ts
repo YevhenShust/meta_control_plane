@@ -14,7 +14,10 @@ export function tryParseContent<T = unknown>(raw: unknown): T | null {
   if (raw === null || raw === undefined) {
     return null;
   }
-  return raw as T;
+  if (typeof raw === 'object') {
+    return raw as T;
+  }
+  return null;
 }
 
 /**
