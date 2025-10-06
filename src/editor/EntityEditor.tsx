@@ -9,6 +9,7 @@ import { listDrafts, updateDraft } from '../shared/api';
 import NewDraftDrawer from '../components/NewDraftDrawer';
 import { emitChanged } from '../shared/events/DraftEvents';
 import { loadSchemaByKey } from '../core/schemaKeyResolver';
+import { tryParseContent } from '../core/parse';
 
 type DraftContent = unknown;
 
