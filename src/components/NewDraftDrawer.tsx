@@ -98,8 +98,8 @@ export default function NewDraftDrawer({
           });
         if (options.length === 0) return;
 
-        // shallow clone schema and inject enum into the matching property
-        const clone = JSON.parse(JSON.stringify(jsonSchema));
+        // deep clone schema and inject enum into the matching property
+        const clone = structuredClone(jsonSchema);
         for (const k of keys) {
           if (!clone.properties) clone.properties = {};
           clone.properties[k] = { ...(clone.properties[k] || {}), enum: options };
