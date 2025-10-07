@@ -1,10 +1,11 @@
-import { rankWith, isStringControl, isNumberControl, isIntegerControl, isBooleanControl, and, isEnumControl, isOneOfEnumControl, uiTypeIs, type UISchemaElement, type JsonSchema, type Tester, type JsonFormsRendererRegistryEntry } from '@jsonforms/core';
+import { rankWith, isStringControl, isNumberControl, isIntegerControl, isBooleanControl, and, isEnumControl, isOneOfEnumControl, isObjectArrayControl, uiTypeIs, type UISchemaElement, type JsonSchema, type Tester, type JsonFormsRendererRegistryEntry } from '@jsonforms/core';
 import { BPStringControl } from '../controls/BPStringControl';
 import { BPTextAreaControl } from '../controls/BPTextAreaControl';
 import { BPNumberControl } from '../controls/BPNumberControl';
 import { BPIntegerControl } from '../controls/BPIntegerControl';
 import { BPBooleanControl } from '../controls/BPBooleanControl';
 import { BPEnumControl } from '../controls/BPEnumControl';
+import { BPArrayControl } from '../controls/BPArrayControl';
 import { BPVerticalLayout } from '../layouts/BPVerticalLayout';
 import { BPHorizontalLayout } from '../layouts/BPHorizontalLayout';
 import { BPGroupLayout } from '../layouts/BPGroupLayout';
@@ -24,6 +25,7 @@ function textareaTester(uischema: UISchemaElement, _schema: JsonSchema, _ctx?: u
 export function getBlueprintRenderers(): JsonFormsRendererRegistryEntry[] {
   const list: JsonFormsRendererRegistryEntry[] = [
     // control renderers (most-specific first)
+    { tester: rankWith(5, isObjectArrayControl), renderer: BPArrayControl },
     { tester: rankWith(4, and(isStringControl, textareaTester as Tester)), renderer: BPTextAreaControl },
     { tester: rankWith(3, isStringControl), renderer: BPStringControl },
     { tester: rankWith(3, isNumberControl), renderer: BPNumberControl },
