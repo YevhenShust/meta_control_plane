@@ -64,7 +64,7 @@ function createDefaultValue(schema: JsonSchema | undefined): unknown {
   return undefined;
 }
 
-const BPArrayControlInner: React.FC<ArrayControlProps> = (props) => {
+const BPArrayControlInner: React.FC<ArrayControlProps & { arraySchema?: JsonSchema }> = (props) => {
   const {
     data,
     path,
@@ -78,10 +78,8 @@ const BPArrayControlInner: React.FC<ArrayControlProps> = (props) => {
     removeItems,
     renderers,
     cells,
-  } = props;
-  
-  // Access arraySchema from props (it's in StatePropsOfArrayControl but not explicitly in the destructure above)
-  const arraySchema = (props as unknown as { arraySchema?: JsonSchema }).arraySchema;
+    arraySchema,
+  } = props as ArrayControlProps & { arraySchema?: JsonSchema };
 
   const items = Array.isArray(data) ? data : [];
   const helperText = Array.isArray(errors) ? joinErrors(errors) : (errors ? String(errors) : undefined);
@@ -134,7 +132,7 @@ const BPArrayControlInner: React.FC<ArrayControlProps> = (props) => {
           items.map((_item, index) => {
             const itemPath = `${childPath}.${index}`;
             return (
-              <Card key={index} style={{ padding: '12px', position: 'relative' }}>
+              <Card key={itemPath} style={{ padding: '12px', position: 'relative' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                   <span style={{ fontWeight: 'bold', fontSize: '14px' }}>Item {index + 1}</span>
                   <Button
@@ -153,7 +151,6 @@ const BPArrayControlInner: React.FC<ArrayControlProps> = (props) => {
                   enabled={enabled}
                   renderers={renderers}
                   cells={cells}
-                  rootSchema={rootSchema}
                 />
               </Card>
             );
