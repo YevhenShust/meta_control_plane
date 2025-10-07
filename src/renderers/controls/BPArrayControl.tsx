@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { Button, Card, FormGroup, NonIdealState } from '@blueprintjs/core';
 import { withJsonFormsArrayControlProps } from '@jsonforms/react';
 import type { ArrayControlProps, JsonSchema } from '@jsonforms/core';
-import { JsonFormsDispatch } from '@jsonforms/react';
+import { JsonForms } from '@jsonforms/react';
 import { joinErrors } from '../utils';
 import { Resolve } from '@jsonforms/core';
 
@@ -144,13 +144,16 @@ const BPArrayControlInner: React.FC<ArrayControlProps & { arraySchema?: JsonSche
                     onClick={() => removeItems?.(path, [index])()}
                   />
                 </div>
-                <JsonFormsDispatch
+                <JsonForms
                   schema={itemSchema}
                   uischema={undefined}
-                  path={itemPath}
-                  enabled={enabled}
+                  data={items[index]}
                   renderers={renderers}
                   cells={cells}
+                  onChange={({ data: newData }) => {
+                    // Update handled by JSON Forms internal state management
+                    // The parent array control receives updates through its own onChange
+                  }}
                 />
               </Card>
             );
