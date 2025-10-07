@@ -142,6 +142,7 @@ const BPArrayControlInner: React.FC<ArrayControlProps & { arraySchema?: JsonSche
                     intent="danger"
                     disabled={enabled === false}
                     onClick={() => removeItems?.(path, [index])()}
+                    aria-label="Delete item"
                   />
                 </div>
                 <JsonForms
