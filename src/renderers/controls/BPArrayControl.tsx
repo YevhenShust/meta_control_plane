@@ -63,7 +63,7 @@ const BPArrayControlInner: React.FC<ArrayControlProps> = (props) => {
                     small
                     intent="danger"
                     disabled={enabled === false}
-                    onClick={() => removeItems?.(path, [index])}
+                    onClick={() => removeItems?.(path, [index])()}
                   />
                 </div>
                 <JsonFormsDispatch
@@ -83,7 +83,7 @@ const BPArrayControlInner: React.FC<ArrayControlProps> = (props) => {
             icon="plus"
             text="Add Item"
             disabled={enabled === false}
-            onClick={() => addItem(path, {})}
+            onClick={() => addItem(path, {})()}
             small
           />
         </div>
