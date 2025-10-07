@@ -11,6 +11,7 @@ import NumberCellEditor from './table/NumberCellEditor';
 import StringCellEditor from './table/StringCellEditor';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
+import { useListDraftsQuery, useUpdateDraftMutation } from '../store/api';
 
 interface OptionItem { label: string; value: string }
 
@@ -33,10 +34,18 @@ function log(...args: unknown[]) {
   console.debug('[Table]', ...args);
 }
 
-export default function TableRenderer({ rows, schema, uischema, onSaveRow, setupId, schemaKey }: TableViewProps) {
+export default function TableRenderer({ rows, schema, uischema, onSaveRow, setupId, schemaKey, schemaId }: TableViewProps) {
   const [localRows, setLocalRows] = useState<RowData[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const gridRef = useRef<AgGridReact>(null);
+
+  // RTK Query: fetch drafts if setupId and schemaId are provided
+  const shouldUseRTK = !!(setupId && schemaId);
+  const { data: rtkDrafts, isLoading } = useListDraftsQuery(
+    { setupId: setupId!, schemaId: schemaId! },
+    { skip: !shouldUseRTK }
+  );
+  const [updateDraftRTK] = useUpdateDraftMutation();
 
   // Track changes that need to be saved
   const pendingChangesRef = useRef<Map<string, { content: Record<string, unknown>; timestamp: number }>>(new Map());
@@ -51,12 +60,19 @@ export default function TableRenderer({ rows, schema, uischema, onSaveRow, setup
     };
   }, []);
 
-  // Sync rows to local state
+  // Sync rows to local state - use RTK data if available, otherwise use rows prop
   useEffect(() => {
-    const typedRows = Array.isArray(rows) ? (rows as unknown as RowData[]) : [];
-    log('Rows synced to local state:', typedRows.length, 'rows');
-    setLocalRows(typedRows);
-  }, [rows]);
+    if (shouldUseRTK && rtkDrafts) {
+      // Map RTK drafts to RowData format
+      const typedRows = rtkDrafts.map(d => ({ id: String(d.id), content: d.content as Record<string, unknown> }));
+      log('Rows synced from RTK Query:', typedRows.length, 'rows');
+      setLocalRows(typedRows);
+    } else {
+      const typedRows = Array.isArray(rows) ? (rows as unknown as RowData[]) : [];
+      log('Rows synced from props:', typedRows.length, 'rows');
+      setLocalRows(typedRows);
+    }
+  }, [shouldUseRTK, rtkDrafts, rows]);
 
   // Extract columns from schema
   const columns = useMemo(() => {
@@ -143,7 +159,20 @@ export default function TableRenderer({ rows, schema, uischema, onSaveRow, setup
       // Save each changed row
       for (const [saveRowId, { content: saveContent }] of toSave) {
         log('autosave', saveRowId);
-        const result = await onSaveRow(saveRowId, saveContent);
+        
+        let result;
+        if (shouldUseRTK && setupId && schemaId) {
+          // Use RTK mutation
+          try {
+            await updateDraftRTK({ id: saveRowId, content: saveContent, setupId, schemaId }).unwrap();
+            result = { ok: true };
+          } catch (error) {
+            result = { ok: false, error: String(error) };
+          }
+        } else {
+          // Use callback
+          result = await onSaveRow(saveRowId, saveContent);
+        }
 
         if (!result.ok) {
           // Revert on error and show a shared app toaster
@@ -154,7 +183,10 @@ export default function TableRenderer({ rows, schema, uischema, onSaveRow, setup
           });
           
           // Revert to original row content
-          const originalRow = rows.find(r => (r as unknown as RowData).id === saveRowId) as unknown as RowData | undefined;
+          const originalRows = shouldUseRTK && rtkDrafts 
+            ? rtkDrafts.map(d => ({ id: String(d.id), content: d.content as Record<string, unknown> }))
+            : (Array.isArray(rows) ? (rows as unknown as RowData[]) : []);
+          const originalRow = originalRows.find(r => r.id === saveRowId);
           if (originalRow) {
             setLocalRows(prev => prev.map(r => r.id === saveRowId ? originalRow : r));
             // Also refresh the grid
@@ -165,7 +197,7 @@ export default function TableRenderer({ rows, schema, uischema, onSaveRow, setup
         }
       }
     }, 700); // 700ms debounce
-  }, [localRows, onSaveRow, rows]);
+  }, [localRows, onSaveRow, shouldUseRTK, setupId, schemaId, updateDraftRTK, rtkDrafts, rows]);
 
   // Convert to ag-grid column definitions
   const columnDefs = useMemo<ColDef[]>(() => {
@@ -215,6 +247,10 @@ export default function TableRenderer({ rows, schema, uischema, onSaveRow, setup
       gridRef.current.api.setGridOption('quickFilterText', searchTerm);
     }
   }, [searchTerm]);
+
+  if (shouldUseRTK && isLoading) {
+    return <div className="content-padding">Loading drafts…</div>;
+  }
 
   if (localRows.length === 0) {
     return <NonIdealState icon="inbox" title="No items" description="No drafts found for this container." />;

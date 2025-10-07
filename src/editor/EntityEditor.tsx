@@ -244,6 +244,9 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
     schema: schema ?? {},
     uischema: uischema ?? undefined,
     ajv,
+    setupId,
+    schemaKey,
+    schemaId: resolved?.schemaId,
     onEdit(rowId, patch) {
       log('[Table] onEdit', rowId);
       setState(s => {
