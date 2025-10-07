@@ -4,13 +4,72 @@ import { withJsonFormsArrayControlProps } from '@jsonforms/react';
 import type { ArrayControlProps, JsonSchema } from '@jsonforms/core';
 import { JsonFormsDispatch } from '@jsonforms/react';
 import { joinErrors } from '../utils';
+import { Resolve } from '@jsonforms/core';
+
+/**
+ * Creates a default value for a JSON schema property.
+ * This function recursively generates default values based on schema types.
+ */
+function createDefaultValue(schema: JsonSchema | undefined): unknown {
+  if (!schema || typeof schema !== 'object') {
+    return undefined;
+  }
+
+  // Handle schema with default value
+  if ('default' in schema && schema.default !== undefined) {
+    return schema.default;
+  }
+
+  // Handle different types
+  const schemaType = schema.type;
+  
+  if (schemaType === 'object') {
+    const obj: Record<string, unknown> = {};
+    const properties = schema.properties;
+    
+    if (properties && typeof properties === 'object') {
+      // Create default values for all properties
+      Object.keys(properties).forEach(key => {
+        const propSchema = properties[key];
+        if (propSchema && typeof propSchema === 'object') {
+          obj[key] = createDefaultValue(propSchema as JsonSchema);
+        }
+      });
+    }
+    
+    return obj;
+  }
+  
+  if (schemaType === 'array') {
+    return [];
+  }
+  
+  if (schemaType === 'string') {
+    return '';
+  }
+  
+  if (schemaType === 'number' || schemaType === 'integer') {
+    return 0;
+  }
+  
+  if (schemaType === 'boolean') {
+    return false;
+  }
+  
+  // For schemas without a type, try to infer from properties
+  if (schema.properties) {
+    return createDefaultValue({ ...schema, type: 'object' });
+  }
+  
+  return undefined;
+}
 
 const BPArrayControlInner: React.FC<ArrayControlProps> = (props) => {
   const {
     data,
     path,
     schema,
-    uischema,
+    rootSchema,
     visible,
     enabled,
     label,
@@ -20,6 +79,9 @@ const BPArrayControlInner: React.FC<ArrayControlProps> = (props) => {
     renderers,
     cells,
   } = props;
+  
+  // Access arraySchema from props (it's in StatePropsOfArrayControl but not explicitly in the destructure above)
+  const arraySchema = (props as unknown as { arraySchema?: JsonSchema }).arraySchema;
 
   const items = Array.isArray(data) ? data : [];
   const helperText = Array.isArray(errors) ? joinErrors(errors) : (errors ? String(errors) : undefined);
@@ -29,9 +91,27 @@ const BPArrayControlInner: React.FC<ArrayControlProps> = (props) => {
   }, [path]);
 
   const itemSchema = useMemo(() => {
-    // For array items, the schema should be the items property of the array schema
-    return schema.items as JsonSchema;
-  }, [schema]);
+    // Use arraySchema if available (from StatePropsOfArrayControl), otherwise fall back to schema.items
+    const items = (arraySchema?.items || schema.items) as JsonSchema;
+    
+    // If the items schema has a $ref, resolve it using the root schema
+    if (items && typeof items === 'object' && '$ref' in items) {
+      try {
+        const resolved = Resolve.schema(rootSchema, items.$ref as string, rootSchema);
+        return resolved;
+      } catch (e) {
+        console.error('[BPArrayControl] Failed to resolve schema ref:', items.$ref, e);
+        return items;
+      }
+    }
+    
+    return items;
+  }, [arraySchema, schema, rootSchema]);
+
+  const defaultItemValue = useMemo(() => {
+    // Create a default value based on the item schema
+    return createDefaultValue(itemSchema);
+  }, [itemSchema]);
 
   if (visible === false) return null;
 
@@ -68,11 +148,12 @@ const BPArrayControlInner: React.FC<ArrayControlProps> = (props) => {
                 </div>
                 <JsonFormsDispatch
                   schema={itemSchema}
-                  uischema={uischema}
+                  uischema={undefined}
                   path={itemPath}
                   enabled={enabled}
                   renderers={renderers}
                   cells={cells}
+                  rootSchema={rootSchema}
                 />
               </Card>
             );
@@ -83,7 +164,7 @@ const BPArrayControlInner: React.FC<ArrayControlProps> = (props) => {
             icon="plus"
             text="Add Item"
             disabled={enabled === false}
-            onClick={() => addItem(path, {})()}
+            onClick={() => addItem(path, defaultItemValue)()}
             small
           />
         </div>
