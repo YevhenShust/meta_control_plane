@@ -6,10 +6,10 @@ import { generateDefaultUISchema } from '@jsonforms/core';
 import { getBlueprintRenderers } from '../renderers/blueprint/registry';
 import { createAjv } from '../renderers/ajvInstance';
 import { generateDefaultContent } from '../jsonforms/generateDefaults';
-import { createDraft } from '../shared/api';
 import { useDescriptorOptions } from '../hooks/useDescriptorOptions';
 import { emitChanged } from '../shared/events/DraftEvents';
 import { AppToaster } from './AppToaster';
+import { useCreateDraftMutation } from '../store/api';
 
 const bpRenderers = getBlueprintRenderers();
 
@@ -40,6 +40,7 @@ export default function NewDraftDrawer({
   const [valid, setValid] = useState(true);
   const [saving, setSaving] = useState(false);
   const [ajv] = useState(() => createAjv());
+  const [createDraftRTK] = useCreateDraftMutation();
 
   // Initialize with defaults when drawer opens
   useEffect(() => {
@@ -135,10 +136,11 @@ export default function NewDraftDrawer({
       const payload = mergeDefaults(defaults, data ?? {});
       try { console.debug('[NewDraftDrawer] submit payload (merged)', payload); } catch (e) { console.debug('[NewDraftDrawer] submit payload merged log failed', e); }
       try { console.debug('[NewDraftDrawer] submit payload (stringified)', JSON.stringify(payload ?? {})); } catch (e) { console.debug('[NewDraftDrawer] submit payload stringify failed', e); }
-      const result = await createDraft(setupId, schemaKey, payload ?? {});
+      
+      const result = await createDraftRTK({ setupId, schemaKey, content: payload ?? {} }).unwrap();
       log('draft created', result);
 
-      // Emit event to refresh menu
+      // Emit event to refresh menu (for backward compatibility with other parts of the app)
       emitChanged({ schemaKey, setupId });
 
       AppToaster.show({
@@ -157,7 +159,7 @@ export default function NewDraftDrawer({
     } finally {
       setSaving(false);
     }
-  }, [valid, data, setupId, schemaKey, onSuccess, onClose, patchedSchema, schema]);
+  }, [valid, data, setupId, schemaKey, onSuccess, onClose, patchedSchema, schema, createDraftRTK]);
 
   // Keyboard shortcut: Escape to close
   useEffect(() => {
