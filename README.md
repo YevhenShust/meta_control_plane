@@ -13,6 +13,28 @@ If you are developing a production application, we recommend updating the config
 
 ```js
 export default tseslint.config([
+## AppToaster (global toast notifications)
+
+This project uses a centralized `AppToaster` helper located at `src/components/AppToaster.ts`.
+
+- Why: React 18 requires portals to be created with the new createRoot API. BlueprintJS exposes
+  `OverlayToaster.createAsync()` which returns a Promise that resolves when the portal is ready.
+  `AppToaster` centralizes creation, caches the promise/instance, and provides a small API
+  (`show`, `dismiss`, `clear`, `getToasts`) so all parts of the app use the same toaster.
+
+- Usage examples:
+
+```ts
+// show a success toast (no need to await unless you need to)
+AppToaster.show({ message: 'Saved', intent: 'success' });
+
+// await if you need to ensure the toast was scheduled
+await AppToaster.show({ message: 'Saved', intent: 'success' });
+```
+
+Keeping the toaster centralized avoids duplicated overlay instances and race conditions when
+multiple components try to create a portal at the same time.
+
 ## Agent Manifest (summary)
 
 This project follows a short, machine-readable development manifest used by contributors and automated assistants.
