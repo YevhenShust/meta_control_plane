@@ -82,7 +82,7 @@ const BPArrayControlInner: React.FC<ArrayControlProps & { arraySchema?: JsonSche
   } = props as ArrayControlProps & { arraySchema?: JsonSchema };
 
   const items = Array.isArray(data) ? data : [];
-  const helperText = Array.isArray(errors) ? joinErrors(errors) : (errors ? String(errors) : undefined);
+  const helperText = errors ? String(errors) : undefined;
   
   const childPath = useMemo(() => {
     return path;
