@@ -90,20 +90,20 @@ const BPArrayControlInner: React.FC<ArrayControlProps & { arraySchema?: JsonSche
 
   const itemSchema = useMemo(() => {
     // Use arraySchema if available (from StatePropsOfArrayControl), otherwise fall back to schema.items
-    const items = (arraySchema?.items || schema.items) as JsonSchema;
+    const itemsSchema = (arraySchema?.items || schema.items) as JsonSchema;
     
     // If the items schema has a $ref, resolve it using the root schema
-    if (items && typeof items === 'object' && '$ref' in items) {
+    if (itemsSchema && typeof itemsSchema === 'object' && '$ref' in itemsSchema) {
       try {
-        const resolved = Resolve.schema(rootSchema, items.$ref as string, rootSchema);
+        const resolved = Resolve.schema(rootSchema, itemsSchema.$ref as string, rootSchema);
         return resolved;
       } catch (e) {
-        console.error('[BPArrayControl] Failed to resolve schema ref:', items.$ref, e);
-        return items;
+        console.error('[BPArrayControl] Failed to resolve schema ref:', itemsSchema.$ref, e);
+        return itemsSchema;
       }
     }
     
-    return items;
+    return itemsSchema;
   }, [arraySchema, schema, rootSchema]);
 
   const defaultItemValue = useMemo(() => {
