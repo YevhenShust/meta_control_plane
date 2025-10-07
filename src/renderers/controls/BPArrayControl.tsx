@@ -84,9 +84,7 @@ const BPArrayControlInner: React.FC<ArrayControlProps & { arraySchema?: JsonSche
   const items = Array.isArray(data) ? data : [];
   const helperText = errors ? String(errors) : undefined;
   
-  const childPath = useMemo(() => {
-    return path;
-  }, [path]);
+  const childPath = path;
 
   const itemSchema = useMemo(() => {
     // Use arraySchema if available (from StatePropsOfArrayControl), otherwise fall back to schema.items
