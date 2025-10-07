@@ -7,77 +7,120 @@ Currently, two official plugins are available:
 - [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
 - [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
 
-## Expanding the ESLint configuration
+# meta_control_plane
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+Lightweight React + TypeScript + Vite workspace used for schema-driven editors (JSON Forms)
 
-```js
-export default tseslint.config([
+This repository contains an editor for entity drafts based on JSON Schema + JSON Forms. The UI uses BlueprintJS components and custom JSON Forms renderers. The codebase is structured to be both human-readable and assistant-friendly.
+
+---
+
+## Quick metadata (machine-friendly)
+
+```json
+{
+  "name": "meta_control_plane",
+  "stack": ["react", "typescript", "vite", "jsonforms", "blueprintjs"],
+  "defaultBranch": "main",
+  "currentBranch": "copilot/refactor-react-rendering-approach"
+}
+```
+
+---
+
+## Table of contents
+
+- [Quickstart](#quickstart)
+- [Project overview](#project-overview)
+- [AppToaster (global toast notifications)](#app-toaster-global-toast-notifications)
+- [Agent manifest (short)](#agent-manifest-short)
+- [ESLint / TypeScript tips](#eslint--typescript-tips)
+- [Contributing](#contributing)
+- [Docs](#docs)
+
+---
+
+## Quickstart
+
+Requirements: Node 18+ (or the version the project uses), yarn (or npm).
+
+1. Install dependencies
+
+```powershell
+yarn install
+# or
+# npm install
+```
+
+2. Run the dev server
+
+```powershell
+yarn dev
+```
+
+3. Open http://localhost:5173/ and use the app. HMR is enabled via Vite.
+
+---
+
+## Project overview
+
+- src/: application source
+  - `src/renderers`: custom JSON Forms renderers (Blueprint-based)
+  - `src/jsonforms`: schema helpers and default generation utilities
+  - `src/shared/api`: thin HTTP layer + a facade that parses stored draft content
+  - `src/components`: UI components (including `NewDraftDrawer` and `AppToaster`)
+
+- data/: sample data and schemas used by the app
+
+Design goals:
+- Keep file-level responsibilities small and obvious.
+- Prefer explicit types (`unknown` instead of `any`) where appropriate.
+- Centralize shared utilities (parsing, schema tooling, toasts).
+
+---
+
 ## AppToaster (global toast notifications)
 
-This project uses a centralized `AppToaster` helper located at `src/components/AppToaster.ts`.
+Why this exists
+- React 18 changes portal creation semantics. BlueprintJS provides `OverlayToaster.createAsync()` which returns a Promise that resolves to a toaster instance once the portal is ready. Creating multiple toasters from different components can cause race conditions or duplicate overlay roots.
 
-- Why: React 18 requires portals to be created with the new createRoot API. BlueprintJS exposes
-  `OverlayToaster.createAsync()` which returns a Promise that resolves when the portal is ready.
-  `AppToaster` centralizes creation, caches the promise/instance, and provides a small API
-  (`show`, `dismiss`, `clear`, `getToasts`) so all parts of the app use the same toaster.
+What `AppToaster` provides
+- A single, cached async factory for the Blueprint `OverlayToaster`.
+- A small async-friendly API: `show`, `dismiss`, `clear`, `getToasts`.
 
-- Usage examples:
+File: `src/components/AppToaster.ts`
+
+Usage (examples)
 
 ```ts
-// show a success toast (no need to await unless you need to)
+// schedule a toast (no need to await if you don't need confirmation)
 AppToaster.show({ message: 'Saved', intent: 'success' });
 
-// await if you need to ensure the toast was scheduled
+// await when you need to ensure the toast was created/scheduled
 await AppToaster.show({ message: 'Saved', intent: 'success' });
 ```
 
-Keeping the toaster centralized avoids duplicated overlay instances and race conditions when
-multiple components try to create a portal at the same time.
+Notes
+- Keeping an app-wide toaster avoids duplicated portal creation and makes testing and automation easier.
 
-## Agent Manifest (summary)
+---
 
-This project follows a short, machine-readable development manifest used by contributors and automated assistants.
+## Agent manifest (short)
 
-- UI stack: Eclipse JSON Forms with custom Blueprint.js renderers.
-- Validation: AJV (draft-07), with ajv-formats and a small custom TimeSpan format.
-- Renderers: all JSON Forms renderers and related UI code live under `src/renderers` (and optional `src/jsonforms`).
-- Entity flow: `EntityHost` routes to `EntityEditor` which resolves schema, uischema and data and chooses `FormRenderer` or `TableRenderer`.
-- Logging: use clear tags in console logs: `[Host]`, `[Editor]`, `[Form]`, `[Table]`, `[AJV]`, `[Schema]`.
-- Types: avoid `any`; prefer `unknown` or explicit types.
+This project includes a concise, machine-oriented manifest to speed up contributions and automated assistants. Read `docs/AGENT_MANIFEST.md` for the full manifest.
 
-If anything is ambiguous, prefer small, explicit assumptions and document them in the PR description or a short comment.
+Highlights
+- UI stack: JSON Forms with custom Blueprint.js renderers
+- Validation: AJV (draft-07) + `ajv-formats` and a small custom TimeSpan format
+- Important folders: `src/renderers`, `src/jsonforms`, `src/shared/api`
 
-Full manifest: `docs/AGENT_MANIFEST.md`
+When changing behavior, include a short comment and prefer small assumptions rather than large implicit ones.
 
-Assistants: read `docs/AGENT_MANIFEST.md` before making code changes.
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+---
 
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
+## ESLint / TypeScript tips
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+For a production application enable type-aware lint rules (this example shows how to extend an existing config):
 
 ```js
 // eslint.config.js
@@ -89,7 +132,6 @@ export default tseslint.config([
   {
     files: ['**/*.{ts,tsx}'],
     extends: [
-      // Other configs...
       // Enable lint rules for React
       reactX.configs['recommended-typescript'],
       // Enable lint rules for React DOM
@@ -100,8 +142,26 @@ export default tseslint.config([
         project: ['./tsconfig.node.json', './tsconfig.app.json'],
         tsconfigRootDir: import.meta.dirname,
       },
-      // other options...
     },
   },
 ])
 ```
+
+Style notes
+- Prefer `unknown` over `any` unless you intentionally opt-out of type-safety.
+
+---
+
+## Contributing
+
+- Read `docs/AGENT_MANIFEST.md` before making non-trivial changes.
+- Run `yarn lint` and `yarn dev` to verify changes locally.
+- Keep PR descriptions explicit about any assumptions or incomplete decisions.
+
+---
+
+## Docs
+
+Full agent manifest and development notes: `docs/AGENT_MANIFEST.md`
+
+If something in this README is unclear (or you want it more machine-readable), open a small PR with the change — the project aims to be both human- and AI-friendly.
