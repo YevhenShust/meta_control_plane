@@ -110,7 +110,32 @@ export default function NewDraftDrawer({
     setSaving(true);
     try {
       log('creating draft', { setupId, schemaKey });
-      const result = await createDraft(setupId, schemaKey, data ?? {});
+
+    // Ensure arrays and defaults from schema are present in the submitted payload.
+    // Use JsonSchema type for the default generator instead of any.
+    const defaults = generateDefaultContent((patchedSchema ?? schema) as unknown as JsonSchema) as unknown;
+      function mergeDefaults(def: unknown, src: unknown): unknown {
+        if (def === null || def === undefined) return src;
+        if (Array.isArray(def)) {
+          // if user supplied an array, keep it; otherwise use default (possibly empty array)
+          return Array.isArray(src) ? src : structuredClone(def);
+        }
+        if (typeof def === 'object' && def !== null) {
+          const base = (typeof src === 'object' && src !== null) ? (structuredClone(src) as Record<string, unknown>) : {} as Record<string, unknown>;
+          const d = def as Record<string, unknown>;
+          for (const k of Object.keys(d)) {
+            base[k] = mergeDefaults(d[k], base[k]);
+          }
+          return base;
+        }
+        // primitive default - if src provided, prefer src, otherwise default
+        return typeof src === 'undefined' ? def : src;
+      }
+
+      const payload = mergeDefaults(defaults, data ?? {});
+      try { console.debug('[NewDraftDrawer] submit payload (merged)', payload); } catch (e) { console.debug('[NewDraftDrawer] submit payload merged log failed', e); }
+      try { console.debug('[NewDraftDrawer] submit payload (stringified)', JSON.stringify(payload ?? {})); } catch (e) { console.debug('[NewDraftDrawer] submit payload stringify failed', e); }
+      const result = await createDraft(setupId, schemaKey, payload ?? {});
       log('draft created', result);
 
       // Emit event to refresh menu
@@ -132,7 +157,7 @@ export default function NewDraftDrawer({
     } finally {
       setSaving(false);
     }
-  }, [valid, data, setupId, schemaKey, onSuccess, onClose]);
+  }, [valid, data, setupId, schemaKey, onSuccess, onClose, patchedSchema, schema]);
 
   // Keyboard shortcut: Escape to close
   useEffect(() => {

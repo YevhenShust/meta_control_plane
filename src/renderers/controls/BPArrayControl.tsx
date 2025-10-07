@@ -1,9 +1,8 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { Button, Card, FormGroup, NonIdealState } from '@blueprintjs/core';
 import { withJsonFormsArrayControlProps } from '@jsonforms/react';
 import type { ArrayControlProps, JsonSchema } from '@jsonforms/core';
 import { JsonForms } from '@jsonforms/react';
-import { joinErrors } from '../utils';
 import { Resolve } from '@jsonforms/core';
 
 /**
@@ -109,6 +108,22 @@ const BPArrayControlInner: React.FC<ArrayControlProps & { arraySchema?: JsonSche
     return createDefaultValue(itemSchema);
   }, [itemSchema]);
 
+  // ArrayControlProps doesn't currently declare handleChange on the type, so
+  // access it via a safe any-cast. This is how other controls use handleChange
+  // and keeps behavior consistent with JsonForms expectations.
+  const handleChangeFn = (props as unknown as { handleChange?: (p: string, v: unknown) => void }).handleChange;
+
+  const handleItemChange = useCallback(
+    (index: number) => (newData: unknown) => {
+      try {
+        handleChangeFn?.(`${path}.${index}`, newData);
+      } catch (e) {
+        console.error('[BPArrayControl] handleItemChange failed', e);
+      }
+    },
+    [handleChangeFn, path]
+  );
+
   if (visible === false) return null;
 
   return (
@@ -147,11 +162,10 @@ const BPArrayControlInner: React.FC<ArrayControlProps & { arraySchema?: JsonSche
                   schema={itemSchema}
                   uischema={undefined}
                   data={items[index]}
-                  renderers={renderers}
-                  cells={cells}
+                  renderers={renderers ?? []}
+                  cells={cells ?? []}
                   onChange={({ data: newData }) => {
-                    // Update handled by JSON Forms internal state management
-                    // The parent array control receives updates through its own onChange
+                    handleItemChange(index)(newData);
                   }}
                 />
               </Card>

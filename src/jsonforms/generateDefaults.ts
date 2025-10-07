@@ -139,6 +139,8 @@ export function generateDefaultValue(
 /**
  * Generate default content object from root schema
  */
-export function generateDefaultContent(schema: JsonSchema): unknown {
-  return generateDefaultValue(schema, schema);
+// Public entrypoint: accept any shape (other JsonSchema typings may differ),
+// cast to local JsonSchema for internal processing.
+export function generateDefaultContent(schema: unknown): unknown {
+  return generateDefaultValue(schema as JsonSchema, schema as JsonSchema);
 }

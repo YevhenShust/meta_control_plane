@@ -36,7 +36,14 @@ export async function listDraftsV1(setupId: string, params?: { skip?: number; li
 
 // Create draft for a setup (v1): POST /api/v1/Drafts/{setupId}
 export async function createDraftV1(setupId: string, body: { schemaId?: string; content?: string }): Promise<DraftDto> {
-  log('createDraftV1', { setupId, body, useMock });
+  log('createDraftV1', { setupId, bodyLength: body?.content?.length ?? 0, useMock });
+  // log full content for debugging arrays being dropped - trim if very large
+  try {
+    const preview = String(body?.content ?? '').slice(0, 2000);
+    log('createDraftV1 content preview:', preview);
+  } catch (e) {
+    log('createDraftV1 content preview error', e);
+  }
   
   if (useMock) {
     log('[mock] createDraftV1 - returning stub');
@@ -57,6 +64,12 @@ export async function createDraftV1(setupId: string, body: { schemaId?: string; 
 // Update draft (v1): PUT /api/v1/Drafts/{draftId}?content=...
 export async function updateDraftV1(draftId: string, content: string): Promise<DraftDto> {
   log('updateDraftV1', { draftId, contentLength: content.length, useMock });
+  try {
+    const preview = String(content ?? '').slice(0, 2000);
+    log('updateDraftV1 content preview:', preview);
+  } catch (e) {
+    log('updateDraftV1 preview error', e);
+  }
   
   if (useMock) {
     log('[mock] updateDraftV1 - no-op in mock mode');
@@ -69,6 +82,8 @@ export async function updateDraftV1(draftId: string, content: string): Promise<D
     } as DraftDto;
   }
 
+  // Note: content is sent as a query param in the v1 API (legacy). Ensure encoding is handled by axios.
+  log('updateDraftV1 sending to', `/api/v1/Drafts/${encodeURIComponent(draftId)}`, { params: { contentLength: content.length } });
   const res = await http.put(`/api/v1/Drafts/${encodeURIComponent(draftId)}`, null, { params: { content } });
   return res.data?.draft as DraftDto;
 }
