@@ -25,7 +25,8 @@ export const apiSlice = createApi({
         }
       },
       providesTags: (_result, _error, arg) => [
-        { type: 'Drafts', id: `${arg.setupId}:${arg.schemaId ?? 'all'}` }
+        { type: 'Drafts', id: `${arg.setupId}:${arg.schemaId ?? 'all'}` },
+        { type: 'Drafts', id: `${arg.setupId}:all` }, // Also provide a general tag for invalidation
       ],
     }),
 
@@ -56,7 +57,8 @@ export const apiSlice = createApi({
         }
       },
       invalidatesTags: (_result, _error, arg) => [
-        { type: 'Drafts', id: `${arg.setupId}:${arg.schemaId ?? 'all'}` }
+        { type: 'Drafts', id: `${arg.setupId}:${arg.schemaId ?? 'all'}` },
+        { type: 'Drafts', id: `${arg.setupId}:all` }, // Invalidate all for this setup
       ],
     }),
 
