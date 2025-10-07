@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import type { TableViewProps } from '../editor/EntityEditor.types';
-import { Button, InputGroup, NonIdealState, Intent, Position, Toaster } from '@blueprintjs/core';
+import { Button, InputGroup, NonIdealState, Intent } from '@blueprintjs/core';
 import { flattenSchemaToColumns, orderColumnsByUISchema } from '../core/schemaTools';
 import { useDescriptorOptionsForColumns } from '../hooks/useDescriptorOptions';
 import { AgGridReact } from 'ag-grid-react';
@@ -27,7 +27,7 @@ interface RowData {
   content: Record<string, unknown>;
 }
 
-const toaster = Toaster.create({ position: Position.TOP });
+import { AppToaster } from '../components/AppToaster';
 
 function log(...args: unknown[]) {
   console.debug('[Table]', ...args);
@@ -146,8 +146,8 @@ export default function TableRenderer({ rows, schema, uischema, onSaveRow, setup
         const result = await onSaveRow(saveRowId, saveContent);
 
         if (!result.ok) {
-          // Revert on error
-          toaster.show({
+          // Revert on error and show a shared app toaster
+          AppToaster.show({
             message: `Save failed for ${saveRowId}: ${result.error || 'Unknown error'}`,
             intent: Intent.DANGER,
             timeout: 3000,
