@@ -143,8 +143,8 @@ export default function TableRenderer({ schema, uischema, setupId, schemaKey }: 
     const currentRow = localRows.find(r => r.id === rowId);
     if (!currentRow) return;
 
-    // Optimistic update
-    const updatedContent = { ...currentRow.content };
+    // Optimistic update with deep clone to avoid frozen object issues
+    const updatedContent = JSON.parse(JSON.stringify(currentRow.content)) as Record<string, unknown>;
     setNestedValue(updatedContent, path, value);
     
     setLocalRows(prev => prev.map(r => {
@@ -330,8 +330,12 @@ function setNestedValue(obj: Record<string, unknown>, path: string[], value: unk
   }
   
   const [first, ...rest] = path;
+  // Ensure we have a mutable copy of nested objects
   if (!obj[first] || typeof obj[first] !== 'object') {
     obj[first] = {};
+  } else if (obj[first]) {
+    // Create a new object to avoid mutating frozen/readonly nested objects
+    obj[first] = { ...(obj[first] as Record<string, unknown>) };
   }
   setNestedValue(obj[first] as Record<string, unknown>, rest, value);
 }
