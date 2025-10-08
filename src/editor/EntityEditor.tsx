@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { onChanged } from '../shared/events/DraftEvents';
 import type { EntityEditorProps, EditorDataState, EditorSaveOutcome, FormViewProps, TableViewProps } from './EntityEditor.types';
 // loadSchemaByKey already imported above
 import { createAjv } from '../renderers/ajvInstance';
@@ -73,33 +72,27 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
     return () => { alive = false; };
   }, [setupId, schemaKey]);
 
-  // load data after schema resolved
+  // load data after schema resolved (only for form view - table handles its own data)
   useEffect(() => {
     if (!resolved?.schemaId) return;
+    if (view !== 'form') {
+      // For table view, TableRenderer handles data loading via RTK Query
+      setState({ data: null, isDirty: false, isValid: true, loading: false });
+      return;
+    }
+    
     let mounted = true;
     (async () => {
       try {
-        if (view === 'form') {
-          if (!draftId) throw new Error('draftId required for form view');
-          log('load draft start', draftId);
-          const all = await listDrafts(setupId);
-          if (!mounted) return;
-          const hit = all.find(d => String(d.id) === String(draftId) && String(d.schemaId || '') === String(resolved.schemaId));
-          const content = hit?.content ?? {};
-          setState({ data: content, isDirty: false, isValid: true, loading: false });
-          setSnapshot(content ?? null);
-          log('load draft done', draftId);
-        } else {
-          log('load drafts list start', { setupId, schemaId: resolved.schemaId });
-          const rows = await listDrafts(setupId);
-          if (!mounted) return;
-          log('raw drafts loaded:', rows.length, 'total');
-          const items = rows.filter(r => String(r.schemaId || '') === String(resolved.schemaId)).map(r => ({ id: String(r.id ?? ''), content: r.content }));
-          log('filtered and mapped items:', items.length, 'for schemaId', resolved.schemaId);
-          setState({ data: items, isDirty: false, isValid: true, loading: false });
-          setSnapshot(items as unknown as DraftContent);
-          log('load drafts list done', { count: items.length, items: items.map(i => i.id) });
-        }
+        if (!draftId) throw new Error('draftId required for form view');
+        log('load draft start', draftId);
+        const all = await listDrafts(setupId);
+        if (!mounted) return;
+        const hit = all.find(d => String(d.id) === String(draftId) && String(d.schemaId || '') === String(resolved.schemaId));
+        const content = hit?.content ?? {};
+        setState({ data: content, isDirty: false, isValid: true, loading: false });
+        setSnapshot(content ?? null);
+        log('load draft done', draftId);
       } catch (e) {
         if (!mounted) return;
         setState({ data: null, isDirty: false, isValid: false, loading: false, error: (e as Error).message });
@@ -107,33 +100,6 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
     })();
     return () => { mounted = false; };
   }, [resolved?.schemaId, view, draftId, setupId]);
-
-  // Listen for external draft changes and reload rows when in table view
-  useEffect(() => {
-    if (view !== 'table' || !resolved?.schemaId) return;
-    const off = onChanged((payload) => {
-      try {
-        console.debug('[Editor] onChanged event', payload);
-        if (!payload || payload.setupId !== setupId) return;
-        // find if this change pertains to our schemaKey (not schemaId) to avoid resolving ids
-        if (payload.schemaKey === schemaKey) {
-          // force reload: replicate the list-loading logic
-          (async () => {
-            try {
-              const rows = await listDrafts(setupId);
-              const items = rows.filter(r => String(r.schemaId || '') === String(resolved.schemaId)).map(r => ({ id: String(r.id ?? ''), content: r.content }));
-              setState({ data: items, isDirty: false, isValid: true, loading: false });
-              setSnapshot(items as unknown as DraftContent);
-              console.debug('[Editor] reloaded table rows after change', items.length);
-            } catch (e) {
-              console.debug('[Editor] reload rows failed', e);
-            }
-          })();
-        }
-      } catch { /* ignore */ }
-    });
-    return off;
-  }, [view, resolved?.schemaId, setupId, schemaKey]);
 
   // Listen for table 'new' requests from TableRenderer (simple DOM event bridge)
   useEffect(() => {
@@ -156,8 +122,6 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
     window.addEventListener('table-new-request', handler as EventListener);
     return () => window.removeEventListener('table-new-request', handler as EventListener);
   }, [view, setupId, schemaKey]);
-
-  type TableRow = { id: string; content: unknown };
 
   const controller = useMemo(() => {
     async function save(): Promise<EditorSaveOutcome> {
@@ -240,34 +204,17 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
   };
 
   const tableProps: TableViewProps = {
-  rows: Array.isArray(state.data) ? (state.data as TableRow[]) : [],
     schema: schema ?? {},
     uischema: uischema ?? undefined,
     ajv,
-    onEdit(rowId, patch) {
-      log('[Table] onEdit', rowId);
-      setState(s => {
-        if (!Array.isArray(s.data)) return s;
-        const next = (s.data as TableRow[]).map(r => (String(r.id) === String(rowId) ? { ...r, content: { ...(r.content ?? {}), ...(patch as object) } } : r));
-        return { ...s, data: next, isDirty: true };
-      });
-    },
-    async onSaveRow(rowId, nextRow) {
-      log('[Table] onSaveRow', rowId);
-      try {
-        await updateDraft(rowId, nextRow);
-        setState(s => ({ ...s, isDirty: false }));
-        return { ok: true };
-      } catch (e) {
-        return { ok: false, error: (e as Error).message };
-      }
-    },
+    setupId,
+    schemaKey,
   };
 
-  log('Preparing to render view:', view, 'with', Array.isArray(state.data) ? (state.data as TableRow[]).length : 0, 'rows');
+  log('Preparing to render view:', view);
 
-  if (state.loading) return <div className="content-padding">Loading…</div>;
-  if (state.error) return <div className="content-padding">Error: {state.error}</div>;
+  if (state.loading && view === 'form') return <div className="content-padding">Loading…</div>;
+  if (state.error && view === 'form') return <div className="content-padding">Error: {state.error}</div>;
 
   return (
     <div>
@@ -284,14 +231,11 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
         />
       ) : (
         <TableRenderer
-          rows={tableProps.rows}
           schema={tableProps.schema}
           uischema={tableProps.uischema}
           ajv={tableProps.ajv}
-          onEdit={tableProps.onEdit}
-          onSaveRow={tableProps.onSaveRow}
-          setupId={setupId}
-          schemaKey={schemaKey}
+          setupId={tableProps.setupId}
+          schemaKey={tableProps.schemaKey}
         />
       )}
 

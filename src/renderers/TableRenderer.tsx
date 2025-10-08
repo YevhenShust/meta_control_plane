@@ -11,6 +11,8 @@ import NumberCellEditor from './table/NumberCellEditor';
 import StringCellEditor from './table/StringCellEditor';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
+import { useListDraftsQuery, useUpdateDraftMutation } from '../store/api';
+import { resolveSchemaIdByKey } from '../core/schemaKeyResolver';
 
 interface OptionItem { label: string; value: string }
 
@@ -33,14 +35,38 @@ function log(...args: unknown[]) {
   console.debug('[Table]', ...args);
 }
 
-export default function TableRenderer({ rows, schema, uischema, onSaveRow, setupId, schemaKey }: TableViewProps) {
+export default function TableRenderer({ schema, uischema, setupId, schemaKey }: TableViewProps) {
   const [localRows, setLocalRows] = useState<RowData[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const gridRef = useRef<AgGridReact>(null);
+  const [schemaId, setSchemaId] = useState<string | null>(null);
 
   // Track changes that need to be saved
   const pendingChangesRef = useRef<Map<string, { content: Record<string, unknown>; timestamp: number }>>(new Map());
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Resolve schema ID from schema key
+  useEffect(() => {
+    if (!setupId || !schemaKey) return;
+    let mounted = true;
+    (async () => {
+      const id = await resolveSchemaIdByKey(setupId, schemaKey);
+      if (mounted) {
+        setSchemaId(id);
+        log('Resolved schemaId:', id, 'for schemaKey:', schemaKey);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [setupId, schemaKey]);
+
+  // Fetch drafts using RTK Query
+  const { data: drafts, error, isLoading } = useListDraftsQuery(
+    { setupId: setupId || '', schemaId: schemaId || undefined },
+    { skip: !setupId || !schemaId }
+  );
+
+  // Mutation for updating drafts
+  const [updateDraftMutation] = useUpdateDraftMutation();
 
   useEffect(() => {
     log('mount');
@@ -51,12 +77,17 @@ export default function TableRenderer({ rows, schema, uischema, onSaveRow, setup
     };
   }, []);
 
-  // Sync rows to local state
+  // Sync RTK Query data to local state for optimistic updates
   useEffect(() => {
-    const typedRows = Array.isArray(rows) ? (rows as unknown as RowData[]) : [];
-    log('Rows synced to local state:', typedRows.length, 'rows');
-    setLocalRows(typedRows);
-  }, [rows]);
+    if (drafts) {
+      const rows = drafts.map(d => ({
+        id: String(d.id ?? ''),
+        content: d.content as Record<string, unknown>,
+      }));
+      log('Drafts loaded from RTK Query:', rows.length, 'rows');
+      setLocalRows(rows);
+    }
+  }, [drafts]);
 
   // Extract columns from schema
   const columns = useMemo(() => {
@@ -143,20 +174,26 @@ export default function TableRenderer({ rows, schema, uischema, onSaveRow, setup
       // Save each changed row
       for (const [saveRowId, { content: saveContent }] of toSave) {
         log('autosave', saveRowId);
-        const result = await onSaveRow(saveRowId, saveContent);
-
-        if (!result.ok) {
+        
+        try {
+          await updateDraftMutation({
+            draftId: saveRowId,
+            content: saveContent,
+            setupId: setupId || '',
+            schemaId: schemaId || undefined,
+          }).unwrap();
+        } catch (error) {
           // Revert on error and show a shared app toaster
           AppToaster.show({
-            message: `Save failed for ${saveRowId}: ${result.error || 'Unknown error'}`,
+            message: `Save failed for ${saveRowId}: ${error instanceof Error ? error.message : 'Unknown error'}`,
             intent: Intent.DANGER,
             timeout: 3000,
           });
           
           // Revert to original row content
-          const originalRow = rows.find(r => (r as unknown as RowData).id === saveRowId) as unknown as RowData | undefined;
+          const originalRow = drafts?.find(d => String(d.id) === saveRowId);
           if (originalRow) {
-            setLocalRows(prev => prev.map(r => r.id === saveRowId ? originalRow : r));
+            setLocalRows(prev => prev.map(r => r.id === saveRowId ? { id: String(originalRow.id ?? ''), content: originalRow.content as Record<string, unknown> } : r));
             // Also refresh the grid
             if (gridRef.current?.api) {
               gridRef.current.api.refreshCells({ force: true });
@@ -165,7 +202,7 @@ export default function TableRenderer({ rows, schema, uischema, onSaveRow, setup
         }
       }
     }, 700); // 700ms debounce
-  }, [localRows, onSaveRow, rows]);
+  }, [localRows, updateDraftMutation, setupId, schemaId, drafts]);
 
   // Convert to ag-grid column definitions
   const columnDefs = useMemo<ColDef[]>(() => {
@@ -215,6 +252,14 @@ export default function TableRenderer({ rows, schema, uischema, onSaveRow, setup
       gridRef.current.api.setGridOption('quickFilterText', searchTerm);
     }
   }, [searchTerm]);
+
+  if (isLoading) {
+    return <NonIdealState icon="time" title="Loading..." description="Loading drafts..." />;
+  }
+
+  if (error) {
+    return <NonIdealState icon="error" title="Error" description="Failed to load drafts. Please try again." />;
+  }
 
   if (localRows.length === 0) {
     return <NonIdealState icon="inbox" title="No items" description="No drafts found for this container." />;
