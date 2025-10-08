@@ -66,6 +66,12 @@ export async function createDraft(setupId: string, schemaKey: string, content: u
  * @returns Updated draft with parsed content
  */
 export async function updateDraft(draftId: string, content: unknown): Promise<DraftParsed> {
+  // Defensive check: avoid sending requests with invalid draft ids (e.g. 'undefined')
+  if (!draftId || String(draftId) === 'undefined') {
+    const err = new Error(`Invalid draftId: ${String(draftId)}`);
+    console.error('[api] updateDraft called with invalid draftId', draftId);
+    throw err;
+  }
   const contentStr = typeof content === 'string' ? content : JSON.stringify(content);
   try {
     console.debug('[api] updateDraft content preview', contentStr.slice(0, 2000));
