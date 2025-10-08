@@ -168,9 +168,6 @@ export default function TableRenderer({ schema, uischema, setupId, schemaKey }: 
       const toSave = Array.from(pendingChangesRef.current.entries());
       if (toSave.length === 0) return;
 
-      // Clear the pending changes
-      pendingChangesRef.current.clear();
-
       // Save each changed row
       for (const [saveRowId, { content: saveContent }] of toSave) {
         log('autosave', saveRowId);
@@ -182,7 +179,16 @@ export default function TableRenderer({ schema, uischema, setupId, schemaKey }: 
             setupId: setupId || '',
             schemaId: schemaId || undefined,
           }).unwrap();
+          
+          // Don't remove from pending changes immediately - wait a bit to prevent
+          // RTK Query refetch from overwriting with stale data
+          setTimeout(() => {
+            pendingChangesRef.current.delete(saveRowId);
+          }, 1000);
         } catch (error) {
+          // Remove from pending changes on error to allow refetch
+          pendingChangesRef.current.delete(saveRowId);
+          
           // Revert on error and show a shared app toaster
           AppToaster.show({
             message: `Save failed for ${saveRowId}: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -219,9 +225,15 @@ export default function TableRenderer({ schema, uischema, setupId, schemaKey }: 
         },
         valueSetter: (params) => {
           if (!params.data) return false;
-          const updatedContent = { ...params.data.content };
+          
+          // Deep clone the content to avoid mutation
+          const updatedContent = JSON.parse(JSON.stringify(params.data.content)) as Record<string, unknown>;
           setNestedValue(updatedContent, col.path, params.newValue);
-          params.data.content = updatedContent;
+          
+          // Return a NEW row object for reactive components
+          params.data = { ...params.data, content: updatedContent };
+          
+          // Trigger our handler
           handleCellChange(params.data.id, col.path, params.newValue);
           return true;
         },
@@ -292,6 +304,7 @@ export default function TableRenderer({ schema, uischema, setupId, schemaKey }: 
           ref={gridRef}
           rowData={localRows}
           columnDefs={columnDefs}
+          getRowId={(params) => params.data.id}
           defaultColDef={{
             flex: 1,
             minWidth: 100,
