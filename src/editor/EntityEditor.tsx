@@ -10,6 +10,7 @@ import NewDraftDrawer from '../components/NewDraftDrawer';
 import { emitChanged } from '../shared/events/DraftEvents';
 import { loadSchemaByKey } from '../core/schemaKeyResolver';
 import { tryParseContent } from '../core/parse';
+import { useListDraftsQuery } from '../store/api';
 
 type DraftContent = unknown;
 
@@ -37,6 +38,13 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
   // Drawer state for creating new drafts from table
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerSchema, setDrawerSchema] = useState<object | null>(null);
+
+  // RTK Query: fetch drafts for table view using shared cache
+  const shouldFetchViaRTK = view === 'table' && !!(setupId && resolved?.schemaId);
+  const { data: rtkDrafts, isLoading: rtkLoading } = useListDraftsQuery(
+    { setupId, schemaId: resolved?.schemaId ?? '' },
+    { skip: !shouldFetchViaRTK }
+  );
 
   // resolve schema id and JSON
   useEffect(() => {
@@ -90,15 +98,9 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
           setSnapshot(content ?? null);
           log('load draft done', draftId);
         } else {
-          log('load drafts list start', { setupId, schemaId: resolved.schemaId });
-          const rows = await listDrafts(setupId);
-          if (!mounted) return;
-          log('raw drafts loaded:', rows.length, 'total');
-          const items = rows.filter(r => String(r.schemaId || '') === String(resolved.schemaId)).map(r => ({ id: String(r.id ?? ''), content: r.content }));
-          log('filtered and mapped items:', items.length, 'for schemaId', resolved.schemaId);
-          setState({ data: items, isDirty: false, isValid: true, loading: false });
-          setSnapshot(items as unknown as DraftContent);
-          log('load drafts list done', { count: items.length, items: items.map(i => i.id) });
+          // Table view: data comes from RTK Query hook (rtkDrafts)
+          // No direct fetching needed - RTK Query cache is shared with TableRenderer
+          log('table view: data managed by RTK Query cache');
         }
       } catch (e) {
         if (!mounted) return;
@@ -108,27 +110,33 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
     return () => { mounted = false; };
   }, [resolved?.schemaId, view, draftId, setupId]);
 
+  // Sync RTK Query data to state for table view
+  useEffect(() => {
+    if (view !== 'table' || !resolved?.schemaId) return;
+    if (rtkLoading) {
+      setState(s => ({ ...s, loading: true }));
+      return;
+    }
+    if (rtkDrafts) {
+      const items = rtkDrafts.map(r => ({ id: String(r.id ?? ''), content: r.content }));
+      log('RTK Query data synced:', items.length, 'items');
+      setState({ data: items, isDirty: false, isValid: true, loading: false });
+      setSnapshot(items as unknown as DraftContent);
+    }
+  }, [view, resolved?.schemaId, rtkDrafts, rtkLoading]);
+
+  // TODO: replace DraftEvents bridge with RTK callbacks and remove emitter after full RTK migration.
   // Listen for external draft changes and reload rows when in table view
+  // This is kept for backward compatibility with menu and other components that still use DraftEvents
   useEffect(() => {
     if (view !== 'table' || !resolved?.schemaId) return;
     const off = onChanged((payload) => {
       try {
-        console.debug('[Editor] onChanged event', payload);
+        console.debug('[Editor] onChanged event (legacy DraftEvents)', payload);
         if (!payload || payload.setupId !== setupId) return;
-        // find if this change pertains to our schemaKey (not schemaId) to avoid resolving ids
         if (payload.schemaKey === schemaKey) {
-          // force reload: replicate the list-loading logic
-          (async () => {
-            try {
-              const rows = await listDrafts(setupId);
-              const items = rows.filter(r => String(r.schemaId || '') === String(resolved.schemaId)).map(r => ({ id: String(r.id ?? ''), content: r.content }));
-              setState({ data: items, isDirty: false, isValid: true, loading: false });
-              setSnapshot(items as unknown as DraftContent);
-              console.debug('[Editor] reloaded table rows after change', items.length);
-            } catch (e) {
-              console.debug('[Editor] reload rows failed', e);
-            }
-          })();
+          // RTK Query cache will auto-refresh, no manual reload needed
+          console.debug('[Editor] DraftEvents received, RTK cache will handle refresh');
         }
       } catch { /* ignore */ }
     });
