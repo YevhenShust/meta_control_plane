@@ -6,7 +6,8 @@ import tseslint from 'typescript-eslint'
 import { globalIgnores } from 'eslint/config'
 
 export default tseslint.config([
-  globalIgnores(['dist']),
+  // Ignore build/artifact directories and Yarn PnP/sdk artifacts which are not source files
+  globalIgnores(['dist', '.pnp.cjs', '.pnp.loader.mjs', '.yarn/**']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [

@@ -7,15 +7,18 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
+# Build artifacts
+dist/
+dist-ssr/
+.vite/
+
+# Env / local configs
 *.local
 
-# Editor directories and files
+# Editors
 .vscode/*
 !.vscode/extensions.json
-.idea
+.idea/
 .DS_Store
 *.suo
 *.ntvs*
@@ -23,8 +26,20 @@ dist-ssr
 *.sln
 *.sw?
 
+# Node
 node_modules/
-dist/
-.vite/
-.DS_Store
 package-lock.json
+
+# Yarn 4 (Berry) + PnP
+.yarn/*
+!.yarn/install-state.gz
+!.yarn/releases
+!.yarn/plugins
+!.yarn/sdks
+!.yarn/patches
+
+# Don’t commit cache/unplugged
+.yarn/cache
+.yarn/unplugged
+# Legacy state file sometimes appears
+.yarn/build-state.yml
