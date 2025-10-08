@@ -297,6 +297,7 @@ export default function TableRenderer({ schema, uischema, setupId, schemaKey }: 
             minWidth: 100,
             resizable: true,
           }}
+          reactiveCustomComponents={true}
           pagination={true}
           paginationPageSize={25}
           paginationPageSizeSelector={[10, 25, 50, 100]}
