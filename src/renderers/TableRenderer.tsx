@@ -42,7 +42,7 @@ export default function TableRenderer({ rows, schema, uischema, onSaveRow, setup
   // RTK Query: fetch drafts if setupId and schemaId are provided
   const shouldUseRTK = !!(setupId && schemaId);
   const { data: rtkDrafts, isLoading } = useListDraftsQuery(
-    { setupId: setupId!, schemaId: schemaId! },
+    { setupId, schemaId },
     { skip: !shouldUseRTK }
   );
   const [updateDraftRTK] = useUpdateDraftMutation();
