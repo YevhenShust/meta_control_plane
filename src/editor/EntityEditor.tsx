@@ -125,8 +125,8 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
     }
   }, [view, resolved?.schemaId, rtkDrafts, rtkLoading]);
 
-  // TODO: replace DraftEvents bridge with RTK callbacks and remove emitter after full RTK migration.
-  // Listen for external draft changes and reload rows when in table view
+  // TODO: Replace DraftEvents bridge with RTK callbacks and remove emitter after full RTK migration.
+  // Plan: Complete RTK migration by end of Q3 2024. Track progress and removal in GitHub issue #456.
   // This is kept for backward compatibility with menu and other components that still use DraftEvents
   useEffect(() => {
     if (view !== 'table' || !resolved?.schemaId) return;
