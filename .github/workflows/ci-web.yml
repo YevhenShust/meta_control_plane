@@ -27,7 +27,6 @@ jobs:
         with:
           path: |
             .yarn/cache
-            .yarn/install-state.gz
             .pnp.cjs
           key: ${{ runner.os }}-yarn4-${{ hashFiles('yarn.lock') }}
           restore-keys: |
