@@ -207,7 +207,7 @@ export default function TableRenderer({ schema, uischema, setupId, schemaKey }: 
         },
       };
 
-      // вбудовані редактори
+      // built-in editors
       if (col.type === 'boolean') {
         colDef.cellEditor = 'agCheckboxCellEditor';
         colDef.cellRenderer = 'agCheckboxCellRenderer';
