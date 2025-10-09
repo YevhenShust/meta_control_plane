@@ -53,17 +53,17 @@ export interface FormViewProps<T = unknown> {
 }
 
 export interface TableViewProps<Row = unknown> {
-  rows: Row[];
+  rows?: Row[]; // Optional now - RTK Query handles data fetching
   schema: object;
   uischema?: object;
   ajv: import('ajv').Ajv;
-  /** setupId for backend requests (optional) */
+  /** setupId for backend requests (required for RTK Query) */
   setupId?: string;
-  /** schemaKey of the current table (optional) */
+  /** schemaKey of the current table (required for RTK Query) */
   schemaKey?: string;
 
-  onEdit(rowId: string, patch: Partial<Row> | Row): void;
-  onSaveRow(rowId: string, nextRow: Row): Promise<EditorSaveOutcome>;
+  onEdit?: (rowId: string, patch: Partial<Row> | Row) => void; // Optional now
+  onSaveRow?: (rowId: string, nextRow: Row) => Promise<EditorSaveOutcome>; // Optional now - RTK Query handles saving
   /** Optional: invoked when the user wants to create a new draft from the table UI */
   onCreate?: () => void;
 }

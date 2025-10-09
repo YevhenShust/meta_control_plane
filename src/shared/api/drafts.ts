@@ -64,6 +64,11 @@ export async function createDraftV1(setupId: string, body: { schemaId?: string; 
 // Update draft (v1): PUT /api/v1/Drafts/{draftId}?content=...
 export async function updateDraftV1(draftId: string, content: string): Promise<DraftDto> {
   log('updateDraftV1', { draftId, contentLength: content.length, useMock });
+  // Defensive: do not send requests with invalid draftId (literal 'undefined' or empty)
+  if (!draftId || String(draftId) === 'undefined') {
+    log('updateDraftV1 aborted: invalid draftId', draftId);
+    throw new Error(`Invalid draftId: ${String(draftId)}`);
+  }
   try {
     const preview = String(content ?? '').slice(0, 2000);
     log('updateDraftV1 content preview:', preview);

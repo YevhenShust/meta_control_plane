@@ -1,228 +1,263 @@
-import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { TableViewProps } from '../editor/EntityEditor.types';
 import { Button, InputGroup, NonIdealState, Intent } from '@blueprintjs/core';
 import { flattenSchemaToColumns, orderColumnsByUISchema } from '../core/schemaTools';
 import { useDescriptorOptionsForColumns } from '../hooks/useDescriptorOptions';
 import { AgGridReact } from 'ag-grid-react';
 import type { ColDef } from 'ag-grid-community';
-import BooleanCellEditor from './table/BooleanCellEditor';
-import SelectCellEditor from './table/SelectCellEditor';
-import NumberCellEditor from './table/NumberCellEditor';
-import StringCellEditor from './table/StringCellEditor';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
+import { useListDraftsQuery, useUpdateDraftMutation } from '../store/api';
+import { resolveSchemaIdByKey } from '../core/schemaKeyResolver';
+import { AppToaster } from '../components/AppToaster';
 
 interface OptionItem { label: string; value: string }
-
-interface ColumnDef {
+interface ColumnDefX {
   key: string;
   title: string;
-  path: string[];
+  path?: string[];
   type: string;
-  enumValues?: Array<string | OptionItem>;
+  enumValues?: Array<string | OptionItem | unknown>;
 }
-
 interface RowData {
   id: string;
   content: Record<string, unknown>;
 }
 
-import { AppToaster } from '../components/AppToaster';
+export default function TableRenderer({ schema, uischema, setupId, schemaKey }: TableViewProps) {
+  const gridRef = useRef<AgGridReact<RowData>>(null);
 
-function log(...args: unknown[]) {
-  console.debug('[Table]', ...args);
-}
-
-export default function TableRenderer({ rows, schema, uischema, onSaveRow, setupId, schemaKey }: TableViewProps) {
+  const [schemaId, setSchemaId] = useState<string | null>(null);
   const [localRows, setLocalRows] = useState<RowData[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const gridRef = useRef<AgGridReact>(null);
 
-  // Track changes that need to be saved
+  // pending saves
   const pendingChangesRef = useRef<Map<string, { content: Record<string, unknown>; timestamp: number }>>(new Map());
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    log('mount');
-    return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-    };
-  }, []);
+  // snapshot for rollback
+  const draftsRef = useRef<RowData[]>([]);
 
-  // Sync rows to local state
   useEffect(() => {
-    const typedRows = Array.isArray(rows) ? (rows as unknown as RowData[]) : [];
-    log('Rows synced to local state:', typedRows.length, 'rows');
-    setLocalRows(typedRows);
-  }, [rows]);
+    if (!setupId || !schemaKey) return;
+    let mounted = true;
+    (async () => {
+      const id = await resolveSchemaIdByKey(setupId, schemaKey);
+      if (mounted) setSchemaId(id);
+    })();
+    return () => { mounted = false; };
+  }, [setupId, schemaKey]);
 
-  // Extract columns from schema
-  const columns = useMemo(() => {
+  const { data: drafts, error, isLoading } = useListDraftsQuery(
+    { setupId: setupId || '', schemaId: schemaId || undefined },
+    { skip: !setupId || !schemaId }
+  );
+
+  const [updateDraft] = useUpdateDraftMutation();
+
+  useEffect(() => () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); }, []);
+
+  useEffect(() => {
+    if (drafts) {
+      const rows = drafts
+        .map(d => ({ id: d.id == null ? '' : String(d.id), content: d.content as Record<string, unknown> }))
+        .filter(r => !!r.id);
+      draftsRef.current = rows;
+      setLocalRows(rows);
+    }
+  }, [drafts]);
+
+  // columns from schema
+  const columns = useMemo<ColumnDefX[]>(() => {
     const cols = flattenSchemaToColumns(schema).map(col => ({
       key: col.key,
       title: col.title,
-      path: col.path || [col.key],
+      path: col.path ?? [col.key],
       type: col.type,
-      enumValues: col.enumValues,
+      enumValues: col.enumValues as Array<string | OptionItem> | undefined,
     }));
-    const ordered = orderColumnsByUISchema(cols, uischema);
-    log('Columns extracted:', ordered.length, 'columns', ordered.map(c => c.key));
-    return ordered;
+    return orderColumnsByUISchema(cols, uischema);
   }, [schema, uischema]);
 
-  // Identify descriptor columns (columns ending with DescriptorId)
   const descriptorColumns = useMemo(() => {
     return columns.filter(col => {
-      const last = col.path && col.path.length > 0 ? col.path[col.path.length - 1] : undefined;
+      const last = col.path?.[col.path.length - 1];
       return last && /DescriptorId$/i.test(last);
     });
   }, [columns]);
 
-  // Batch-load descriptor options for all descriptor columns.
-  // Filter out any undefined names and dedupe so the hook only runs necessary requests.
   const descriptorPropertyNames = useMemo(() => {
     const names = descriptorColumns
-      .map(col => (col.path && col.path.length > 0 ? col.path[col.path.length - 1]?.replace(/Id$/i, '') : undefined))
+      .map(col => col.path?.[col.path.length - 1]?.replace(/Id$/i, ''))
       .filter((n): n is string => !!n);
     return Array.from(new Set(names));
   }, [descriptorColumns]);
 
   const { map: descriptorOptionsMap } = useDescriptorOptionsForColumns(setupId, schemaKey, descriptorPropertyNames);
 
-  // merge in options into columns for rendering
-  const renderedColumns = useMemo(() => {
-    return columns.map(c => {
-      // Check if this is a descriptor column and if we have options for it
-      let opts = c.enumValues;
-      
-      // If this column corresponds to a descriptor property, load options from the map
-      const last = c.path && c.path.length > 0 ? c.path[c.path.length - 1]?.replace(/Id$/i, '') : undefined;
-      if (last && descriptorOptionsMap && descriptorOptionsMap[last] && descriptorOptionsMap[last].length > 0) {
-        opts = descriptorOptionsMap[last];
-      }
-      
-      return { ...c, enumValues: opts } as ColumnDef;
-    });
-  }, [columns, descriptorOptionsMap]);
+  const renderedColumns = useMemo<ColumnDefX[]>(() =>
+    columns.map(c => {
+      const path = c.path ?? [c.key];
+      const last = path[path.length - 1]?.replace(/Id$/i, '');
+      const opts = last && descriptorOptionsMap?.[last]?.length ? descriptorOptionsMap[last] : c.enumValues;
+      return { ...c, path, enumValues: opts };
+    }),
+  [columns, descriptorOptionsMap]);
 
-  const handleCellChange = useCallback((rowId: string, path: string[], value: unknown) => {
-    // Get the current row state before update
-    const currentRow = localRows.find(r => r.id === rowId);
-    if (!currentRow) return;
+  // helpers
+  const isOptionItem = (v: unknown): v is OptionItem => {
+    if (typeof v !== 'object' || v === null) return false;
+    const o = v as Record<string, unknown>;
+    return typeof o.value === 'string' && typeof o.label === 'string';
+  };
 
-    // Optimistic update
-    const updatedContent = { ...currentRow.content };
-    setNestedValue(updatedContent, path, value);
-    
-    setLocalRows(prev => prev.map(r => {
-      if (r.id !== rowId) return r;
-      return { ...r, content: updatedContent };
-    }));
-
-    // Track this change for debounced save
-    pendingChangesRef.current.set(rowId, {
-      content: updatedContent,
-      timestamp: Date.now(),
-    });
-
-    // Clear existing timeout and set a new one
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
+  const getNestedValue = (obj: Record<string, unknown>, path: string[]): unknown => {
+    let cur: unknown = obj;
+    for (const key of path) {
+      if (cur && typeof cur === 'object') cur = (cur as Record<string, unknown>)[key];
+      else return undefined;
     }
+    return cur;
+  };
 
+  const setNestedValue = useCallback(function setNestedValueInner(obj: Record<string, unknown>, path: string[], value: unknown): void {
+    if (!path.length) return;
+    if (path.length === 1) { obj[path[0]] = value; return; }
+    const [first, ...rest] = path;
+    if (typeof obj[first] !== 'object' || obj[first] === null) obj[first] = {};
+    setNestedValueInner(obj[first] as Record<string, unknown>, rest, value);
+  }, []);
+
+  // main change handler
+  const handleCellChange = useCallback((rowId: string, path: string[], value: unknown) => {
+    // optimistic local update
+    setLocalRows(prev => {
+      const i = prev.findIndex(r => r.id === rowId);
+      if (i === -1) return prev;
+      const next = [...prev];
+      const updated = { ...next[i], content: { ...next[i].content } };
+      setNestedValue(updated.content, path, value);
+      next[i] = updated;
+      // mark pending
+      pendingChangesRef.current.set(rowId, { content: updated.content, timestamp: Date.now() });
+      return next;
+    });
+
+    // debounce save
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(async () => {
-      // Process all pending saves
-      const toSave = Array.from(pendingChangesRef.current.entries());
-      if (toSave.length === 0) return;
-
-      // Clear the pending changes
+      const entries = Array.from(pendingChangesRef.current.entries());
+      if (!entries.length) return;
       pendingChangesRef.current.clear();
 
-      // Save each changed row
-      for (const [saveRowId, { content: saveContent }] of toSave) {
-        log('autosave', saveRowId);
-        const result = await onSaveRow(saveRowId, saveContent);
-
-        if (!result.ok) {
-          // Revert on error and show a shared app toaster
+      for (const [id, { content }] of entries) {
+        try {
+          // RTK mutation expects { draftId, content, setupId, schemaId }
+          await updateDraft({ draftId: id, content, setupId: setupId || '', schemaId: schemaId || undefined }).unwrap();
+        } catch (e) {
           AppToaster.show({
-            message: `Save failed for ${saveRowId}: ${result.error || 'Unknown error'}`,
+            message: `Save failed for ${id}: ${e instanceof Error ? e.message : 'Unknown error'}`,
             intent: Intent.DANGER,
             timeout: 3000,
           });
-          
-          // Revert to original row content
-          const originalRow = rows.find(r => (r as unknown as RowData).id === saveRowId) as unknown as RowData | undefined;
-          if (originalRow) {
-            setLocalRows(prev => prev.map(r => r.id === saveRowId ? originalRow : r));
-            // Also refresh the grid
-            if (gridRef.current?.api) {
-              gridRef.current.api.refreshCells({ force: true });
-            }
+          // rollback
+          const original = draftsRef.current.find(r => r.id === id);
+          if (original) {
+            setLocalRows(prev => prev.map(r => (r.id === id ? original : r)));
+            gridRef.current?.api?.refreshCells({ force: true });
           }
         }
       }
-    }, 700); // 700ms debounce
-  }, [localRows, onSaveRow, rows]);
+    }, 700);
+  }, [setupId, schemaId, updateDraft, setNestedValue]);
 
-  // Convert to ag-grid column definitions
-  const columnDefs = useMemo<ColDef[]>(() => {
-    return renderedColumns.map(col => {
-      const colDef: ColDef = {
-        field: col.key,
+  // AG Grid colDefs — ONLY BUILT-IN EDITORS (reactive-compatible)
+  const defaultColDef = useMemo<ColDef>(() => ({
+    flex: 1,
+    minWidth: 120,
+    resizable: true,
+    editable: true,
+    filter: true,
+    sortable: true,
+  }), []);
+
+  const columnDefs = useMemo<ColDef<RowData>[]>(() =>
+    renderedColumns.map(col => {
+      const colDef: ColDef<RowData> = {
+        colId: col.key,
         headerName: col.title,
-        sortable: true,
-        filter: true,
         editable: true,
-        valueGetter: (params) => {
-          if (!params.data) return undefined;
-          return getNestedValue(params.data.content, col.path);
-        },
+        filter: true,
+        sortable: true,
+
+        valueGetter: params => params.data ? getNestedValue(params.data.content, col.path ?? [col.key]) : undefined,
+
+        // ключова частина: змінюємо ТІЛЬКИ поле, повертаємо true
         valueSetter: (params) => {
           if (!params.data) return false;
-          const updatedContent = { ...params.data.content };
-          setNestedValue(updatedContent, col.path, params.newValue);
+          // Deep-clone to ensure nested objects are mutable (avoid freezing issues)
+          const updatedContent = params.data.content
+            ? JSON.parse(JSON.stringify(params.data.content))
+            : {};
+          const path = col.path ?? [col.key];
+          setNestedValue(updatedContent, path, params.newValue);
           params.data.content = updatedContent;
-          handleCellChange(params.data.id, col.path, params.newValue);
+          handleCellChange(params.data.id, path, params.newValue);
           return true;
         },
       };
 
-      // Set appropriate cell editor based on column type
+      // built-in editors
       if (col.type === 'boolean') {
-        colDef.cellEditor = BooleanCellEditor;
-        colDef.cellRenderer = (params: { value: unknown }) => {
-          return params.value ? '✓' : '';
+        colDef.cellEditor = 'agCheckboxCellEditor';
+        colDef.cellRenderer = 'agCheckboxCellRenderer';
+      } else if (col.enumValues?.length) {
+        const values: string[] = [];
+        const labelMap = new Map<string, string>();
+        for (const v of col.enumValues) {
+          if (typeof v === 'string') {
+            values.push(v);
+          } else if (isOptionItem(v)) {
+            values.push(v.value);
+            labelMap.set(v.value, v.label);
+          }
+        }
+        colDef.cellEditor = 'agSelectCellEditor';
+        colDef.cellEditorParams = { values };
+        // display label nicely if available
+        colDef.valueFormatter = p => {
+          const v = p.value as string | undefined;
+          if (!v) return '';
+          return labelMap.get(v) ?? v;
         };
-      } else if (col.enumValues && col.enumValues.length > 0) {
-        colDef.cellEditor = SelectCellEditor;
-        colDef.cellEditorParams = { enumValues: col.enumValues };
       } else if (col.type === 'number') {
-        colDef.cellEditor = NumberCellEditor;
+        colDef.cellEditor = 'agNumberCellEditor';
       } else {
-        colDef.cellEditor = StringCellEditor;
+        colDef.cellEditor = 'agTextCellEditor';
       }
 
       return colDef;
-    });
-  }, [renderedColumns, handleCellChange]);
+    }),
+  [renderedColumns, handleCellChange, setNestedValue]);
 
-  // Apply quick filter when search term changes
+  // Apply quick filter to AG Grid when search term changes
   useEffect(() => {
-    if (gridRef.current?.api) {
-      gridRef.current.api.setGridOption('quickFilterText', searchTerm);
-    }
+    gridRef.current?.api?.setQuickFilter(searchTerm);
   }, [searchTerm]);
 
-  if (localRows.length === 0) {
+  if (isLoading) {
+    return <NonIdealState icon="time" title="Loading..." description="Loading drafts..." />;
+  }
+  if (error) {
+    return <NonIdealState icon="error" title="Error" description="Failed to load drafts. Please try again." />;
+  }
+  if (!localRows.length) {
     return <NonIdealState icon="inbox" title="No items" description="No drafts found for this container." />;
   }
 
   return (
     <div className="content-padding" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div style={{ marginBottom: '12px', display: 'flex', gap: '8px', alignItems: 'center' }}>
+      <div style={{ marginBottom: 12, display: 'flex', gap: 8, alignItems: 'center' }}>
         <InputGroup
           leftIcon="search"
           placeholder="Search..."
@@ -230,63 +265,27 @@ export default function TableRenderer({ rows, schema, uischema, onSaveRow, setup
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
           small
         />
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <span style={{ fontSize: '12px', color: 'var(--bp5-text-color-muted)' }}>
-            {localRows.length} items
-          </span>
-          <Button small icon="plus" text="New" onClick={() => {
-            // delegate to optional onCreate prop via DOM event
-            const ev = new CustomEvent('table-new-request');
-            window.dispatchEvent(ev);
-          }} />
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
+          <span style={{ fontSize: 12, color: 'var(--bp5-text-color-muted)' }}>{localRows.length} items</span>
+          <Button small icon="plus" text="New" onClick={() => window.dispatchEvent(new CustomEvent('table-new-request'))} />
         </div>
       </div>
 
-  <div className="ag-theme-alpine-dark" style={{ height: '600px', width: '100%' }}>
-        <AgGridReact
+      <div className="ag-theme-alpine-dark" style={{ height: 600, width: '100%' }}>
+        <AgGridReact<RowData>
           ref={gridRef}
           rowData={localRows}
           columnDefs={columnDefs}
-          defaultColDef={{
-            flex: 1,
-            minWidth: 100,
-            resizable: true,
-          }}
-          pagination={true}
+          defaultColDef={defaultColDef}
+          getRowId={(p) => p.data.id}
+          reactiveCustomComponents={true}
+          pagination
           paginationPageSize={25}
           paginationPageSizeSelector={[10, 25, 50, 100]}
-          suppressMovableColumns={false}
-          enableCellTextSelection={true}
-          ensureDomOrder={true}
+          enableCellTextSelection
+          ensureDomOrder
         />
       </div>
     </div>
   );
-}
-
-// Helper functions for nested value access
-function getNestedValue(obj: Record<string, unknown>, path: string[]): unknown {
-  let current: unknown = obj;
-  for (const key of path) {
-    if (current && typeof current === 'object') {
-      current = (current as Record<string, unknown>)[key];
-    } else {
-      return undefined;
-    }
-  }
-  return current;
-}
-
-function setNestedValue(obj: Record<string, unknown>, path: string[], value: unknown): void {
-  if (path.length === 0) return;
-  if (path.length === 1) {
-    obj[path[0]] = value;
-    return;
-  }
-  
-  const [first, ...rest] = path;
-  if (!obj[first] || typeof obj[first] !== 'object') {
-    obj[first] = {};
-  }
-  setNestedValue(obj[first] as Record<string, unknown>, rest, value);
 }

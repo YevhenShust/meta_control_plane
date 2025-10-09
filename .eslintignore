@@ -1,7 +1,0 @@
-﻿.pnp.cjs
-.pnp.loader.mjs
-.yarn/
-node_modules/
-dist/
-dist-ssr/
-.vite/

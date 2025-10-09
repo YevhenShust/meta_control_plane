@@ -3,13 +3,17 @@ import globals from 'globals'
 import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
-import { globalIgnores } from 'eslint/config'
 
 export default tseslint.config([
-  // Ignore build/artifact directories and Yarn PnP/sdk artifacts which are not source files
-  globalIgnores(['dist', '.pnp.cjs', '.pnp.loader.mjs', '.yarn/**']),
+  // Global ignore for non-source files (prevent linting PnP SDK files and loaders)
   {
+    ignores: ['.pnp.cjs', '.pnp.loader.mjs', '.yarn/**', '.yarn/*', 'node_modules/**', 'dist/**'],
+  },
+  {
+    // Files to lint
     files: ['**/*.{ts,tsx}'],
+    // Files/dirs to ignore (replaces .eslintignore)
+    ignores: ['dist/**', '.pnp.cjs', '.pnp.loader.mjs', '.yarn/**', 'node_modules/**'],
     extends: [
       js.configs.recommended,
       tseslint.configs.recommended,
