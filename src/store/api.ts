@@ -93,6 +93,45 @@ export const apiSlice = createApi({
         { type: 'Schemas', id: arg.setupId }
       ],
     }),
+
+    // Search drafts by query string
+    searchDrafts: builder.query<
+      Array<{ id: string; label: string; value: string }>,
+      { setupId: string; schemaId?: string; query?: string }
+    >({
+      queryFn: async (arg) => {
+        try {
+          const drafts = await api.listDrafts(arg.setupId);
+          let filtered = arg.schemaId
+            ? drafts.filter(d => String(d.schemaId || '') === String(arg.schemaId))
+            : drafts;
+          
+          // Filter by query if provided
+          if (arg.query && arg.query.trim()) {
+            const q = arg.query.toLowerCase();
+            filtered = filtered.filter(d => {
+              const idMatch = String(d.id).toLowerCase().includes(q);
+              const contentStr = JSON.stringify(d.content).toLowerCase();
+              return idMatch || contentStr.includes(q);
+            });
+          }
+          
+          // Return id, label, and value format
+          const results = filtered.map(d => ({
+            id: String(d.id),
+            label: String(d.id),
+            value: String(d.id),
+          }));
+          
+          return { data: results };
+        } catch (error) {
+          return { error: { status: 'CUSTOM_ERROR', error: String(error) } };
+        }
+      },
+      providesTags: (_result, _error, arg) => [
+        { type: 'Drafts', id: `${arg.setupId}:${arg.schemaId ?? 'all'}` }
+      ],
+    }),
   }),
 });
 
@@ -102,4 +141,5 @@ export const {
   useCreateDraftMutation,
   useUpdateDraftMutation,
   useListSchemasQuery,
+  useSearchDraftsQuery,
 } = apiSlice;

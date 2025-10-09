@@ -21,6 +21,7 @@ interface NewDraftDrawerProps {
   schema: object;
   uischema?: object;
   onSuccess: (draftId: string) => void;
+  onDraftCreated?: (draft: { id: string; label: string; value: string }) => void;
 }
 
 function log(...args: unknown[]) {
@@ -35,6 +36,7 @@ export default function NewDraftDrawer({
   schema,
   uischema,
   onSuccess,
+  onDraftCreated,
 }: NewDraftDrawerProps) {
   const [data, setData] = useState<unknown>(null);
   const [valid, setValid] = useState(true);
@@ -146,6 +148,15 @@ export default function NewDraftDrawer({
         intent: Intent.SUCCESS,
       });
 
+      // Call onDraftCreated if provided
+      if (onDraftCreated) {
+        onDraftCreated({
+          id: String(result.id),
+          label: `${String(result.id)} - ${schemaKey}`,
+          value: String(result.id),
+        });
+      }
+
       onSuccess(String(result.id));
       onClose();
     } catch (e) {
@@ -157,7 +168,7 @@ export default function NewDraftDrawer({
     } finally {
       setSaving(false);
     }
-  }, [valid, data, setupId, schemaKey, onSuccess, onClose, patchedSchema, schema]);
+  }, [valid, data, setupId, schemaKey, onSuccess, onClose, patchedSchema, schema, onDraftCreated]);
 
   // Keyboard shortcut: Escape to close
   useEffect(() => {

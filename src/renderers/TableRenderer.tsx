@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { TableViewProps } from '../editor/EntityEditor.types';
 import { Button, InputGroup, NonIdealState, Intent } from '@blueprintjs/core';
-import { flattenSchemaToColumns, orderColumnsByUISchema } from '../core/schemaTools';
+import { flattenSchemaToColumns, orderColumnsByUISchema, resolveDescriptorSchemaKeyHeuristics } from '../core/schemaTools';
 import { useDescriptorOptionsForColumns } from '../hooks/useDescriptorOptions';
 import { AgGridReact } from 'ag-grid-react';
 import type { ColDef } from 'ag-grid-community';
@@ -10,6 +10,7 @@ import 'ag-grid-community/styles/ag-theme-alpine.css';
 import { useListDraftsQuery, useUpdateDraftMutation } from '../store/api';
 import { resolveSchemaIdByKey } from '../core/schemaKeyResolver';
 import { AppToaster } from '../components/AppToaster';
+import DescriptorSelectEditor from './table/DescriptorSelectEditor';
 
 interface OptionItem { label: string; value: string }
 interface ColumnDefX {
@@ -212,24 +213,54 @@ export default function TableRenderer({ schema, uischema, setupId, schemaKey }: 
         colDef.cellEditor = 'agCheckboxCellEditor';
         colDef.cellRenderer = 'agCheckboxCellRenderer';
       } else if (col.enumValues?.length) {
-        const values: string[] = [];
-        const labelMap = new Map<string, string>();
-        for (const v of col.enumValues) {
-          if (typeof v === 'string') {
-            values.push(v);
-          } else if (isOptionItem(v)) {
-            values.push(v.value);
-            labelMap.set(v.value, v.label);
+        // Check if this is a DescriptorId column
+        const last = col.path?.[col.path.length - 1];
+        const isDescriptorId = last && /DescriptorId$/i.test(last);
+        
+        if (isDescriptorId) {
+          // Use custom DescriptorSelectEditor for DescriptorId columns
+          colDef.cellEditor = DescriptorSelectEditor;
+          // Resolve descriptor schema key for this column
+          const propertyName = last.replace(/Id$/i, '');
+          const candidates = resolveDescriptorSchemaKeyHeuristics(propertyName);
+          colDef.cellEditorParams = {
+            setupId: setupId || '',
+            schemaKey: schemaKey || '',
+            descriptorSchemaKey: candidates[0] || propertyName,
+          };
+          // Display label nicely if available
+          const labelMap = new Map<string, string>();
+          for (const v of col.enumValues) {
+            if (isOptionItem(v)) {
+              labelMap.set(v.value, v.label);
+            }
           }
+          colDef.valueFormatter = p => {
+            const v = p.value as string | undefined;
+            if (!v) return '';
+            return labelMap.get(v) ?? v;
+          };
+        } else {
+          // Regular select editor for non-descriptor enum columns
+          const values: string[] = [];
+          const labelMap = new Map<string, string>();
+          for (const v of col.enumValues) {
+            if (typeof v === 'string') {
+              values.push(v);
+            } else if (isOptionItem(v)) {
+              values.push(v.value);
+              labelMap.set(v.value, v.label);
+            }
+          }
+          colDef.cellEditor = 'agSelectCellEditor';
+          colDef.cellEditorParams = { values };
+          // display label nicely if available
+          colDef.valueFormatter = p => {
+            const v = p.value as string | undefined;
+            if (!v) return '';
+            return labelMap.get(v) ?? v;
+          };
         }
-        colDef.cellEditor = 'agSelectCellEditor';
-        colDef.cellEditorParams = { values };
-        // display label nicely if available
-        colDef.valueFormatter = p => {
-          const v = p.value as string | undefined;
-          if (!v) return '';
-          return labelMap.get(v) ?? v;
-        };
       } else if (col.type === 'number') {
         colDef.cellEditor = 'agNumberCellEditor';
       } else {
@@ -238,7 +269,7 @@ export default function TableRenderer({ schema, uischema, setupId, schemaKey }: 
 
       return colDef;
     }),
-  [renderedColumns, handleCellChange, setNestedValue]);
+  [renderedColumns, handleCellChange, setNestedValue, setupId, schemaKey]);
 
   // Apply quick filter to AG Grid when search term changes
   useEffect(() => {
