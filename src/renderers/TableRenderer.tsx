@@ -171,7 +171,7 @@ export default function TableRenderer({ schema, uischema, setupId, schemaKey }: 
     }, 700);
   }, [setupId, schemaId, updateDraft, setNestedValue]);
 
-  // AG Grid colDefs — ТІЛЬКИ ВБУДОВАНІ EDITORS (reactive-сумісні)
+  // AG Grid colDefs — ONLY BUILT-IN EDITORS (reactive-compatible)
   const defaultColDef = useMemo<ColDef>(() => ({
     flex: 1,
     minWidth: 120,
