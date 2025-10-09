@@ -240,7 +240,7 @@ export default function TableRenderer({ schema, uischema, setupId, schemaKey }: 
     }),
   [renderedColumns, handleCellChange, setNestedValue]);
 
-  // quick filter
+  // Apply quick filter to AG Grid when search term changes
   useEffect(() => {
     gridRef.current?.api?.setQuickFilter(searchTerm);
   }, [searchTerm]);
