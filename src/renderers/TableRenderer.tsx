@@ -17,7 +17,7 @@ interface ColumnDefX {
   title: string;
   path?: string[];
   type: string;
-  enumValues?: Array<string | OptionItem>;
+  enumValues?: Array<string | OptionItem | unknown>;
 }
 interface RowData {
   id: string;
@@ -74,7 +74,7 @@ export default function TableRenderer({ schema, uischema, setupId, schemaKey }: 
       title: col.title,
       path: col.path ?? [col.key],
       type: col.type,
-      enumValues: col.enumValues,
+      enumValues: col.enumValues as Array<string | OptionItem> | undefined,
     }));
     return orderColumnsByUISchema(cols, uischema);
   }, [schema, uischema]);
@@ -105,6 +105,12 @@ export default function TableRenderer({ schema, uischema, setupId, schemaKey }: 
   [columns, descriptorOptionsMap]);
 
   // helpers
+  const isOptionItem = (v: unknown): v is OptionItem => {
+    if (typeof v !== 'object' || v === null) return false;
+    const o = v as Record<string, unknown>;
+    return typeof o.value === 'string' && typeof o.label === 'string';
+  };
+
   const getNestedValue = (obj: Record<string, unknown>, path: string[]): unknown => {
     let cur: unknown = obj;
     for (const key of path) {
@@ -211,7 +217,7 @@ export default function TableRenderer({ schema, uischema, setupId, schemaKey }: 
         for (const v of col.enumValues) {
           if (typeof v === 'string') {
             values.push(v);
-          } else {
+          } else if (isOptionItem(v)) {
             values.push(v.value);
             labelMap.set(v.value, v.label);
           }
