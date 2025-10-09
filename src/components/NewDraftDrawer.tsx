@@ -92,6 +92,44 @@ export default function NewDraftDrawer({
     return clone as object;
   }, [schema, descriptorPropertyKeys, descriptorOptions]);
 
+  // Generate enhanced uischema with setupId for descriptor controls
+  const enhancedUischema = useMemo(() => {
+    const baseUischema = uischema ?? generateDefaultUISchema((patchedSchema ?? schema) as unknown as JsonSchema);
+    
+    // Add setupId to uischema options for descriptor controls
+    const enhanced = structuredClone(baseUischema) as Record<string, unknown>;
+    
+    // Helper to inject setupId into all control options
+    function injectSetupId(obj: unknown): void {
+      if (!obj || typeof obj !== 'object') return;
+      
+      const objAny = obj as Record<string, unknown>;
+      
+      // If this is a control with a scope, check if it's a descriptor field
+      if (objAny.type === 'Control' && typeof objAny.scope === 'string') {
+        const scope = objAny.scope as string;
+        const match = scope.match(/#\/properties\/([^/]+)$/);
+        if (match && match[1] && /DescriptorId$/i.test(match[1])) {
+          // This is a descriptor field - inject setupId
+          if (!objAny.options) objAny.options = {};
+          const options = objAny.options as Record<string, unknown>;
+          options.setupId = setupId;
+        }
+      }
+      
+      // Recursively process nested elements
+      if (Array.isArray(objAny.elements)) {
+        for (const elem of objAny.elements) {
+          injectSetupId(elem);
+        }
+      }
+    }
+    
+    injectSetupId(enhanced);
+    
+    return enhanced as object;
+  }, [uischema, patchedSchema, schema, setupId]);
+
   const handleClose = useCallback(() => {
     if (!saving) {
       onClose();
@@ -187,9 +225,7 @@ export default function NewDraftDrawer({
           <JsonForms
             ajv={ajv}
             schema={(patchedSchema ?? schema) as unknown as JsonSchema}
-            uischema={
-              (uischema ?? generateDefaultUISchema((patchedSchema ?? schema) as unknown as JsonSchema)) as unknown as UISchemaElement
-            }
+            uischema={enhancedUischema as unknown as UISchemaElement}
             data={data as unknown}
             renderers={bpRenderers}
             onChange={({ data: d }) => {

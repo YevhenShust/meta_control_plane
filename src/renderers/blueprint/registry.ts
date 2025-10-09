@@ -5,6 +5,7 @@ import { BPNumberControl } from '../controls/BPNumberControl';
 import { BPIntegerControl } from '../controls/BPIntegerControl';
 import { BPBooleanControl } from '../controls/BPBooleanControl';
 import { BPEnumControl } from '../controls/BPEnumControl';
+import { BPDescriptorControl } from '../controls/BPDescriptorControl';
 import { BPArrayControl } from '../controls/BPArrayControl';
 import { BPVerticalLayout } from '../layouts/BPVerticalLayout';
 import { BPHorizontalLayout } from '../layouts/BPHorizontalLayout';
@@ -20,12 +21,42 @@ function textareaTester(uischema: UISchemaElement, _schema: JsonSchema, _ctx?: u
   return false;
 }
 
+/**
+ * Tester for descriptor fields (properties ending with "DescriptorId")
+ * We manually check the scope instead of using isStringControl to avoid complex type issues
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function descriptorFieldTester(uischema: UISchemaElement, _schema: JsonSchema, _ctx?: unknown): boolean {
+  // Extract property name from scope
+  const u = uischema as unknown as Record<string, unknown>;
+  
+  // Check if this is a Control type
+  if (u?.type !== 'Control') {
+    return false;
+  }
+  
+  const scope = u?.scope as string | undefined;
+  if (!scope || typeof scope !== 'string') {
+    return false;
+  }
+  
+  // Check if scope ends with "DescriptorId"
+  const match = scope.match(/#\/properties\/([^/]+)$/);
+  if (!match || !match[1]) {
+    return false;
+  }
+  
+  const propertyName = match[1];
+  return /DescriptorId$/i.test(propertyName);
+}
+
 // layout testers use uiTypeIs from jsonforms
 
 export function getBlueprintRenderers(): JsonFormsRendererRegistryEntry[] {
   const list: JsonFormsRendererRegistryEntry[] = [
     // control renderers (most-specific first)
     { tester: rankWith(5, isObjectArrayControl), renderer: BPArrayControl },
+    { tester: rankWith(5, descriptorFieldTester as Tester), renderer: BPDescriptorControl },
     { tester: rankWith(4, and(isStringControl, textareaTester as Tester)), renderer: BPTextAreaControl },
     { tester: rankWith(3, isStringControl), renderer: BPStringControl },
     { tester: rankWith(3, isNumberControl), renderer: BPNumberControl },
