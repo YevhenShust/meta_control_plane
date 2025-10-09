@@ -224,7 +224,7 @@ export default function TableRenderer({ schema, uischema, setupId, schemaKey }: 
         }
         colDef.cellEditor = 'agSelectCellEditor';
         colDef.cellEditorParams = { values };
-        // красиво показуємо label, якщо є
+        // display label nicely if available
         colDef.valueFormatter = p => {
           const v = p.value as string | undefined;
           if (!v) return '';
