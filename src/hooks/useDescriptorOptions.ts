@@ -99,6 +99,13 @@ export function useDescriptorOptions(
 /**
  * Helper to load descriptor options for a single property. Separated so it can be reused
  * by batch hooks / server-side transforms.
+ * 
+ * This function:
+ * 1. Uses heuristics to resolve the descriptor schema key from propertyName
+ * 2. Fetches all drafts for that schema
+ * 3. Maps drafts to { label, value } options for use in dropdowns
+ * 
+ * Results are cached globally to avoid redundant API calls.
  */
 export async function loadDescriptorOptions(
   setupId: string,
@@ -184,6 +191,13 @@ export async function loadDescriptorOptions(
 /**
  * Batch hook: return descriptor options for an array of descriptor column keys.
  * Returns a map keyed by the propertyName (the base property name without 'Id').
+ * 
+ * This hook is used by TableRenderer to prefetch dropdown options for all DescriptorId
+ * columns in a single batch operation, avoiding N separate API calls.
+ * 
+ * Example:
+ *   propertyNames = ["ChestDescriptor", "ItemDescriptor"]
+ *   returns: { map: { "ChestDescriptor": [...options], "ItemDescriptor": [...options] } }
  */
 export function useDescriptorOptionsForColumns(
   setupId: string | undefined,

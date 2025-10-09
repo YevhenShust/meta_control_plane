@@ -79,6 +79,7 @@ export default function TableRenderer({ schema, uischema, setupId, schemaKey }: 
     return orderColumnsByUISchema(cols, uischema);
   }, [schema, uischema]);
 
+  // Identify columns that end with "DescriptorId" for dropdown support
   const descriptorColumns = useMemo(() => {
     return columns.filter(col => {
       const last = col.path?.[col.path.length - 1];
@@ -86,6 +87,7 @@ export default function TableRenderer({ schema, uischema, setupId, schemaKey }: 
     });
   }, [columns]);
 
+  // Extract property names from DescriptorId columns (e.g., "ChestDescriptorId" -> "ChestDescriptor")
   const descriptorPropertyNames = useMemo(() => {
     const names = descriptorColumns
       .map(col => col.path?.[col.path.length - 1]?.replace(/Id$/i, ''))
@@ -93,12 +95,15 @@ export default function TableRenderer({ schema, uischema, setupId, schemaKey }: 
     return Array.from(new Set(names));
   }, [descriptorColumns]);
 
+  // Prefetch descriptor options for all DescriptorId columns (one fetch per table)
   const { map: descriptorOptionsMap } = useDescriptorOptionsForColumns(setupId, schemaKey, descriptorPropertyNames);
 
+  // Merge descriptor options into columns as enumValues for dropdown rendering
   const renderedColumns = useMemo<ColumnDefX[]>(() =>
     columns.map(c => {
       const path = c.path ?? [c.key];
       const last = path[path.length - 1]?.replace(/Id$/i, '');
+      // Use descriptor options if available, otherwise fall back to schema-defined enumValues
       const opts = last && descriptorOptionsMap?.[last]?.length ? descriptorOptionsMap[last] : c.enumValues;
       return { ...c, path, enumValues: opts };
     }),
@@ -212,6 +217,7 @@ export default function TableRenderer({ schema, uischema, setupId, schemaKey }: 
         colDef.cellEditor = 'agCheckboxCellEditor';
         colDef.cellRenderer = 'agCheckboxCellRenderer';
       } else if (col.enumValues?.length) {
+        // Setup dropdown editor for columns with enumValues (includes DescriptorId columns)
         const values: string[] = [];
         const labelMap = new Map<string, string>();
         for (const v of col.enumValues) {
@@ -222,9 +228,10 @@ export default function TableRenderer({ schema, uischema, setupId, schemaKey }: 
             labelMap.set(v.value, v.label);
           }
         }
+        // Use ag-grid's built-in select editor with prefetched values
         colDef.cellEditor = 'agSelectCellEditor';
         colDef.cellEditorParams = { values };
-        // display label nicely if available
+        // Display human-readable label instead of ID
         colDef.valueFormatter = p => {
           const v = p.value as string | undefined;
           if (!v) return '';
