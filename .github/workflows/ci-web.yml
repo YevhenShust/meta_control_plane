@@ -20,7 +20,7 @@ jobs:
         run: corepack prepare yarn@4.10.3 --activate
 
       - name: Check Yarn
-        run: yarn -v  # має показати 4.10.3
+        run: yarn -v  # should display 4.10.3
 
       - name: Cache Yarn (Berry) artifacts
         uses: actions/cache@v4
