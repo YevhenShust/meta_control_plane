@@ -23,6 +23,7 @@ import { TextCell } from '../table/editors/TextCell';
 import { NumberCell } from '../table/editors/NumberCell';
 import { CheckboxCell } from '../table/editors/CheckboxCell';
 import { SelectCell } from '../table/editors/SelectCell';
+import '@blueprintjs/table/lib/css/table.css';
 
 interface RowData {
   id: string;
@@ -156,18 +157,35 @@ export default function BPTableRenderer({ schema, uischema, setupId, schemaKey }
               handleCellChange(rowId, col.path, newValue);
             };
 
-            // Handle non-primitive values (objects, arrays)
+            // Handle non-primitive values (objects, arrays) with monospace font
             if (value !== null && typeof value === 'object') {
-              return <span style={{ color: 'var(--bp5-text-color-muted)', fontStyle: 'italic' }}>
-                {JSON.stringify(value)}
-              </span>;
+              return (
+                <span 
+                  style={{ 
+                    fontFamily: 'monospace', 
+                    fontSize: '11px',
+                    color: 'var(--bp5-text-color-muted)',
+                    display: 'block',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                  title={JSON.stringify(value)}
+                >
+                  {JSON.stringify(value)}
+                </span>
+              );
             }
 
             // Render appropriate editor based on column type
             if (col.type === 'boolean') {
               return <CheckboxCell value={value as boolean} onChange={handleChange} />;
             } else if (col.type === 'number') {
-              return <NumberCell value={value as number | null} onChange={handleChange} />;
+              return (
+                <div style={{ textAlign: 'right', paddingRight: '8px' }}>
+                  <NumberCell value={value as number | null} onChange={handleChange} />
+                </div>
+              );
             } else if (col.type === 'enum' || col.enumValues?.length) {
               const last = col.path[col.path.length - 1];
               return (
@@ -242,34 +260,78 @@ export default function BPTableRenderer({ schema, uischema, setupId, schemaKey }
         </div>
       </div>
 
-      <div style={{ flexGrow: 1, minHeight: 400 }}>
-        <Table2
-          numRows={rows.length}
-          enableRowHeader={false}
-          enableColumnResizing
-          defaultRowHeight={30}
-        >
-          {columnHeaders.map((header) => (
-            <Column
-              key={header.id}
-              name={header.column.columnDef.header as string}
-              cellRenderer={(rowIndex) => {
-                const row = rows[rowIndex];
-                if (!row) return <Cell />;
-                const cell = row.getVisibleCells().find((c) => c.column.id === header.id);
-                if (!cell) return <Cell />;
-                
-                // Render the cell using TanStack's cell render function
-                const cellDef = cell.column.columnDef.cell;
-                const renderedContent = typeof cellDef === 'function' 
-                  ? cellDef(cell.getContext())
-                  : cell.getValue();
-                
-                return <Cell>{renderedContent as React.ReactNode}</Cell>;
-              }}
-            />
-          ))}
-        </Table2>
+      <div style={{ 
+        flexGrow: 1, 
+        minHeight: 400,
+        border: '1px solid var(--bp5-border-color)',
+        borderRadius: '3px',
+        overflow: 'hidden',
+      }}>
+        <style>{`
+          .bp-table-renderer .bp5-table-container {
+            background: var(--bp5-surface-background);
+          }
+          .bp-table-renderer .bp5-table-header {
+            background: var(--bp5-surface-background-hover);
+            border-bottom: 2px solid var(--bp5-border-color);
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+          }
+          .bp-table-renderer .bp5-table-cell {
+            padding: 8px 12px;
+            border-right: 1px solid var(--bp5-divider-color);
+            font-size: 13px;
+          }
+          .bp-table-renderer .bp5-table-row-cell:last-child {
+            border-right: none;
+          }
+          .bp-table-renderer .bp5-table-body .bp5-table-row:nth-child(even) {
+            background: var(--bp5-surface-background-hover);
+          }
+          .bp-table-renderer .bp5-table-body .bp5-table-row:hover {
+            background: var(--bp5-background-color-hover);
+            cursor: pointer;
+          }
+          .bp-table-renderer .bp5-table-column-name {
+            padding: 10px 12px;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+        `}</style>
+        <div className="bp-table-renderer">
+          <Table2
+            numRows={rows.length}
+            enableRowHeader={false}
+            enableColumnResizing
+            defaultRowHeight={36}
+            enableGhostCells={false}
+            enableFocusedCell={false}
+          >
+            {columnHeaders.map((header) => (
+              <Column
+                key={header.id}
+                name={header.column.columnDef.header as string}
+                cellRenderer={(rowIndex) => {
+                  const row = rows[rowIndex];
+                  if (!row) return <Cell />;
+                  const cell = row.getVisibleCells().find((c) => c.column.id === header.id);
+                  if (!cell) return <Cell />;
+                  
+                  // Render the cell using TanStack's cell render function
+                  const cellDef = cell.column.columnDef.cell;
+                  const renderedContent = typeof cellDef === 'function' 
+                    ? cellDef(cell.getContext())
+                    : cell.getValue();
+                  
+                  return <Cell>{renderedContent as React.ReactNode}</Cell>;
+                }}
+              />
+            ))}
+          </Table2>
+        </div>
       </div>
 
       <div style={{ marginTop: 12, display: 'flex', gap: 8, alignItems: 'center' }}>
