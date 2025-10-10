@@ -16,6 +16,24 @@ export interface TableColumn {
 }
 
 /**
+ * Resolve a local $ref to its definition in $defs
+ * @param ref The $ref string (e.g., "#/$defs/Vector3")
+ * @param schema The root schema containing $defs
+ * @returns The resolved schema object or null
+ */
+function resolveLocalRef(ref: string, schema: Record<string, unknown>): Record<string, unknown> | null {
+  if (!ref.startsWith('#/$defs/')) return null;
+  
+  const defName = ref.replace('#/$defs/', '');
+  const defs = schema.$defs as Record<string, unknown> | undefined;
+  
+  if (!defs || typeof defs !== 'object') return null;
+  
+  const resolved = defs[defName];
+  return resolved && typeof resolved === 'object' ? resolved as Record<string, unknown> : null;
+}
+
+/**
  * Generate table columns from a JSON Schema
  * @param schema JSON Schema object
  * @param uischema Optional UI Schema for column ordering
@@ -36,9 +54,19 @@ export function generateColumnsFromSchema(
   for (const [key, propSchema] of Object.entries(props)) {
     if (!propSchema || typeof propSchema !== 'object') continue;
 
-    // Handle nested objects
-    if ((propSchema as Record<string, unknown>).type === 'object' && (propSchema as Record<string, unknown>).properties) {
-      const nestedProps = (propSchema as Record<string, unknown>).properties as Record<string, unknown>;
+    let resolvedSchema = propSchema as Record<string, unknown>;
+    
+    // Resolve $ref if present
+    if (resolvedSchema.$ref && typeof resolvedSchema.$ref === 'string') {
+      const resolved = resolveLocalRef(resolvedSchema.$ref, schema);
+      if (resolved) {
+        resolvedSchema = resolved;
+      }
+    }
+
+    // Handle nested objects (either direct or resolved from $ref)
+    if (resolvedSchema.type === 'object' && resolvedSchema.properties) {
+      const nestedProps = resolvedSchema.properties as Record<string, unknown>;
       for (const [nestedKey, nestedSchema] of Object.entries(nestedProps)) {
         columns.push({
           key: `${key}.${nestedKey}`,
@@ -53,8 +81,8 @@ export function generateColumnsFromSchema(
         key,
         title: key,
         path: [key],
-        type: inferType(propSchema as Record<string, unknown>),
-        enumValues: (propSchema as Record<string, unknown>).enum as Array<string | DescriptorOption> | undefined,
+        type: inferType(resolvedSchema),
+        enumValues: resolvedSchema.enum as Array<string | DescriptorOption> | undefined,
       });
     }
   }
