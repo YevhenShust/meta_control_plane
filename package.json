@@ -17,6 +17,7 @@
     "@jsonforms/core": "3.6.0",
     "@jsonforms/react": "3.6.0",
     "@reduxjs/toolkit": "2.9.0",
+    "@tanstack/react-table": "^8.21.3",
     "ag-grid-community": "31.3.4",
     "ag-grid-react": "31.3.4",
     "ajv": "8.17.1",

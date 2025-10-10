@@ -35,6 +35,7 @@ const RAW_RUNTIME_STATE =
           ["@jsonforms/core", "npm:3.6.0"],\
           ["@jsonforms/react", "virtual:5eeae50609f7ca8a81a7df7b496055adffd18de4837cf17a2b962cc0d83b447c48f58eb2093d50c6d684675d05ebb1c9afc9c069ad2461f4fd3bf0f3171e7183#npm:3.6.0"],\
           ["@reduxjs/toolkit", "virtual:5eeae50609f7ca8a81a7df7b496055adffd18de4837cf17a2b962cc0d83b447c48f58eb2093d50c6d684675d05ebb1c9afc9c069ad2461f4fd3bf0f3171e7183#npm:2.9.0"],\
+          ["@tanstack/react-table", "virtual:5eeae50609f7ca8a81a7df7b496055adffd18de4837cf17a2b962cc0d83b447c48f58eb2093d50c6d684675d05ebb1c9afc9c069ad2461f4fd3bf0f3171e7183#npm:8.21.3"],\
           ["@types/react", "npm:18.3.26"],\
           ["@types/react-dom", "virtual:5eeae50609f7ca8a81a7df7b496055adffd18de4837cf17a2b962cc0d83b447c48f58eb2093d50c6d684675d05ebb1c9afc9c069ad2461f4fd3bf0f3171e7183#npm:18.3.7"],\
           ["@vitejs/plugin-react-swc", "virtual:5eeae50609f7ca8a81a7df7b496055adffd18de4837cf17a2b962cc0d83b447c48f58eb2093d50c6d684675d05ebb1c9afc9c069ad2461f4fd3bf0f3171e7183#npm:4.1.0"],\
@@ -1133,6 +1134,42 @@ const RAW_RUNTIME_STATE =
         "linkType": "HARD"\
       }]\
     ]],\
+    ["@tanstack/react-table", [\
+      ["npm:8.21.3", {\
+        "packageLocation": "./.yarn/cache/@tanstack-react-table-npm-8.21.3-7772decaaa-85d1d0fcb6.zip/node_modules/@tanstack/react-table/",\
+        "packageDependencies": [\
+          ["@tanstack/react-table", "npm:8.21.3"]\
+        ],\
+        "linkType": "SOFT"\
+      }],\
+      ["virtual:5eeae50609f7ca8a81a7df7b496055adffd18de4837cf17a2b962cc0d83b447c48f58eb2093d50c6d684675d05ebb1c9afc9c069ad2461f4fd3bf0f3171e7183#npm:8.21.3", {\
+        "packageLocation": "./.yarn/__virtual__/@tanstack-react-table-virtual-bd9dff3c7e/0/cache/@tanstack-react-table-npm-8.21.3-7772decaaa-85d1d0fcb6.zip/node_modules/@tanstack/react-table/",\
+        "packageDependencies": [\
+          ["@tanstack/react-table", "virtual:5eeae50609f7ca8a81a7df7b496055adffd18de4837cf17a2b962cc0d83b447c48f58eb2093d50c6d684675d05ebb1c9afc9c069ad2461f4fd3bf0f3171e7183#npm:8.21.3"],\
+          ["@tanstack/table-core", "npm:8.21.3"],\
+          ["@types/react", "npm:18.3.26"],\
+          ["@types/react-dom", "virtual:5eeae50609f7ca8a81a7df7b496055adffd18de4837cf17a2b962cc0d83b447c48f58eb2093d50c6d684675d05ebb1c9afc9c069ad2461f4fd3bf0f3171e7183#npm:18.3.7"],\
+          ["react", "npm:18.3.1"],\
+          ["react-dom", "virtual:5eeae50609f7ca8a81a7df7b496055adffd18de4837cf17a2b962cc0d83b447c48f58eb2093d50c6d684675d05ebb1c9afc9c069ad2461f4fd3bf0f3171e7183#npm:18.3.1"]\
+        ],\
+        "packagePeers": [\
+          "@types/react-dom",\
+          "@types/react",\
+          "react-dom",\
+          "react"\
+        ],\
+        "linkType": "HARD"\
+      }]\
+    ]],\
+    ["@tanstack/table-core", [\
+      ["npm:8.21.3", {\
+        "packageLocation": "./.yarn/cache/@tanstack-table-core-npm-8.21.3-dac9d96299-40e3560e6d.zip/node_modules/@tanstack/table-core/",\
+        "packageDependencies": [\
+          ["@tanstack/table-core", "npm:8.21.3"]\
+        ],\
+        "linkType": "HARD"\
+      }]\
+    ]],\
     ["@types/estree", [\
       ["npm:1.0.8", {\
         "packageLocation": "./.yarn/cache/@types-estree-npm-1.0.8-2195bac6d6-39d34d1afa.zip/node_modules/@types/estree/",\
@@ -1882,6 +1919,7 @@ const RAW_RUNTIME_STATE =
           ["@jsonforms/core", "npm:3.6.0"],\
           ["@jsonforms/react", "virtual:5eeae50609f7ca8a81a7df7b496055adffd18de4837cf17a2b962cc0d83b447c48f58eb2093d50c6d684675d05ebb1c9afc9c069ad2461f4fd3bf0f3171e7183#npm:3.6.0"],\
           ["@reduxjs/toolkit", "virtual:5eeae50609f7ca8a81a7df7b496055adffd18de4837cf17a2b962cc0d83b447c48f58eb2093d50c6d684675d05ebb1c9afc9c069ad2461f4fd3bf0f3171e7183#npm:2.9.0"],\
+          ["@tanstack/react-table", "virtual:5eeae50609f7ca8a81a7df7b496055adffd18de4837cf17a2b962cc0d83b447c48f58eb2093d50c6d684675d05ebb1c9afc9c069ad2461f4fd3bf0f3171e7183#npm:8.21.3"],\
           ["@types/react", "npm:18.3.26"],\
           ["@types/react-dom", "virtual:5eeae50609f7ca8a81a7df7b496055adffd18de4837cf17a2b962cc0d83b447c48f58eb2093d50c6d684675d05ebb1c9afc9c069ad2461f4fd3bf0f3171e7183#npm:18.3.7"],\
           ["@vitejs/plugin-react-swc", "virtual:5eeae50609f7ca8a81a7df7b496055adffd18de4837cf17a2b962cc0d83b447c48f58eb2093d50c6d684675d05ebb1c9afc9c069ad2461f4fd3bf0f3171e7183#npm:4.1.0"],\

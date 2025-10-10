@@ -3,7 +3,7 @@ import type { EntityEditorProps, EditorDataState, EditorSaveOutcome, FormViewPro
 // loadSchemaByKey already imported above
 import { createAjv } from '../renderers/ajvInstance';
 import FormRenderer from '../renderers/FormRenderer';
-import TableRenderer from '../renderers/TableRenderer';
+import TableRenderer from '../renderers/BPTableRenderer';
 import { listDrafts, updateDraft } from '../shared/api';
 import NewDraftDrawer from '../components/NewDraftDrawer';
 import { emitChanged } from '../shared/events/DraftEvents';
