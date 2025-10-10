@@ -156,6 +156,13 @@ export default function BPTableRenderer({ schema, uischema, setupId, schemaKey }
               handleCellChange(rowId, col.path, newValue);
             };
 
+            // Handle non-primitive values (objects, arrays)
+            if (value !== null && typeof value === 'object') {
+              return <span style={{ color: 'var(--bp5-text-color-muted)', fontStyle: 'italic' }}>
+                {JSON.stringify(value)}
+              </span>;
+            }
+
             // Render appropriate editor based on column type
             if (col.type === 'boolean') {
               return <CheckboxCell value={value as boolean} onChange={handleChange} />;
