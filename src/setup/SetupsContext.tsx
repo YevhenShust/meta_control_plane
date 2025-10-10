@@ -62,6 +62,14 @@ export const SetupsProvider: React.FC<React.PropsWithChildren<unknown>> = ({ chi
     setSelectedIdState(id);
   }, []);
 
+  // Auto-select the only setup if there's exactly one and none is selected
+  useEffect(() => {
+    if (!selectedId && setups.length === 1) {
+      console.debug('[SetupsProvider] Auto-selecting the only available setup:', setups[0].id);
+      setSelectedId(setups[0].id);
+    }
+  }, [setups, selectedId, setSelectedId]);
+
   const refresh = useCallback(async () => {
     await fetchSetups();
   }, [fetchSetups]);
