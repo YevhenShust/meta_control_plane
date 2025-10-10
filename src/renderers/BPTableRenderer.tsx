@@ -258,7 +258,14 @@ export default function BPTableRenderer({ schema, uischema, setupId, schemaKey }
                 if (!row) return <Cell />;
                 const cell = row.getVisibleCells().find((c) => c.column.id === header.id);
                 if (!cell) return <Cell />;
-                return <Cell>{cell.renderValue() as React.ReactNode}</Cell>;
+                
+                // Render the cell using TanStack's cell render function
+                const cellDef = cell.column.columnDef.cell;
+                const renderedContent = typeof cellDef === 'function' 
+                  ? cellDef(cell.getContext())
+                  : cell.getValue();
+                
+                return <Cell>{renderedContent as React.ReactNode}</Cell>;
               }}
             />
           ))}
