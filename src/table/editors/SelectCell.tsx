@@ -19,8 +19,10 @@ interface SelectCellProps {
 export function SelectCell({ value, onChange, options, setupId, schemaKey, propertyName }: SelectCellProps) {
   const [localValue, setLocalValue] = useState(value ?? '');
 
-  // Load descriptor options if this is a descriptor field
-  const isDescriptor = propertyName && /Descriptor$/i.test(propertyName);
+  // Detect descriptor fields: trim "Id" suffix, then check if ends with "Descriptor"
+  const normalized = (propertyName ?? '').replace(/Id$/i, '');
+  const isDescriptor = /Descriptor$/i.test(normalized);
+  
   const { options: descriptorOptions, loading } = useDescriptorOptions(
     isDescriptor ? setupId : undefined,
     isDescriptor ? schemaKey : undefined,
