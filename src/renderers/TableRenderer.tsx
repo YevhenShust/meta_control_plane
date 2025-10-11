@@ -5,12 +5,25 @@ import { flattenSchemaToColumns, orderColumnsByUISchema } from '../core/schemaTo
 import { useDescriptorOptionsForColumns } from '../hooks/useDescriptorOptions';
 import { AgGridReact } from 'ag-grid-react';
 import type { ColDef } from 'ag-grid-community';
-import { stripIdSuffix } from '../core/pathTools';
+import { stripIdSuffix, isDescriptorId as isDescriptorIdUtil } from '../core/pathTools';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
 import { useListDraftsQuery, useUpdateDraftMutation } from '../store/api';
 import { resolveSchemaIdByKey } from '../core/schemaKeyResolver';
 import { AppToaster } from '../components/AppToaster';
+import {
+  LABEL_NEW_BUTTON,
+  LABEL_SEARCH_PLACEHOLDER,
+  LABEL_NO_ITEMS_TITLE,
+  LABEL_NO_ITEMS_DESC,
+  LABEL_LOADING_TITLE,
+  LABEL_LOADING_DRAFTS_DESC,
+  LABEL_LOADING_OPTIONS_DESC,
+  TOAST_TIMEOUT_MS,
+  GRID_PAGINATION_PAGE_SIZE,
+  GRID_PAGINATION_PAGE_SIZE_OPTIONS,
+  GRID_HEIGHT_PX,
+} from '../shared/constants';
 
 interface OptionItem { label: string; value: string }
 interface ColumnDefX {
@@ -81,15 +94,12 @@ export default function TableRenderer({ schema, uischema, setupId, schemaKey }: 
   }, [schema, uischema]);
 
   const descriptorColumns = useMemo(() => {
-    return columns.filter(col => {
-      const last = col.path?.[col.path.length - 1];
-      return last && /DescriptorId$/i.test(last);
-    });
+    return columns.filter(col => isDescriptorIdUtil(col.path?.[col.path.length - 1]));
   }, [columns]);
 
   const descriptorPropertyNames = useMemo(() => {
     const names = descriptorColumns
-      .map(col => col.path?.[col.path.length - 1]?.replace(/Id$/i, ''))
+      .map(col => stripIdSuffix(col.path?.[col.path.length - 1]))
       .filter((n): n is string => !!n);
     return Array.from(new Set(names));
   }, [descriptorColumns]);
@@ -108,11 +118,11 @@ export default function TableRenderer({ schema, uischema, setupId, schemaKey }: 
       const last = path[path.length - 1];
       
       // Check if this is a DescriptorId column
-      const isDescriptorId = last && /DescriptorId$/i.test(last);
+  const isDescriptorId = isDescriptorIdUtil(last);
       
       if (isDescriptorId) {
         // For DescriptorId columns, use options from descriptorOptionsMap
-        const propertyName = last.replace(/Id$/i, '');
+  const propertyName = stripIdSuffix(last || '') || '';
         const opts = descriptorOptionsMap?.[propertyName] || [];
         return { ...c, path, enumValues: opts };
       } else {
@@ -163,7 +173,7 @@ export default function TableRenderer({ schema, uischema, setupId, schemaKey }: 
 
     // debounce save
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(async () => {
+  saveTimeoutRef.current = setTimeout(async () => {
       const entries = Array.from(pendingChangesRef.current.entries());
       if (!entries.length) return;
       pendingChangesRef.current.clear();
@@ -176,7 +186,7 @@ export default function TableRenderer({ schema, uischema, setupId, schemaKey }: 
           AppToaster.show({
             message: `Save failed for ${id}: ${e instanceof Error ? e.message : 'Unknown error'}`,
             intent: Intent.DANGER,
-            timeout: 3000,
+            timeout: TOAST_TIMEOUT_MS,
           });
           // rollback
           const original = draftsRef.current.find(r => r.id === id);
@@ -228,7 +238,7 @@ export default function TableRenderer({ schema, uischema, setupId, schemaKey }: 
       // Determine if this is a DescriptorId column (we want dropdown regardless of initial options presence)
       const path = col.path ?? [col.key];
       const last = path[path.length - 1];
-      const isDescriptorId = last && /DescriptorId$/i.test(last);
+  const isDescriptorId = isDescriptorIdUtil(last);
 
       // built-in editors
       if (col.type === 'boolean') {
@@ -276,13 +286,19 @@ export default function TableRenderer({ schema, uischema, setupId, schemaKey }: 
   }, [searchTerm]);
 
   if (isLoading || descriptorLoading) {
-    return <NonIdealState icon="time" title="Loading..." description={isLoading ? "Loading drafts..." : "Loading descriptor options..."} />;
+    return (
+      <NonIdealState
+        icon="time"
+        title={LABEL_LOADING_TITLE}
+        description={isLoading ? LABEL_LOADING_DRAFTS_DESC : LABEL_LOADING_OPTIONS_DESC}
+      />
+    );
   }
   if (error) {
     return <NonIdealState icon="error" title="Error" description="Failed to load drafts. Please try again." />;
   }
   if (!localRows.length) {
-    return <NonIdealState icon="inbox" title="No items" description="No drafts found for this container." />;
+    return <NonIdealState icon="inbox" title={LABEL_NO_ITEMS_TITLE} description={LABEL_NO_ITEMS_DESC} />;
   }
 
   return (
@@ -290,18 +306,18 @@ export default function TableRenderer({ schema, uischema, setupId, schemaKey }: 
       <div style={{ marginBottom: 12, display: 'flex', gap: 8, alignItems: 'center' }}>
         <InputGroup
           leftIcon="search"
-          placeholder="Search..."
+          placeholder={LABEL_SEARCH_PLACEHOLDER}
           value={searchTerm}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
           small
         />
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
           <span style={{ fontSize: 12, color: 'var(--bp5-text-color-muted)' }}>{localRows.length} items</span>
-          <Button small icon="plus" text="New" onClick={() => window.dispatchEvent(new CustomEvent('table-new-request'))} />
+          <Button small icon="plus" text={LABEL_NEW_BUTTON} onClick={() => window.dispatchEvent(new CustomEvent('table-new-request'))} />
         </div>
       </div>
 
-      <div className="ag-theme-alpine-dark" style={{ height: 600, width: '100%' }}>
+      <div className="ag-theme-alpine-dark" style={{ height: GRID_HEIGHT_PX, width: '100%' }}>
         <AgGridReact<RowData>
           ref={gridRef}
           rowData={localRows}
@@ -311,8 +327,8 @@ export default function TableRenderer({ schema, uischema, setupId, schemaKey }: 
           reactiveCustomComponents={true}
           singleClickEdit={true}
           pagination
-          paginationPageSize={25}
-          paginationPageSizeSelector={[10, 25, 50, 100]}
+          paginationPageSize={GRID_PAGINATION_PAGE_SIZE}
+          paginationPageSizeSelector={GRID_PAGINATION_PAGE_SIZE_OPTIONS}
           enableCellTextSelection
           ensureDomOrder
         />

@@ -6,6 +6,7 @@ import { listDrafts } from '../../shared/api';
 import { resolveSchemaIdByKey } from '../../core/uiLinking';
 import { onChanged } from '../../shared/events/DraftEvents';
 import { dynamicRoutes } from './menuStructure';
+import { MENU_REFRESH_RESET_MS } from '../../shared/constants';
 
 /** Container that provides dynamic loader for routes defined in menuStructure.tsx
  * Keeps SidebarMenu presentational and free of schema-specific logic.
@@ -33,7 +34,7 @@ export default function SidebarMenuContainer({ selectedMenuPath, onSelect }: { s
             console.debug('[SidebarMenuContainer] triggering refresh for base', b);
             setRefreshBasePath(b);
             // clear after short tick to allow SidebarMenu effect to run
-            setTimeout(() => setRefreshBasePath(null), 2000);
+                setTimeout(() => setRefreshBasePath(null), MENU_REFRESH_RESET_MS);
             return;
           }
         }

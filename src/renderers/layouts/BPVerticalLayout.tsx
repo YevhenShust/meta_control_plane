@@ -1,13 +1,9 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Classes } from '@blueprintjs/core';
 import type { LayoutProps, UISchemaElement } from '@jsonforms/core';
 import { withJsonFormsLayoutProps, JsonFormsDispatch } from '@jsonforms/react';
 
 const BPVerticalLayoutComp: React.FC<LayoutProps> = (props) => {
-  useEffect(() => {
-    console.debug('[BP-Layout] BPVerticalLayout mount', { uischema: props.uischema });
-  }, [props.uischema]);
-
   const maybe = props.uischema as unknown as { elements?: UISchemaElement[] } | undefined;
   const elements = maybe?.elements ?? [];
 

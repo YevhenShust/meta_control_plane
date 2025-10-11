@@ -1,14 +1,9 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Card, H5 } from '@blueprintjs/core';
 import type { LayoutProps, UISchemaElement } from '@jsonforms/core';
 import { withJsonFormsLayoutProps, JsonFormsDispatch } from '@jsonforms/react';
 
 const BPGroupLayoutComp: React.FC<LayoutProps> = (props) => {
-  useEffect(() => {
-      console.debug('[BP-Layout] BPGroupLayout mount', { uischema: props.uischema });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   // label is not defined on base UISchemaElement type; access dynamically for now
     const uischemaDynamic = props.uischema as unknown as Record<string, unknown> | undefined;
   const label = uischemaDynamic && typeof uischemaDynamic['label'] === 'string' ? (uischemaDynamic['label'] as string) : undefined;
