@@ -129,8 +129,25 @@ export function orderColumnsByUISchema(columns: ColumnDef[], uischema?: unknown)
  *   - "ChestSpawn" -> ["ChestDescriptor"]
  *   - "ItemDescriptorId" -> ["ItemDescriptor"]
  */
-export function resolveDescriptorSchemaKeyHeuristics(schemaKeyCandidate: string): string[] {
+export function resolveDescriptorSchemaKeyHeuristics(schemaKeyCandidate: string, baseSchemaKey?: string): string[] {
   const candidates: string[] = [];
+  
+  // If we have a baseSchemaKey, try to build descriptor key from it
+  if (baseSchemaKey) {
+    // If base ends with 'Spawn', replace with 'Descriptor' + property name
+    if (baseSchemaKey.endsWith('Spawn')) {
+      const baseWithoutSpawn = baseSchemaKey.replace(/Spawn$/, '');
+      // If schemaKeyCandidate is just a property name like "Descriptor"
+      if (!schemaKeyCandidate.includes(baseWithoutSpawn)) {
+        candidates.push(baseWithoutSpawn + schemaKeyCandidate);
+      }
+    }
+    
+    // Try baseSchemaKey with 'Spawn' replaced by the candidate
+    if (baseSchemaKey.endsWith('Spawn')) {
+      candidates.push(baseSchemaKey.replace(/Spawn$/, schemaKeyCandidate));
+    }
+  }
   
   // If schemaKey ends with 'Spawn', try replacing with 'Descriptor'
   if (schemaKeyCandidate.endsWith('Spawn')) {

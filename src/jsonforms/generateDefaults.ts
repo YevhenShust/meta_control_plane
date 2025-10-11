@@ -57,7 +57,8 @@ function isRarityRelatedField(fieldName: string): boolean {
 export function generateDefaultValue(
   schema: JsonSchema,
   rootSchema: JsonSchema,
-  fieldName = ''
+  fieldName = '',
+  schemaKey?: string
 ): unknown {
   // If schema has explicit default, use it
   if (schema.default !== undefined) {
@@ -68,7 +69,7 @@ export function generateDefaultValue(
   if (schema.$ref) {
     const resolved = resolveRef(schema, schema.$ref, rootSchema);
     if (resolved) {
-      return generateDefaultValue(resolved, rootSchema, fieldName);
+      return generateDefaultValue(resolved, rootSchema, fieldName, schemaKey);
     }
   }
 
@@ -93,12 +94,20 @@ export function generateDefaultValue(
   }
 
   switch (type) {
-    case 'string':
+    case 'string': {
+      // Special handling for Id field - generate schemaKey + timestamp
+      const lowerFieldName = fieldName.toLowerCase();
+      if (lowerFieldName === 'id' || lowerFieldName === 'identifier') {
+        const timestamp = Date.now();
+        const prefix = schemaKey || 'item';
+        return `${prefix}-${timestamp}`;
+      }
       // Check if field name suggests time/duration
       if (isTimeRelatedField(fieldName)) {
         return '00:00:45';
       }
       return '';
+    }
 
     case 'number':
     case 'integer':
@@ -114,7 +123,7 @@ export function generateDefaultValue(
       if (schema.properties) {
         const result: Record<string, unknown> = {};
         for (const [key, propSchema] of Object.entries(schema.properties)) {
-          result[key] = generateDefaultValue(propSchema, rootSchema, key);
+          result[key] = generateDefaultValue(propSchema, rootSchema, key, schemaKey);
         }
         return result;
       }
@@ -128,7 +137,7 @@ export function generateDefaultValue(
       if (schema.properties) {
         const result: Record<string, unknown> = {};
         for (const [key, propSchema] of Object.entries(schema.properties)) {
-          result[key] = generateDefaultValue(propSchema, rootSchema, key);
+          result[key] = generateDefaultValue(propSchema, rootSchema, key, schemaKey);
         }
         return result;
       }
@@ -141,6 +150,14 @@ export function generateDefaultValue(
  */
 // Public entrypoint: accept any shape (other JsonSchema typings may differ),
 // cast to local JsonSchema for internal processing.
-export function generateDefaultContent(schema: unknown): unknown {
-  return generateDefaultValue(schema as JsonSchema, schema as JsonSchema);
+export function generateDefaultContent(schema: unknown, schemaKey?: string): unknown {
+  return generateDefaultContentWithContext(schema as JsonSchema, schema as JsonSchema, schemaKey);
+}
+
+function generateDefaultContentWithContext(
+  schema: JsonSchema,
+  rootSchema: JsonSchema,
+  schemaKey?: string
+): unknown {
+  return generateDefaultValue(schema, rootSchema, '', schemaKey);
 }

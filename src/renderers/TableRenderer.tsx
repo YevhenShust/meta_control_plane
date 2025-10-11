@@ -93,14 +93,31 @@ export default function TableRenderer({ schema, uischema, setupId, schemaKey }: 
     return Array.from(new Set(names));
   }, [descriptorColumns]);
 
-  const { map: descriptorOptionsMap } = useDescriptorOptionsForColumns(setupId, schemaKey, descriptorPropertyNames);
+  const { map: descriptorOptionsMap, loading: descriptorLoading } = useDescriptorOptionsForColumns(setupId, schemaKey, descriptorPropertyNames);
+
+  // Debug logging for descriptor options (disabled for performance)
+  // useEffect(() => {
+  //   console.log('=== TableRenderer Debug ===');
+  //   console.log('Descriptor options map:', descriptorOptionsMap);
+  // }, [descriptorOptionsMap]);
 
   const renderedColumns = useMemo<ColumnDefX[]>(() =>
     columns.map(c => {
       const path = c.path ?? [c.key];
-      const last = path[path.length - 1]?.replace(/Id$/i, '');
-      const opts = last && descriptorOptionsMap?.[last]?.length ? descriptorOptionsMap[last] : c.enumValues;
-      return { ...c, path, enumValues: opts };
+      const last = path[path.length - 1];
+      
+      // Check if this is a DescriptorId column
+      const isDescriptorId = last && /DescriptorId$/i.test(last);
+      
+      if (isDescriptorId) {
+        // For DescriptorId columns, use options from descriptorOptionsMap
+        const propertyName = last.replace(/Id$/i, '');
+        const opts = descriptorOptionsMap?.[propertyName] || [];
+        return { ...c, path, enumValues: opts };
+      } else {
+        // For regular columns, use original enumValues
+        return { ...c, path, enumValues: c.enumValues };
+      }
     }),
   [columns, descriptorOptionsMap]);
 
@@ -207,24 +224,36 @@ export default function TableRenderer({ schema, uischema, setupId, schemaKey }: 
         },
       };
 
+      // Determine if this is a DescriptorId column (we want dropdown regardless of initial options presence)
+      const path = col.path ?? [col.key];
+      const last = path[path.length - 1];
+      const isDescriptorId = last && /DescriptorId$/i.test(last);
+
       // built-in editors
       if (col.type === 'boolean') {
         colDef.cellEditor = 'agCheckboxCellEditor';
         colDef.cellRenderer = 'agCheckboxCellRenderer';
-      } else if (col.enumValues?.length) {
-        const values: string[] = [];
+      } else if (isDescriptorId || (col.enumValues?.length)) {
         const labelMap = new Map<string, string>();
-        for (const v of col.enumValues) {
-          if (typeof v === 'string') {
-            values.push(v);
-          } else if (isOptionItem(v)) {
-            values.push(v.value);
+        // Pre-build label map for current enumValues
+        for (const v of (col.enumValues ?? [])) {
+          if (typeof v !== 'string' && isOptionItem(v)) {
             labelMap.set(v.value, v.label);
           }
         }
+
         colDef.cellEditor = 'agSelectCellEditor';
-        colDef.cellEditorParams = { values };
-        // display label nicely if available
+        // Provide params via function to compute latest values at edit time
+        colDef.cellEditorParams = () => {
+          const values: string[] = [];
+          for (const v of (col.enumValues ?? [])) {
+            if (typeof v === 'string') values.push(v);
+            else if (isOptionItem(v)) values.push(v.value);
+          }
+          return { values };
+        };
+
+        // Display label nicely if available, especially for descriptor IDs
         colDef.valueFormatter = p => {
           const v = p.value as string | undefined;
           if (!v) return '';
@@ -242,11 +271,13 @@ export default function TableRenderer({ schema, uischema, setupId, schemaKey }: 
 
   // Apply quick filter to AG Grid when search term changes
   useEffect(() => {
-    gridRef.current?.api?.setQuickFilter(searchTerm);
+    if (gridRef.current?.api) {
+      gridRef.current.api.setGridOption('quickFilterText', searchTerm);
+    }
   }, [searchTerm]);
 
-  if (isLoading) {
-    return <NonIdealState icon="time" title="Loading..." description="Loading drafts..." />;
+  if (isLoading || descriptorLoading) {
+    return <NonIdealState icon="time" title="Loading..." description={isLoading ? "Loading drafts..." : "Loading descriptor options..."} />;
   }
   if (error) {
     return <NonIdealState icon="error" title="Error" description="Failed to load drafts. Please try again." />;
@@ -279,6 +310,7 @@ export default function TableRenderer({ schema, uischema, setupId, schemaKey }: 
           defaultColDef={defaultColDef}
           getRowId={(p) => p.data.id}
           reactiveCustomComponents={true}
+          singleClickEdit={true}
           pagination
           paginationPageSize={25}
           paginationPageSizeSelector={[10, 25, 50, 100]}

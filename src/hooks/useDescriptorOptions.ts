@@ -16,9 +16,20 @@ interface CacheEntry {
 // Global cache to persist across hook instances
 const globalCache = new Map<string, CacheEntry>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const CACHE_VERSION = '3'; // bump when label/value format changes
 
 // Track in-flight fetches per cache key so concurrent callers share the same promise
 const inFlightRequests = new Map<string, Promise<DescriptorOption[]>>();
+
+// Dev utility: clear all caches (call on startup/HMR to avoid stale UI)
+export function clearDescriptorOptionsCache(): void {
+  try {
+    globalCache.clear();
+    inFlightRequests.clear();
+  } catch {
+    // ignore
+  }
+}
 
 /**
  * Hook to load descriptor options for a given schema key.
@@ -49,7 +60,7 @@ export function useDescriptorOptions(
     }
 
     // Generate cache key
-    const cacheKey = `${setupId}:${baseSchemaKey}:${propertyName || ''}`;
+  const cacheKey = `${setupId}:${baseSchemaKey}:${propertyName || ''}:v${CACHE_VERSION}`;
 
     // Check cache first
     const cached = globalCache.get(cacheKey);
@@ -107,7 +118,7 @@ export async function loadDescriptorOptions(
   signal?: AbortSignal
 ): Promise<DescriptorOption[]> {
   // Use a stable cache key for both caching and in-flight dedupe
-  const cacheKey = `${setupId}:${baseSchemaKey}:${propertyName || ''}`;
+  const cacheKey = `${setupId}:${baseSchemaKey}:${propertyName || ''}:v${CACHE_VERSION}`;
 
   // Return cached if still fresh
   const cached = globalCache.get(cacheKey);
@@ -126,7 +137,7 @@ export async function loadDescriptorOptions(
   // Create the fetch promise and store it so concurrent callers reuse it
   const promise = (async (): Promise<DescriptorOption[]> => {
     // Heuristics candidates
-    const candidates = resolveDescriptorSchemaKeyHeuristics(propertyName || baseSchemaKey);
+    const candidates = resolveDescriptorSchemaKeyHeuristics(propertyName || baseSchemaKey, baseSchemaKey);
 
     // Resolve one candidate to schemaId
     let resolvedSchemaId: string | null = null;
@@ -134,35 +145,46 @@ export async function loadDescriptorOptions(
       try {
         const id = await resolveSchemaIdByKey(setupId, candidate);
         if (id) { resolvedSchemaId = id; break; }
-      } catch { /* continue */ }
+      } catch { 
+        // Continue trying other candidates
+      }
     }
 
-    if (!resolvedSchemaId) return [];
+    if (!resolvedSchemaId) {
+      return [];
+    }
     if (signal?.aborted) return [];
 
     const drafts = await listDrafts(setupId);
     if (signal?.aborted) return [];
 
-    const descriptorOptions = drafts
-      .filter(d => String(d.schemaId || '') === String(resolvedSchemaId))
-      .map(d => {
-        let label: string;
-        const parsed = d.content;
-        if (parsed && typeof parsed === 'object') {
-          const asObj = parsed as Record<string, unknown>;
-          const nice = String(asObj['Id'] ?? asObj['name'] ?? '');
-          label = nice ? `${nice} (${d.id})` : String(d.id ?? '');
-        } else {
-          label = String(d.id ?? '');
-        }
-        let value = String(d.id ?? '');
-        if (parsed && typeof parsed === 'object') {
-          const asObj = parsed as Record<string, unknown>;
-          const descriptorId = String(asObj['Id'] ?? asObj['id'] ?? '');
-          if (descriptorId) value = descriptorId;
-        }
-        return { label, value } as DescriptorOption;
-      });
+    const filteredDrafts = drafts.filter(d => String(d.schemaId || '') === String(resolvedSchemaId));
+    
+
+    
+    // Build options: value = content.Id (fallback to draft id); label = Id or name (no draft id suffix)
+    const rawOptions: DescriptorOption[] = filteredDrafts.map(d => {
+      const parsed = d.content;
+      let value = String(d.id ?? '');
+      let label = value;
+      if (parsed && typeof parsed === 'object') {
+        const asObj = parsed as Record<string, unknown>;
+        const descriptorId = String(asObj['Id'] ?? asObj['id'] ?? '') || undefined;
+        const nice = String(asObj['Id'] ?? asObj['name'] ?? '') || undefined;
+        if (descriptorId) value = descriptorId;
+        label = nice ?? value;
+      }
+      return { label, value };
+    });
+
+    // Dedupe by value and sort by label for stable UX
+    const uniqMap = new Map<string, DescriptorOption>();
+    for (const opt of rawOptions) {
+      if (!uniqMap.has(opt.value)) uniqMap.set(opt.value, opt);
+    }
+    const descriptorOptions = Array.from(uniqMap.values()).sort((a, b) => a.label.localeCompare(b.label));
+
+
 
     // Atomically update cache for this key
     try {
@@ -197,8 +219,12 @@ export function useDescriptorOptionsForColumns(
   const propNamesKey = useMemo(() => (propertyNames || []).map(p => p ?? '').join('|'), [propertyNames]);
 
   useEffect(() => {
-    if (!setupId || !baseSchemaKey) { setMap({}); setLoading(false); setError(null); return; }
-    if (!propertyNames || propertyNames.length === 0) { setMap({}); setLoading(false); setError(null); return; }
+    if (!setupId || !baseSchemaKey) { 
+      setMap({}); setLoading(false); setError(null); return; 
+    }
+    if (!propertyNames || propertyNames.length === 0) { 
+      setMap({}); setLoading(false); setError(null); return; 
+    }
 
     if (abortRef.current) abortRef.current.abort();
     const ac = new AbortController(); abortRef.current = ac;

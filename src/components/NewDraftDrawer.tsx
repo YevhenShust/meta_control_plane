@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, useMemo } from 'react';
+import { useCallback, useEffect, useState, useMemo, useRef } from 'react';
 import { Drawer, Button, ButtonGroup, Intent } from '@blueprintjs/core';
 import { JsonForms } from '@jsonforms/react';
 import type { JsonSchema, UISchemaElement } from '@jsonforms/core';
@@ -7,7 +7,7 @@ import { getBlueprintRenderers } from '../renderers/blueprint/registry';
 import { createAjv } from '../renderers/ajvInstance';
 import { generateDefaultContent } from '../jsonforms/generateDefaults';
 import { createDraft } from '../shared/api';
-import { useDescriptorOptions } from '../hooks/useDescriptorOptions';
+import { useDescriptorOptionsForColumns } from '../hooks/useDescriptorOptions';
 import { emitChanged } from '../shared/events/DraftEvents';
 import { AppToaster } from './AppToaster';
 
@@ -39,17 +39,21 @@ export default function NewDraftDrawer({
   const [data, setData] = useState<unknown>(null);
   const [valid, setValid] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [ajv] = useState(() => createAjv());
+  const [ajv, setAjv] = useState(() => createAjv());
+  const initialDefaultsRef = useRef<unknown>(null);
 
   // Initialize with defaults when drawer opens
   useEffect(() => {
     if (isOpen && schema) {
-      log('generating defaults from schema');
-      const defaults = generateDefaultContent(schema);
-      log('defaults:', defaults);
+      // init defaults for new draft
+      const defaults = generateDefaultContent(schema, schemaKey);
       setData(defaults);
+      initialDefaultsRef.current = defaults;
+      
+      // Create fresh AJV instance to avoid schema conflicts
+      setAjv(createAjv());
     }
-  }, [isOpen, schema]);
+  }, [isOpen, schema, schemaKey]);
 
   // Find descriptor property names in schema
   const descriptorPropertyKeys = useMemo(() => {
@@ -60,37 +64,74 @@ export default function NewDraftDrawer({
     return Object.keys(props).filter(k => /DescriptorId$/i.test(k));
   }, [schema]);
 
-  // Use hook to load descriptor options for the first descriptor property
-  // (most schemas have only one descriptor property)
-  const firstDescriptorKey = descriptorPropertyKeys[0];
-  const descriptorPropertyName = firstDescriptorKey ? firstDescriptorKey.replace(/Id$/i, '') : undefined;
-  
-  const { options: descriptorOptions } = useDescriptorOptions(
+  // Load descriptor options for all descriptor properties
+  const descriptorPropertyNames = useMemo(
+    () => descriptorPropertyKeys.map(k => k.replace(/Id$/i, '')),
+    [descriptorPropertyKeys]
+  );
+  const { map: descriptorOptionsMap } = useDescriptorOptionsForColumns(
     isOpen ? setupId : undefined,
     isOpen ? schemaKey : undefined,
-    descriptorPropertyName
+    descriptorPropertyNames
   );
+
+  // When descriptor options are loaded, ensure data has a valid value for each DescriptorId
+  useEffect(() => {
+    if (!isOpen) return;
+    if (!descriptorPropertyKeys.length) return;
+    if (!descriptorOptionsMap) return;
+  setData((prev: unknown) => {
+      const base = (prev && typeof prev === 'object') ? { ...(prev as Record<string, unknown>) } : {} as Record<string, unknown>;
+      let changed = false;
+      for (const k of descriptorPropertyKeys) {
+        const propName = k.replace(/Id$/i, '');
+        const opts = descriptorOptionsMap[propName] || [];
+        if (!opts.length) continue;
+        const current = base[k];
+        const validValues = new Set(opts.map(o => o.value));
+        if (typeof current !== 'string' || !validValues.has(current) || current.trim() === '') {
+          base[k] = opts[0].value;
+          changed = true;
+        }
+      }
+      return changed ? base : prev;
+    });
+  }, [isOpen, descriptorOptionsMap, descriptorPropertyKeys]);
 
   // Patch schema with descriptor options when available
   const patchedSchema = useMemo(() => {
-    if (!schema || descriptorPropertyKeys.length === 0 || descriptorOptions.length === 0) {
-      return null;
+    if (!schema || descriptorPropertyKeys.length === 0) {
+      return schema;
     }
 
     const jsonSchema = schema as JsonSchema;
     const clone = structuredClone(jsonSchema);
-    
-    // Extract just the values from descriptor options
-    const optionValues = descriptorOptions.map(opt => opt.value);
-    
-    // Inject enum into all descriptor properties
+
     for (const k of descriptorPropertyKeys) {
+      const propName = k.replace(/Id$/i, '');
+      const options = descriptorOptionsMap?.[propName] ?? [];
+      if (!options.length) continue; // skip if no options yet
+
+      const optionValues = options
+        .map(opt => opt.value)
+        .filter(value => value && value.trim() !== '');
+
       if (!clone.properties) clone.properties = {};
-      clone.properties[k] = { ...(clone.properties[k] || {}), enum: optionValues };
+      clone.properties[k] = {
+        type: 'string',
+        enum: optionValues,
+        minLength: 1,
+        ...(clone.properties[k] || {}),
+      };
+
+      const prop = clone.properties[k] as JsonSchema;
+      if (!prop.default || (typeof prop.default === 'string' && prop.default === '')) {
+        delete prop.default;
+      }
     }
-    
+
     return clone as object;
-  }, [schema, descriptorPropertyKeys, descriptorOptions]);
+  }, [schema, descriptorPropertyKeys, descriptorOptionsMap]);
 
   const handleClose = useCallback(() => {
     if (!saving) {
@@ -113,7 +154,7 @@ export default function NewDraftDrawer({
 
     // Ensure arrays and defaults from schema are present in the submitted payload.
     // Use JsonSchema type for the default generator instead of any.
-    const defaults = generateDefaultContent((patchedSchema ?? schema) as unknown as JsonSchema) as unknown;
+  const defaults = (initialDefaultsRef.current ?? generateDefaultContent((patchedSchema ?? schema) as unknown as JsonSchema)) as unknown;
       function mergeDefaults(def: unknown, src: unknown): unknown {
         if (def === null || def === undefined) return src;
         if (Array.isArray(def)) {
@@ -133,10 +174,7 @@ export default function NewDraftDrawer({
       }
 
       const payload = mergeDefaults(defaults, data ?? {});
-      try { console.debug('[NewDraftDrawer] submit payload (merged)', payload); } catch (e) { console.debug('[NewDraftDrawer] submit payload merged log failed', e); }
-      try { console.debug('[NewDraftDrawer] submit payload (stringified)', JSON.stringify(payload ?? {})); } catch (e) { console.debug('[NewDraftDrawer] submit payload stringify failed', e); }
       const result = await createDraft(setupId, schemaKey, payload ?? {});
-      log('draft created', result);
 
       // Emit event to refresh menu
       emitChanged({ schemaKey, setupId });

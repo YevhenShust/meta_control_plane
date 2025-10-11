@@ -108,12 +108,12 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
       // open drawer and load schema for new draft
       (async () => {
         try {
+          setDrawerOpen(true);
           setDrawerSchema(null);
           if (!setupId || !schemaKey) throw new Error('Missing context for new draft');
           const { json } = await loadSchemaByKey(setupId, schemaKey);
           const parsed = tryParseContent(json) as object;
           setDrawerSchema(parsed);
-          setDrawerOpen(true);
         } catch {
           setDrawerOpen(false);
         }
@@ -239,13 +239,13 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
         />
       )}
 
-      {drawerSchema && (
+      {drawerOpen && (
         <NewDraftDrawer
           isOpen={drawerOpen}
           onClose={() => setDrawerOpen(false)}
           setupId={setupId}
           schemaKey={schemaKey}
-          schema={drawerSchema}
+          schema={drawerSchema ?? {}}
           uischema={uischema}
           onSuccess={() => {
             // After successful create, emit change so table/menu refresh
