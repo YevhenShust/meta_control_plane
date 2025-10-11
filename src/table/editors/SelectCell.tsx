@@ -23,11 +23,27 @@ export function SelectCell({ value, onChange, options, setupId, schemaKey, prope
   const normalized = (propertyName ?? '').replace(/Id$/i, '');
   const isDescriptor = /Descriptor$/i.test(normalized);
   
+  // Call useDescriptorOptions with normalized property name (without "Id" suffix)
+  // The hook expects the descriptor type name, not the property name with "Id"
   const { options: descriptorOptions, loading } = useDescriptorOptions(
     isDescriptor ? setupId : undefined,
     isDescriptor ? schemaKey : undefined,
-    isDescriptor ? propertyName : undefined
+    isDescriptor ? normalized : undefined
   );
+
+  // Debug logging to verify hook is called with correct parameters
+  useEffect(() => {
+    if (isDescriptor) {
+      console.log('[SelectCell] Descriptor field detected:', {
+        propertyName,
+        normalized,
+        setupId,
+        schemaKey,
+        isDescriptor,
+        optionsCount: descriptorOptions.length,
+      });
+    }
+  }, [isDescriptor, propertyName, normalized, setupId, schemaKey, descriptorOptions.length]);
 
   useEffect(() => {
     setLocalValue(value ?? '');
