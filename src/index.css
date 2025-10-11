@@ -26,3 +26,28 @@ body.bp5-dark .app-body {
   background: #202B33;
   color: #F5F8FA;
 }
+
+/* --- Compact AG Grid theme to better fit Blueprint UI --- */
+.ag-theme-alpine-dark.ag-compact,
+.ag-theme-alpine.ag-compact {
+  /* base font and density */
+  --ag-font-size: 12px;
+  --ag-grid-size: 3px; /* reduces paddings/margins */
+  --ag-list-item-height: 20px;
+  --ag-row-height: 26px;
+  --ag-header-height: 28px;
+  --ag-header-foreground-color: var(--bp5-text-color);
+}
+
+/* Fine-tune paddings for compact mode */
+.ag-theme-alpine-dark.ag-compact .ag-cell,
+.ag-theme-alpine.ag-compact .ag-cell {
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+
+.ag-theme-alpine-dark.ag-compact .ag-header-cell,
+.ag-theme-alpine.ag-compact .ag-header-cell {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}

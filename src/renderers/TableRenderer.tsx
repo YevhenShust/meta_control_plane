@@ -195,7 +195,7 @@ export default function TableRenderer({ schema, uischema, setupId, schemaKey }: 
   // AG Grid colDefs — ONLY BUILT-IN EDITORS (reactive-compatible)
   const defaultColDef = useMemo<ColDef>(() => ({
     flex: 1,
-    minWidth: 120,
+    minWidth: 100,
     resizable: true,
     editable: true,
     filter: true,
@@ -310,7 +310,7 @@ export default function TableRenderer({ schema, uischema, setupId, schemaKey }: 
         </div>
       </div>
 
-      <div className="ag-theme-alpine-dark" style={{ height: GRID_HEIGHT_PX, width: '100%' }}>
+      <div className="ag-theme-alpine-dark ag-compact" style={{ height: GRID_HEIGHT_PX, width: '100%' }}>
         <AgGridReact<RowData>
           ref={gridRef}
           rowData={localRows}
