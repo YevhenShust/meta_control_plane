@@ -199,6 +199,23 @@ export default function BPTableRenderer({ schema, uischema, setupId, schemaKey }
                 />
               );
             } else {
+              // Check if this is a descriptor field (ends with DescriptorId)
+              const last = col.path[col.path.length - 1];
+              const isDescriptorField = last && /DescriptorId$/i.test(last);
+              
+              if (isDescriptorField) {
+                return (
+                  <SelectCell
+                    value={value as string}
+                    onChange={handleChange}
+                    options={col.enumValues}
+                    setupId={setupId}
+                    schemaKey={schemaKey}
+                    propertyName={last}
+                  />
+                );
+              }
+              
               return <TextCell value={value as string} onChange={handleChange} />;
             }
           },
