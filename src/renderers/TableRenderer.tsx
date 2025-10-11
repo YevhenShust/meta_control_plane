@@ -103,11 +103,7 @@ export default function TableRenderer({ schema, uischema, setupId, schemaKey }: 
 
   const { map: descriptorOptionsMap, loading: descriptorLoading } = useDescriptorOptionsForColumns(setupId, schemaKey, descriptorPropertyNames);
 
-  // Debug logging for descriptor options (disabled for performance)
-  // useEffect(() => {
-  //   console.log('=== TableRenderer Debug ===');
-  //   console.log('Descriptor options map:', descriptorOptionsMap);
-  // }, [descriptorOptionsMap]);
+  // Debug logging removed
 
   const renderedColumns = useMemo<ColumnDefX[]>(() =>
     columns.map(c => {

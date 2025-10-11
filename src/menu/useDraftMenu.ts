@@ -48,7 +48,10 @@ export function useDraftMenu(options: UseDraftMenuOptions): UseDraftMenuResult {
   const [error, setError] = useState<string | null>(null);
 
   const mountedRef = useRef(true);
-  useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   const buildTitle = useCallback((content: unknown, d: DraftParsed): string => {
     if (titleSelector) {

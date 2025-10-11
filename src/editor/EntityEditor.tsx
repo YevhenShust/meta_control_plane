@@ -12,10 +12,6 @@ import { tryParseContent } from '../core/parse';
 
 type DraftContent = unknown;
 
-function log(...args: unknown[]) {
-  if (import.meta.env.DEV) console.debug('[Editor]', ...args);
-}
-
 export default function EntityEditor({ ids, view }: EntityEditorProps) {
   const { setupId, draftId, schemaKey } = ids;
 
@@ -24,7 +20,6 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
   const [resolved, setResolved] = useState<{ schemaId: string } | null>(null);
   const [ajv] = useState(() => {
     const a = createAjv();
-    if (import.meta.env.DEV) console.debug('[AJV] created');
     return a;
   });
 
@@ -42,7 +37,6 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
     let alive = true;
     setResolved(null);
     setState(s => ({ ...s, loading: true, error: undefined }));
-    log('resolve schemaKey ->', schemaKey);
     (async () => {
       try {
         const { id: sId, json } = await loadSchemaByKey(setupId, schemaKey);
@@ -57,11 +51,9 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
           if (!alive) return;
           if (maybe && maybe.default) {
             setUischema(maybe.default as object);
-            log('loaded uischema from schemas/ui/', schemaKey);
           }
         } catch {
           // not fatal — expected missing-file case in some routes
-          if (import.meta.env.DEV) console.debug('[Editor] ui schema not found for', schemaKey);
         }
       } catch (e) {
         if (!alive) return;
@@ -85,14 +77,12 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
     (async () => {
       try {
         if (!draftId) throw new Error('draftId required for form view');
-        log('load draft start', draftId);
         const all = await listDrafts(setupId);
         if (!mounted) return;
         const hit = all.find(d => String(d.id) === String(draftId) && String(d.schemaId || '') === String(resolved.schemaId));
         const content = hit?.content ?? {};
         setState({ data: content, isDirty: false, isValid: true, loading: false });
         setSnapshot(content ?? null);
-        log('load draft done', draftId);
       } catch (e) {
         if (!mounted) return;
         setState({ data: null, isDirty: false, isValid: false, loading: false, error: (e as Error).message });
@@ -128,14 +118,12 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
       if (view === 'form') {
         if (!draftId) return { ok: false, error: 'No draftId' };
         try {
-          log('save start', { draftId });
           await updateDraft(draftId, state.data ?? {});
           setState(s => ({ ...s, isDirty: false }));
           setSnapshot(state.data ?? null);
-          log('save done', { draftId });
           return { ok: true };
         } catch (e) {
-          log('save fail', { draftId, err: (e as Error).message });
+          console.error('[Editor] save failed', { draftId, err: (e as Error).message });
           return { ok: false, error: (e as Error).message };
         }
       }
@@ -144,19 +132,16 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
 
     async function saveRow(rowId: string, nextRow: unknown): Promise<EditorSaveOutcome> {
       try {
-        log('saveRow start', rowId);
         await updateDraft(rowId, nextRow);
         setState(s => ({ ...s, isDirty: false }));
-        log('saveRow done', rowId);
         return { ok: true };
       } catch (e) {
-        log('saveRow fail', { rowId, err: (e as Error).message });
+        console.error('[Editor] saveRow failed', { rowId, err: (e as Error).message });
         return { ok: false, error: (e as Error).message };
       }
     }
 
     function reset() {
-      log('reset');
       setState(s => ({ ...s, data: snapshot, isDirty: false }));
     }
 
@@ -190,12 +175,10 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
     uischema: uischema ?? undefined,
     ajv,
     onChange(next) {
-      log('[Form] onChange');
       controller.setData(next as unknown);
       controller.setDirty(true);
     },
     onStatus(s) {
-      log('[Form] onStatus', s);
       controller.setValid(s.valid);
       controller.setDirty(s.dirty);
     },
@@ -210,8 +193,6 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
     setupId,
     schemaKey,
   };
-
-  if (import.meta.env.DEV) log('Preparing to render view:', view);
 
   if (state.loading && view === 'form') return <div className="content-padding">Loading…</div>;
   if (state.error && view === 'form') return <div className="content-padding">Error: {state.error}</div>;

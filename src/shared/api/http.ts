@@ -10,17 +10,4 @@ export const http = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Add a request interceptor to log outgoing requests for debugging
-http.interceptors.request.use((config) => {
-  try {
-    const { method, url, params, data } = config;
-    // Only log small previews to avoid leaking large payloads
-    const dataPreview = typeof data === 'string' ? data.slice(0, 2000) : JSON.stringify(data)?.slice(0, 2000);
-  if (import.meta.env.DEV) console.debug('[http] outgoing request', { method, url, params, dataPreview });
-  } catch (e) {
-  if (import.meta.env.DEV) console.debug('[http] outgoing request preview error', e);
-  }
-  return config;
-});
-
-// (інтерсептори додані для дебагу; можна видалити пізніше)
+// Note: request debug interceptor removed per logging policy.

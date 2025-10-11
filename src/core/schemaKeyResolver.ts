@@ -15,8 +15,7 @@ export async function loadSchemaByKey(setupId: string, schemaKey: string): Promi
     if (!s?.content) continue;
     const parsed = tryParseContent(s.content);
     if (parsed && typeof parsed === 'object' && ('$id' in parsed) && (parsed as Record<string, unknown>)['$id'] === schemaKey) {
-      const id = String(s.id ?? '');
-  if (import.meta.env.DEV) console.debug('[schemaKeyResolver] resolved', { setupId, schemaKey, schemaId: id });
+    const id = String(s.id ?? '');
       return { id, json: parsed };
     }
   }

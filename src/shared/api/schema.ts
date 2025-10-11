@@ -6,38 +6,27 @@ import { tryParseContent } from '../../core/parse';
 export type SchemaDto = NonNullable<components['schemas']['SchemaDto']>;
 export type SchemaListResponse = NonNullable<components['schemas']['SchemaListResponse']>;
 
-function log(...args: unknown[]) {
-  if (import.meta.env.DEV) console.debug('[Schemas API]', ...args);
-}
+// minimal logging only on errors via exceptions
 
 export async function listSchemasV1(setupId: string, params?: { skip?: number; limit?: number }): Promise<SchemaDto[]> {
-  log('listSchemasV1', { setupId, params, useMock });
-  
   if (useMock) {
-    log('Using mock data (VITE_USE_MOCK=1)');
     const allSchemas = await loadMockData<SchemaDto>('Schemas', 'schemas');
     const filtered = allSchemas.filter((s: SchemaDto) => String(s.setupId) === String(setupId));
-    log('Mock data loaded:', filtered.length, 'schemas for setupId', setupId);
     return filtered;
   }
 
   try {
     const res = await http.get<SchemaListResponse>(`/api/v1/Schemas/${encodeURIComponent(setupId)}`, { params });
     const schemas = (res.data?.schemas ?? []) as SchemaDto[];
-    log('API response:', schemas.length, 'schemas');
     return schemas;
-  } catch (e) {
-    log('API error, falling back to mock data:', e);
+  } catch {
     const allSchemas = await loadMockData<SchemaDto>('Schemas', 'schemas');
     const filtered = allSchemas.filter((s: SchemaDto) => String(s.setupId) === String(setupId));
-    log('Fallback mock data loaded:', filtered.length, 'schemas');
     return filtered;
   }
 }
 
 export async function getSchemaByIdV1(schemaId: string, setupId: string): Promise<unknown> {
-  log('getSchemaByIdV1', { schemaId, setupId, useMock });
-  
   const list = await listSchemasV1(setupId);
   const hit = list.find(s => s.id === schemaId);
   if (!hit || !hit.content) throw new Error(`Schema not found or empty: ${schemaId}`);
@@ -47,10 +36,7 @@ export async function getSchemaByIdV1(schemaId: string, setupId: string): Promis
 }
 
 export async function uploadSchemaV1(setupId: string, schema: unknown): Promise<components['schemas']['SchemaCreateResponse']> {
-  log('uploadSchemaV1', { setupId, useMock });
-  
   if (useMock) {
-    log('[mock] uploadSchemaV1 - returning stub');
     return {
       schema: {
         id: `mock-schema-${Date.now()}`,
