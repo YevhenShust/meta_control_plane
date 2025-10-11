@@ -13,6 +13,12 @@ import { AppToaster } from './AppToaster';
 
 const bpRenderers = getBlueprintRenderers();
 
+export interface CreatedDraftOption {
+  id: string;
+  label: string;
+  value: string;
+}
+
 interface NewDraftDrawerProps {
   isOpen: boolean;
   onClose: () => void;
@@ -21,7 +27,7 @@ interface NewDraftDrawerProps {
   schema: object;
   uischema?: object;
   onSuccess: (draftId: string) => void;
-  onDraftCreated?: (draft: { id: string; label: string; value: string }) => void;
+  onDraftCreated?: (draft: CreatedDraftOption) => void;
 }
 
 function log(...args: unknown[]) {
@@ -140,24 +146,32 @@ export default function NewDraftDrawer({
       const result = await createDraft(setupId, schemaKey, payload ?? {});
       log('draft created', result);
 
+      // Validate result.id before using it
+      if (!result?.id) {
+        throw new Error('Draft creation failed: no ID returned');
+      }
+
+      const draftId = String(result.id);
+
       // Emit event to refresh menu
       emitChanged({ schemaKey, setupId });
 
       AppToaster.show({
-        message: `Draft created: ${result.id}`,
+        message: `Draft created: ${draftId}`,
         intent: Intent.SUCCESS,
       });
 
       // Call onDraftCreated if provided
       if (onDraftCreated) {
+        const label = schemaKey ? `${draftId} - ${schemaKey}` : draftId;
         onDraftCreated({
-          id: String(result.id),
-          label: `${String(result.id)} - ${schemaKey}`,
-          value: String(result.id),
+          id: draftId,
+          label,
+          value: draftId,
         });
       }
 
-      onSuccess(String(result.id));
+      onSuccess(draftId);
       onClose();
     } catch (e) {
       log('create failed', e);

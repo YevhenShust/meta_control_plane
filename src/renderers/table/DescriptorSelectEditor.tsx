@@ -2,16 +2,10 @@ import { forwardRef, useImperativeHandle, useRef, useState, useEffect, useMemo, 
 import type { ICellEditorComp, ICellEditorParams } from 'ag-grid-community';
 import { Button, InputGroup, Menu, MenuItem, MenuDivider, Popover, Spinner } from '@blueprintjs/core';
 import { useSearchDraftsQuery } from '../../store/api';
-import NewDraftDrawer from '../../components/NewDraftDrawer';
+import NewDraftDrawer, { type CreatedDraftOption } from '../../components/NewDraftDrawer';
 import { resolveSchemaIdByKey } from '../../core/schemaKeyResolver';
 import { loadSchemaByKey } from '../../core/schemaKeyResolver';
 import { tryParseContent } from '../../core/parse';
-
-interface DescriptorOption {
-  id: string;
-  label: string;
-  value: string;
-}
 
 interface DescriptorSelectEditorParams extends ICellEditorParams {
   setupId: string;
@@ -26,7 +20,7 @@ const DescriptorSelectEditor = forwardRef<ICellEditorComp, DescriptorSelectEdito
   const [schemaId, setSchemaId] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerSchema, setDrawerSchema] = useState<object | null>(null);
-  const [localOptions, setLocalOptions] = useState<DescriptorOption[]>([]);
+  const [localOptions, setLocalOptions] = useState<CreatedDraftOption[]>([]);
   const [popoverOpen, setPopoverOpen] = useState(true);
   
   const containerRef = useRef<HTMLDivElement>(null);
@@ -107,7 +101,7 @@ const DescriptorSelectEditor = forwardRef<ICellEditorComp, DescriptorSelectEdito
     isCancelAfterEnd: () => false,
   }));
 
-  const handleSelect = useCallback((item: DescriptorOption) => {
+  const handleSelect = useCallback((item: CreatedDraftOption) => {
     setValue(item.value);
     setPopoverOpen(false);
     setQuery(item.label);
@@ -126,7 +120,7 @@ const DescriptorSelectEditor = forwardRef<ICellEditorComp, DescriptorSelectEdito
     }
   }, [props.setupId, props.descriptorSchemaKey]);
 
-  const handleDraftCreated = useCallback((draft: DescriptorOption) => {
+  const handleDraftCreated = useCallback((draft: CreatedDraftOption) => {
     // Add to local options so it appears in the list immediately
     setLocalOptions(prev => [...prev, draft]);
     // Set as selected value
