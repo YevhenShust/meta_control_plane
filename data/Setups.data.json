@@ -1,9 +1,9 @@
 {
   "setups": [
     {
-      "id": "68d15776e869ac7481ac92e2",
-      "name": "Development Setup",
-      "created": "2025-09-21T10:00:00.000Z",
+      "id": "68e7ff772f0a142bf1e5663c",
+      "name": "Test4",
+      "created": "2025-10-09T18:31:19.069Z",
       "branchToCopyFromId": null,
       "copyingMode": null,
       "copyVersionMinimalStage": null

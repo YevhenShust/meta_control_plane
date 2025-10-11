@@ -1,391 +1,58 @@
 {
   "drafts": [
     {
-      "id": "68d16741e869ac7481ac92f9",
-      "setupId": "68d15776e869ac7481ac92e2",
-      "schemaId": "68d15fdfe869ac7481ac92e8",
-      "content": "{\"Type\":\"Common\",\"InteractDistance\":12345,\"LockInteractTime\":\"00:10:30\",\"DropInfo\":{\"Items\":[{\"LootTable\":\"lt_basic\",\"DropPercent\":50},{\"LootTable\":\"rare\",\"DropPercent\":3333},{\"LootTable\":\"rrrrrrrrrrrrrrr\",\"DropPercent\":44},{\"LootTable\":\"3333\",\"DropPercent\":333}],\"Currency\":{\"Amount\":{\"Min\":10,\"Max\":100},\"ExpiriencePercent\":20},\"CraftMaterials\":[{\"LootTable\":\"mat_basic\",\"DropPercent\":100}]},\"Id\":\"chest-1\"}",
+      "id": "68e801812f0a142bf1e566cc",
+      "setupId": "68e7ff772f0a142bf1e5663c",
+      "schemaId": "68e800542f0a142bf1e56685",
+      "content": "{\"Type\":\"Rare\",\"InteractDistance\":250,\"LockInteractTime\":\"33:66:99\",\"DropInfo\":{\"Items\":[{\"LootTable\":\"Table-1\",\"DropPercent\":96},{\"LootTable\":\"Table-2\",\"DropPercent\":3}],\"Currency\":{\"Amount\":{\"Min\":25,\"Max\":77},\"ExperiencePercent\":38},\"CraftMaterials\":[{\"LootTable\":\"Craft-1\",\"DropPercent\":20}]},\"Id\":\"Chest-1\"}",
       "authorId": null,
-      "created": "2025-09-22T15:12:01.535Z",
-      "modified": "2025-09-24T17:39:54.906Z"
+      "created": "2025-10-09T18:40:01.442Z",
+      "modified": "2025-10-09T18:40:01.442Z"
     },
     {
-      "id": "68d1691ce869ac7481ac92fd",
-      "setupId": "68d15776e869ac7481ac92e2",
-      "schemaId": "68d15fdfe869ac7481ac92e8",
-      "content": "{\"Type\":\"Rare\",\"InteractDistance\":55,\"LockInteractTime\":\"00:00:30\",\"DropInfo\":{\"Items\":[{\"LootTable\":\"lt_basic\",\"DropPercent\":80}],\"Currency\":{\"Amount\":{\"Min\":5,\"Max\":35},\"ExpiriencePercent\":50},\"CraftMaterials\":[{\"LootTable\":\"mat_basic\",\"DropPercent\":90}]},\"Id\":\"chest-2\"}",
+      "id": "68e804a42f0a142bf1e5670a",
+      "setupId": "68e7ff772f0a142bf1e5663c",
+      "schemaId": "68e800542f0a142bf1e56685",
+      "content": "{\"Type\":\"Common\",\"InteractDistance\":0,\"LockInteractTime\":\"00:00:00\",\"DropInfo\":{\"Items\":[],\"Currency\":{\"Amount\":{\"Min\":0,\"Max\":0},\"ExperiencePercent\":0},\"CraftMaterials\":[]},\"Id\":\"Cкриня-2\"}",
       "authorId": null,
-      "created": "2025-09-22T15:19:56.756Z",
-      "modified": "2025-09-25T07:45:38.572Z"
+      "created": "2025-10-09T18:53:24.185Z",
+      "modified": "2025-10-09T18:53:24.185Z"
     },
     {
-      "id": "68d16bf5e869ac7481ac9307",
-      "setupId": "68d15776e869ac7481ac92e2",
-      "schemaId": "68d15fdfe869ac7481ac92e8",
-      "content": "{\"Type\":\"Rare\",\"InteractDistance\":444,\"LockInteractTime\":\"00:00:30\",\"DropInfo\":{\"Items\":[{\"LootTable\":\"lt_basic\",\"DropPercent\":80}],\"Currency\":{\"Amount\":{\"Min\":5,\"Max\":35},\"ExpiriencePercent\":50},\"CraftMaterials\":[{\"LootTable\":\"mat_basic\",\"DropPercent\":90},{\"LootTable\":\"sdfsdf\",\"DropPercent\":33}]},\"Id\":\"chest-3\"}",
+      "id": "68e805c52f0a142bf1e56730",
+      "setupId": "68e7ff772f0a142bf1e5663c",
+      "schemaId": "68e800b62f0a142bf1e56689",
+      "content": "{\"DescriptorId\":\"Chest-1\",\"Position\":{\"X\":9,\"Y\":66,\"Z\":0},\"Rotation\":{\"X\":0,\"Y\":0,\"Z\":0},\"Id\":\"1\"}",
       "authorId": null,
-      "created": "2025-09-22T15:32:05.422Z",
-      "modified": "2025-09-23T20:24:13.101Z"
+      "created": "2025-10-09T18:58:13.093Z",
+      "modified": "2025-10-11T01:39:30.955Z"
     },
     {
-      "id": "68d1bd4de869ac7481accf9a",
-      "setupId": "68d15776e869ac7481ac92e2",
-      "schemaId": "68d15fdfe869ac7481ac92e8",
-      "content": "{\"Type\":\"Rare\",\"InteractDistance\":0,\"LockInteractTime\":\"00:00:00\",\"DropInfo\":{\"Items\":[{\"LootTable\":\"lt_basic\",\"DropPercent\":1}],\"Currency\":{\"Amount\":{\"Min\":0,\"Max\":0},\"ExpiriencePercent\":0},\"CraftMaterials\":[{\"LootTable\":\"mat_basic\",\"DropPercent\":4}]},\"Id\":\"chest-4\"}",
+      "id": "68e805d42f0a142bf1e5675b",
+      "setupId": "68e7ff772f0a142bf1e5663c",
+      "schemaId": "68e800b62f0a142bf1e56689",
+      "content": "{\"Position\":{\"X\":5,\"Y\":44,\"Z\":0},\"Rotation\":{\"X\":0,\"Y\":0,\"Z\":0},\"Id\":\"2\"}",
       "authorId": null,
-      "created": "2025-09-22T21:19:09.818Z",
-      "modified": "2025-09-24T17:39:45.294Z"
+      "created": "2025-10-09T18:58:28.33Z",
+      "modified": "2025-10-11T02:03:23.172Z"
     },
     {
-      "id": "68d1bd56e869ac7481accfa9",
-      "setupId": "68d15776e869ac7481ac92e2",
-      "schemaId": "68d15fdfe869ac7481ac92e8",
-      "content": "{\"Type\":\"Common\",\"InteractDistance\":0,\"LockInteractTime\":\"00:00:00\",\"DropInfo\":{\"Items\":[],\"Currency\":{\"Amount\":{\"Min\":34,\"Max\":2342},\"ExpiriencePercent\":0},\"CraftMaterials\":[]},\"Id\":\"chest-5\"}",
+      "id": "68e9b34a692413d6c7824099",
+      "setupId": "68e7ff772f0a142bf1e5663c",
+      "schemaId": "68e800b62f0a142bf1e56689",
+      "content": "{\"DescriptorId\":\"Cкриня-2\",\"Position\":{\"X\":345,\"Y\":0,\"Z\":0},\"Rotation\":{\"X\":0,\"Y\":0,\"Z\":0},\"Id\":\"123\"}",
       "authorId": null,
-      "created": "2025-09-22T21:19:18.636Z",
-      "modified": "2025-09-23T20:24:26.053Z"
+      "created": "2025-10-11T01:30:50.216Z",
+      "modified": "2025-10-11T02:03:16.676Z"
     },
     {
-      "id": "68d1bf66e869ac7481accfe9",
-      "setupId": "68d15776e869ac7481ac92e2",
-      "schemaId": "68d15fdfe869ac7481ac92e8",
-      "content": "{\"Type\":\"Epic\",\"InteractDistance\":88,\"LockInteractTime\":\"00:00:09\",\"DropInfo\":{\"Items\":[{\"LootTable\":\"rrr\",\"DropPercent\":98},{\"LootTable\":\"ззз\",\"DropPercent\":77}],\"Currency\":{\"Amount\":{\"Min\":23,\"Max\":42},\"ExpiriencePercent\":8},\"CraftMaterials\":[{\"LootTable\":\"rrr\",\"DropPercent\":6},{\"LootTable\":\"sdfsdf\",\"DropPercent\":44},{\"LootTable\":\"dsdvsdvsd\",\"DropPercent\":333}]},\"Id\":\"chest-6\"}",
+      "id": "68e9b366692413d6c78240ab",
+      "setupId": "68e7ff772f0a142bf1e5663c",
+      "schemaId": "68e800b62f0a142bf1e56689",
+      "content": "{\"DescriptorId\":\"Скриня-2\",\"Position\":{\"X\":888,\"Y\":0,\"Z\":0},\"Rotation\":{\"X\":0,\"Y\":0,\"Z\":0},\"Id\":\"5\"}",
       "authorId": null,
-      "created": "2025-09-22T21:28:06.119Z",
-      "modified": "2025-09-24T07:59:10.899Z"
-    },
-    {
-      "id": "68d1bf95e869ac7481acd06e",
-      "setupId": "68d15776e869ac7481ac92e2",
-      "schemaId": "68d15fdfe869ac7481ac92e8",
-      "content": "{\"Type\":\"Common\",\"InteractDistance\":0,\"LockInteractTime\":\"00:00:00\",\"DropInfo\":{\"Items\":[],\"Currency\":{\"Amount\":{\"Min\":0,\"Max\":0},\"ExpiriencePercent\":0},\"CraftMaterials\":[]},\"Id\":\"chest-7\"}",
-      "authorId": null,
-      "created": "2025-09-22T21:28:53.043Z",
-      "modified": "2025-09-23T20:25:25.247Z"
-    },
-    {
-      "id": "68d1c0c6e869ac7481acd104",
-      "setupId": "68d15776e869ac7481ac92e2",
-      "schemaId": "68d15fdfe869ac7481ac92e8",
-      "content": "{\"Type\":\"Common\",\"InteractDistance\":0,\"LockInteractTime\":\"00:00:00\",\"DropInfo\":{\"Items\":[],\"Currency\":{\"Amount\":{\"Min\":0,\"Max\":0},\"ExpiriencePercent\":0},\"CraftMaterials\":[]},\"Id\":\"chest-8\"}",
-      "authorId": null,
-      "created": "2025-09-22T21:33:58.785Z",
-      "modified": "2025-09-23T20:25:29.535Z"
-    },
-    {
-      "id": "68d1c0e3e869ac7481acd14f",
-      "setupId": "68d15776e869ac7481ac92e2",
-      "schemaId": "68d15fdfe869ac7481ac92e8",
-      "content": "{\"Type\":\"Common\",\"InteractDistance\":0,\"LockInteractTime\":\"00:00:00\",\"DropInfo\":{\"Items\":[],\"Currency\":{\"Amount\":{\"Min\":0,\"Max\":0},\"ExpiriencePercent\":0},\"CraftMaterials\":[]},\"Id\":\"chest-9\"}",
-      "authorId": null,
-      "created": "2025-09-22T21:34:27.545Z",
-      "modified": "2025-09-23T20:25:35.166Z"
-    },
-    {
-      "id": "68d2a2792b4239f819984c8e",
-      "setupId": "68d15776e869ac7481ac92e2",
-      "schemaId": "68d15fbae869ac7481ac92e6",
-      "content": "{\"Id\":\"spawn-chest-001\",\"DescriptorId\":\"chest-13\",\"Position\":{\"X\":1,\"Y\":2,\"Z\":10.5},\"Rotation\":{\"X\":0,\"Y\":90,\"Z\":555}}",
-      "authorId": null,
-      "created": "2025-09-23T13:36:57.428Z",
-      "modified": "2025-09-24T11:23:13.114Z"
-    },
-    {
-      "id": "68d2a2902b4239f819984c8f",
-      "setupId": "68d15776e869ac7481ac92e2",
-      "schemaId": "68d15fbae869ac7481ac92e6",
-      "content": "{\"Id\":\"spawn-chest-002\",\"DescriptorId\":\"chest-3\",\"Position\":{\"X\":1,\"Y\":2,\"Z\":0},\"Rotation\":{\"X\":3,\"Y\":0,\"Z\":0}}",
-      "authorId": null,
-      "created": "2025-09-23T13:37:20.361Z",
-      "modified": "2025-09-24T17:54:34.851Z"
-    },
-    {
-      "id": "68d2a29c2b4239f819984c90",
-      "setupId": "68d15776e869ac7481ac92e2",
-      "schemaId": "68d15fbae869ac7481ac92e6",
-      "content": "{\"Id\":\"spawn-chest-003\",\"DescriptorId\":\"chest-10\",\"Position\":{\"X\":1,\"Y\":4,\"Z\":3453},\"Rotation\":{\"X\":1,\"Y\":4,\"Z\":444}}",
-      "authorId": null,
-      "created": "2025-09-23T13:37:32.572Z",
-      "modified": "2025-09-25T07:45:14.175Z"
-    },
-    {
-      "id": "68d2b1d22b4239f819984f93",
-      "setupId": "68d15776e869ac7481ac92e2",
-      "schemaId": "68d15fbae869ac7481ac92e6",
-      "content": "{\"Id\":\"spawn-chest-1758638524981\",\"DescriptorId\":\"chest-4\",\"Position\":{\"X\":1,\"Y\":2,\"Z\":0},\"Rotation\":{\"X\":1,\"Y\":33,\"Z\":0}}",
-      "authorId": null,
-      "created": "2025-09-23T14:42:26.667Z",
-      "modified": "2025-09-23T22:29:51.12Z"
-    },
-    {
-      "id": "68d2b7772b4239f819986372",
-      "setupId": "68d15776e869ac7481ac92e2",
-      "schemaId": "68d15fbae869ac7481ac92e6",
-      "content": "{\"Id\":\"spawn-chest-1758639988103\",\"DescriptorId\":\"chest-5\",\"Position\":{\"X\":1,\"Y\":2,\"Z\":0},\"Rotation\":{\"X\":0,\"Y\":0,\"Z\":0}}",
-      "authorId": null,
-      "created": "2025-09-23T15:06:31.32Z",
-      "modified": "2025-09-23T22:29:51.892Z"
-    },
-    {
-      "id": "68d2b7c42b4239f819988bbb",
-      "setupId": "68d15776e869ac7481ac92e2",
-      "schemaId": "68d15fbae869ac7481ac92e6",
-      "content": "{\"Id\":\"spawn-chest-1758640065548\",\"DescriptorId\":\"chest-6\",\"Position\":{\"X\":1,\"Y\":2,\"Z\":0},\"Rotation\":{\"X\":0,\"Y\":0,\"Z\":0}}",
-      "authorId": null,
-      "created": "2025-09-23T15:07:48.315Z",
-      "modified": "2025-09-23T22:30:00.104Z"
-    },
-    {
-      "id": "68d2ba432b4239f81999401a",
-      "setupId": "68d15776e869ac7481ac92e2",
-      "schemaId": "68d15fbae869ac7481ac92e6",
-      "content": "{\"Id\":\"spawn-chest-1758640693132\",\"DescriptorId\":\"chest-7\",\"Position\":{\"X\":1,\"Y\":2,\"Z\":0},\"Rotation\":{\"X\":0,\"Y\":0,\"Z\":0}}",
-      "authorId": null,
-      "created": "2025-09-23T15:18:27.469Z",
-      "modified": "2025-09-23T22:29:53.572Z"
-    },
-    {
-      "id": "68d2bb2c2b4239f819994093",
-      "setupId": "68d15776e869ac7481ac92e2",
-      "schemaId": "68d15fbae869ac7481ac92e6",
-      "content": "{\"Type\":\"Rare\",\"InteractDistance\":33,\"LockInteractTime\":\"00:00:00\",\"DropInfo\":{\"Items\":[{\"LootTable\":\"sdfs\",\"DropPercent\":33}],\"Currency\":{},\"CraftMaterials\":[]},\"Id\":\"spawn-chest-1758640929824\",\"DescriptorId\":\"chest-8\",\"Position\":{\"X\":1,\"Y\":2,\"Z\":4444},\"Rotation\":{\"X\":0,\"Y\":0,\"Z\":0}}",
-      "authorId": null,
-      "created": "2025-09-23T15:22:20.519Z",
-      "modified": "2025-09-23T22:29:54.401Z"
-    },
-    {
-      "id": "68d2bdf12b4239f819994108",
-      "setupId": "68d15776e869ac7481ac92e2",
-      "schemaId": "68d15fbae869ac7481ac92e6",
-      "content": "{\"Id\":\"spawn-chest-1758641640924\",\"DescriptorId\":\"chest-9\",\"Position\":{\"X\":1,\"Y\":2,\"Z\":0},\"Rotation\":{\"X\":0,\"Y\":0,\"Z\":0}}",
-      "authorId": null,
-      "created": "2025-09-23T15:34:09.451Z",
-      "modified": "2025-09-23T22:29:55.506Z"
-    },
-    {
-      "id": "68d302582b4239f819995909",
-      "setupId": "68d15776e869ac7481ac92e2",
-      "schemaId": "68d15fdfe869ac7481ac92e8",
-      "content": "{\"Type\":\"Epic\",\"InteractDistance\":77,\"LockInteractTime\":\"00:00:07\",\"DropInfo\":{\"Items\":[],\"Currency\":{\"Amount\":{\"Min\":0,\"Max\":0},\"ExpiriencePercent\":0},\"CraftMaterials\":[]},\"Id\":\"chest-10\"}",
-      "authorId": null,
-      "created": "2025-09-23T20:26:00.311Z",
-      "modified": "2025-09-23T20:26:00.311Z"
-    },
-    {
-      "id": "68d303652b4239f8199959b0",
-      "setupId": "68d15776e869ac7481ac92e2",
-      "schemaId": "68d15fdfe869ac7481ac92e8",
-      "content": "{\"Type\":\"Exotic\",\"InteractDistance\":333,\"LockInteractTime\":\"00:00:00\",\"DropInfo\":{\"Items\":[{\"LootTable\":\"lt_basic\",\"DropPercent\":55},{\"LootTable\":\"fff\",\"DropPercent\":55}],\"Currency\":{\"Amount\":{\"Min\":3,\"Max\":6},\"ExpiriencePercent\":5},\"CraftMaterials\":[{\"LootTable\":\"mat_basic\",\"DropPercent\":5}]},\"Id\":\"chest-11\"}",
-      "authorId": null,
-      "created": "2025-09-23T20:30:29.619Z",
-      "modified": "2025-09-23T20:31:22.276Z"
-    },
-    {
-      "id": "68d305af2b4239f819995bc6",
-      "setupId": "68d15776e869ac7481ac92e2",
-      "schemaId": "68d15fdfe869ac7481ac92e8",
-      "content": "{\"Type\":\"Common\",\"InteractDistance\":3,\"LockInteractTime\":\"00:00:00\",\"DropInfo\":{\"Items\":[],\"Currency\":{\"Amount\":{\"Min\":2,\"Max\":22},\"ExpiriencePercent\":2},\"CraftMaterials\":[]},\"Id\":\"chest-12\"}",
-      "authorId": null,
-      "created": "2025-09-23T20:40:15.14Z",
-      "modified": "2025-09-23T20:40:15.14Z"
-    },
-    {
-      "id": "68d3211e2b4239f8199983c4",
-      "setupId": "68d15776e869ac7481ac92e2",
-      "schemaId": "68d15fbae869ac7481ac92e6",
-      "content": "{\"DescriptorId\":\"chest-10\",\"Position\":{\"X\":1,\"Y\":2}}",
-      "authorId": null,
-      "created": "2025-09-23T22:37:18.812Z",
-      "modified": "2025-09-23T22:38:41.398Z"
-    },
-    {
-      "id": "68d321362b4239f81999848f",
-      "setupId": "68d15776e869ac7481ac92e2",
-      "schemaId": "68d15fbae869ac7481ac92e6",
-      "content": "{\"DescriptorId\":\"chest-11\",\"Position\":{\"X\":1,\"Y\":2}}",
-      "authorId": null,
-      "created": "2025-09-23T22:37:42.664Z",
-      "modified": "2025-09-23T22:38:42.652Z"
-    },
-    {
-      "id": "68d321422b4239f8199984c8",
-      "setupId": "68d15776e869ac7481ac92e2",
-      "schemaId": "68d15fbae869ac7481ac92e6",
-      "content": "{\"DescriptorId\":\"chest-5\",\"Position\":{\"X\":1,\"Y\":2,\"Z\":3},\"Id\":\"234\"}",
-      "authorId": null,
-      "created": "2025-09-23T22:37:54.142Z",
-      "modified": "2025-09-23T22:43:24.11Z"
-    },
-    {
-      "id": "68d321752b4239f81999884a",
-      "setupId": "68d15776e869ac7481ac92e2",
-      "schemaId": "68d15fbae869ac7481ac92e6",
-      "content": "{\"DescriptorId\":\"chest-5\"}",
-      "authorId": null,
-      "created": "2025-09-23T22:38:45.61Z",
-      "modified": "2025-09-23T22:43:20.849Z"
-    },
-    {
-      "id": "68d3217a2b4239f819998883",
-      "setupId": "68d15776e869ac7481ac92e2",
-      "schemaId": "68d15fbae869ac7481ac92e6",
-      "content": "{\"Position\":{},\"DescriptorId\":\"chest-10\"}",
-      "authorId": null,
-      "created": "2025-09-23T22:38:50.342Z",
-      "modified": "2025-09-23T22:43:26.973Z"
-    },
-    {
-      "id": "68d3238b2b4239f819998c16",
-      "setupId": "68d15776e869ac7481ac92e2",
-      "schemaId": "68d15fbae869ac7481ac92e6",
-      "content": "{\"DescriptorId\":\"chest-13\"}",
-      "authorId": null,
-      "created": "2025-09-23T22:47:39.903Z",
-      "modified": "2025-09-24T10:58:09.359Z"
-    },
-    {
-      "id": "68d324312b4239f819998dd8",
-      "setupId": "68d15776e869ac7481ac92e2",
-      "schemaId": "68d15fbae869ac7481ac92e6",
-      "content": "{\"DescriptorId\":\"chest-3\"}",
-      "authorId": null,
-      "created": "2025-09-23T22:50:25.575Z",
-      "modified": "2025-09-24T10:58:11.695Z"
-    },
-    {
-      "id": "68d3a4dd2b4239f819999174",
-      "setupId": "68d15776e869ac7481ac92e2",
-      "schemaId": "68d15fdfe869ac7481ac92e8",
-      "content": "{\"Type\":\"Common\",\"InteractDistance\":0,\"LockInteractTime\":\"00:00:00\",\"DropInfo\":{\"Items\":[],\"Currency\":{\"Amount\":{\"Min\":0,\"Max\":0},\"ExpiriencePercent\":0},\"CraftMaterials\":[]},\"Id\":\"chest-13\"}",
-      "authorId": null,
-      "created": "2025-09-24T07:59:25.102Z",
-      "modified": "2025-09-24T10:30:56.433Z"
-    },
-    {
-      "id": "68d3c86b2b4239f8199996ba",
-      "setupId": "68d15776e869ac7481ac92e2",
-      "schemaId": "68d15fbae869ac7481ac92e6",
-      "content": "{\"DescriptorId\":\"chest-10\",\"Position\":{\"X\":3,\"Y\":3,\"Z\":0},\"Rotation\":{\"X\":3,\"Y\":3,\"Z\":3}}",
-      "authorId": null,
-      "created": "2025-09-24T10:31:07.934Z",
-      "modified": "2025-09-24T10:31:21.08Z"
-    },
-    {
-      "id": "68d3e3992b4239f819999f97",
-      "setupId": "68d15776e869ac7481ac92e2",
-      "schemaId": "68d15fbae869ac7481ac92e6",
-      "content": "{\"DescriptorId\":\"chest-4\",\"Position\":{\"X\":4,\"Y\":4,\"Z\":4},\"Rotation\":{\"X\":4,\"Y\":4,\"Z\":4}}",
-      "authorId": null,
-      "created": "2025-09-24T12:27:05.679Z",
-      "modified": "2025-09-25T07:45:25.232Z"
-    },
-    {
-      "id": "68d51983e4034346317b963a",
-      "setupId": "68d15776e869ac7481ac92e2",
-      "schemaId": "68d51762e4034346317b9616",
-      "content": "{\"Type\":\"Common\",\"InteractDistance\":0,\"LockInteractTime\":\"00:00:00\",\"DropInfo\":{\"Items\":[],\"Currency\":{\"Amount\":{\"Min\":0,\"Max\":0},\"ExpiriencePercent\":0},\"CraftMaterials\":[]},\"Id\":\"chest-1\"}",
-      "authorId": null,
-      "created": "2025-09-25T10:29:23.345Z",
-      "modified": "2025-09-29T07:47:30.531Z"
-    },
-    {
-      "id": "68d51983e4034346317b963b",
-      "setupId": "68d15776e869ac7481ac92e2",
-      "schemaId": "68d51762e4034346317b9616",
-      "content": "{\"LockInteractTime\":\"00:00:00\",\"Id\":\"chest-2\",\"Type\":\"Exotic\"}",
-      "authorId": null,
-      "created": "2025-09-25T10:29:23.718Z",
-      "modified": "2025-10-01T21:26:32.469Z"
-    },
-    {
-      "id": "68d58f625a6410d9301a45d1",
-      "setupId": "68d15776e869ac7481ac92e2",
-      "schemaId": "68d51762e4034346317b9616",
-      "content": "{\"Id\":\"chest-3\",\"Type\":\"Common\",\"InteractDistance\":0,\"LockInteractTime\":\"00:00:00\",\"DropInfo\":{\"Items\":[],\"Currency\":{\"Amount\":{\"Min\":0,\"Max\":0},\"ExpiriencePercent\":0},\"CraftMaterials\":[]}}",
-      "authorId": null,
-      "created": "2025-09-25T18:52:18.672Z",
-      "modified": "2025-09-29T07:48:22.418Z"
-    },
-    {
-      "id": "68d591e25a6410d9301a48da",
-      "setupId": "68d15776e869ac7481ac92e2",
-      "schemaId": "68d51762e4034346317b9616",
-      "content": "{\"Id\":\"chest-44\",\"Type\":\"Rare\",\"LockInteractTime\":\"00:00:00\"}",
-      "authorId": null,
-      "created": "2025-09-25T19:02:58.849Z",
-      "modified": "2025-09-30T13:52:07.34Z"
-    },
-    {
-      "id": "68d596c85a6410d9301a4bc1",
-      "setupId": "68d15776e869ac7481ac92e2",
-      "schemaId": "68d51762e4034346317b9616",
-      "content": "{\"InteractDistance\":0,\"LockInteractTime\":\"00:00:00\",\"DropInfo\":{\"Items\":[],\"Currency\":{\"Amount\":{\"Min\":0,\"Max\":0},\"ExpiriencePercent\":0},\"CraftMaterials\":[]},\"Id\":\"chest-5\",\"Type\":\"Common\"}",
-      "authorId": null,
-      "created": "2025-09-25T19:23:52.989Z",
-      "modified": "2025-09-30T13:52:55.032Z"
-    },
-    {
-      "id": "68d59a035a6410d9301a543a",
-      "setupId": "68d15776e869ac7481ac92e2",
-      "schemaId": "68d51762e4034346317b9616",
-      "content": "{\"Id\":\"chest-6\",\"Type\":\"Common\",\"InteractDistance\":0,\"LockInteractTime\":\"00:00:00\",\"DropInfo\":{\"Items\":[],\"Currency\":{\"Amount\":{\"Min\":0,\"Max\":0},\"ExpiriencePercent\":0},\"CraftMaterials\":[]}}",
-      "authorId": null,
-      "created": "2025-09-25T19:37:39.235Z",
-      "modified": "2025-09-30T13:16:05.897Z"
-    },
-    {
-      "id": "68d59a255a6410d9301a5602",
-      "setupId": "68d15776e869ac7481ac92e2",
-      "schemaId": "68d51762e4034346317b9616",
-      "content": "{\"Id\":\"chest-7\",\"Type\":\"Common\",\"InteractDistance\":0,\"LockInteractTime\":\"00:00:00\",\"DropInfo\":{\"Items\":[],\"Currency\":{\"Amount\":{\"Min\":0,\"Max\":0},\"ExpiriencePercent\":0},\"CraftMaterials\":[]}}",
-      "authorId": null,
-      "created": "2025-09-25T19:38:13.958Z",
-      "modified": "2025-09-29T07:48:59.773Z"
-    },
-    {
-      "id": "68d59a345a6410d9301a56bd",
-      "setupId": "68d15776e869ac7481ac92e2",
-      "schemaId": "68d51762e4034346317b9616",
-      "content": "{\"Id\":\"chest-8\",\"InteractDistance\":0,\"LockInteractTime\":\"00:00:00\",\"DropInfo\":{\"Items\":[],\"Currency\":{\"Amount\":{\"Min\":0,\"Max\":0},\"ExpiriencePercent\":0},\"CraftMaterials\":[]},\"Type\":\"Epic\"}",
-      "authorId": null,
-      "created": "2025-09-25T19:38:28.051Z",
-      "modified": "2025-10-01T18:22:10.988Z"
-    },
-    {
-      "id": "68d59b495a6410d9301a5d44",
-      "setupId": "68d15776e869ac7481ac92e2",
-      "schemaId": "68d51762e4034346317b9616",
-      "content": "{\"Id\":\"chest-9\",\"Type\":\"Common\",\"InteractDistance\":0,\"LockInteractTime\":\"00:00:00\",\"DropInfo\":{\"Items\":[],\"Currency\":{\"Amount\":{\"Min\":0,\"Max\":0},\"ExpiriencePercent\":0},\"CraftMaterials\":[]}}",
-      "authorId": null,
-      "created": "2025-09-25T19:43:05.479Z",
-      "modified": "2025-09-29T07:53:36.635Z"
-    },
-    {
-      "id": "68d59b8c5a6410d9301a5df5",
-      "setupId": "68d15776e869ac7481ac92e2",
-      "schemaId": "68d51762e4034346317b9616",
-      "content": "{\"Id\":\"chest-10\",\"Type\":\"Epic\",\"InteractDistance\":0,\"LockInteractTime\":\"00:00:00\",\"DropInfo\":{\"Items\":[],\"Currency\":{\"Amount\":{\"Min\":0,\"Max\":0},\"ExpiriencePercent\":0},\"CraftMaterials\":[]}}",
-      "authorId": null,
-      "created": "2025-09-25T19:44:12.494Z",
-      "modified": "2025-09-29T07:56:49.6Z"
-    },
-    {
-      "id": "68db93a77e7005eb4dd43a83",
-      "setupId": "68d15776e869ac7481ac92e2",
-      "schemaId": "68d51762e4034346317b9616",
-      "content": "{\"Id\":\"chest-10\",\"Type\":\"Epic\",\"InteractDistance\":0,\"LockInteractTime\":\"00:00:00\",\"DropInfo\":{\"Items\":[],\"Currency\":{\"Amount\":{\"Min\":0,\"Max\":0},\"ExpiriencePercent\":0},\"CraftMaterials\":[]}}",
-      "authorId": null,
-      "created": "2025-09-30T08:24:07.358Z",
-      "modified": "2025-09-30T08:24:07.358Z"
-    },
-    {
-      "id": "68db93ca7e7005eb4dd43b0c",
-      "setupId": "68d15776e869ac7481ac92e2",
-      "schemaId": "68d51762e4034346317b9616",
-      "content": "{\"Id\":\"chest-12\",\"Type\":\"Epic\",\"InteractDistance\":0,\"LockInteractTime\":\"33:66:99\",\"DropInfo\":{\"Items\":[],\"Currency\":{\"Amount\":{\"Min\":0,\"Max\":0},\"ExpiriencePercent\":0},\"CraftMaterials\":[]}}",
-      "authorId": null,
-      "created": "2025-09-30T08:24:42.893Z",
-      "modified": "2025-09-30T08:24:42.893Z"
+      "created": "2025-10-11T01:31:18.86Z",
+      "modified": "2025-10-11T01:33:55.86Z"
     }
   ]
 }
