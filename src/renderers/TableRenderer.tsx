@@ -204,10 +204,13 @@ export default function TableRenderer({ schema, uischema, setupId, schemaKey }: 
 
   const columnDefs = useMemo<ColDef<RowData>[]>(() =>
     renderedColumns.map(col => {
+      // Disable inline editing for complex types (object, array)
+      const isComplexType = col.type === 'object' || col.type === 'array';
+      
       const colDef: ColDef<RowData> = {
         colId: col.key,
         headerName: col.title,
-        editable: true,
+        editable: !isComplexType, // Disable inline editing for complex types
         filter: true,
         sortable: true,
 
@@ -227,6 +230,17 @@ export default function TableRenderer({ schema, uischema, setupId, schemaKey }: 
           return true;
         },
       };
+
+      // For complex types, show formatted display but no editor
+      if (isComplexType) {
+        colDef.valueFormatter = (params) => {
+          const val = params.value;
+          if (val === null || val === undefined) return '';
+          if (typeof val === 'object') return JSON.stringify(val);
+          return String(val);
+        };
+        return colDef;
+      }
 
       // Determine if this is a DescriptorId column (we want dropdown regardless of initial options presence)
       const path = col.path ?? [col.key];

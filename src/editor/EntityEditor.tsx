@@ -229,7 +229,7 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
           schema={drawerSchema ?? {}}
           uischema={uischema}
           onSuccess={() => {
-            // After successful create, emit change so table/menu refresh
+            // Emit change for menu refresh (table refreshes via RTK Query cache invalidation)
             emitChanged({ schemaKey, setupId });
           }}
         />

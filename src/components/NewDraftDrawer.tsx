@@ -5,11 +5,10 @@ import type { JsonSchema, UISchemaElement } from '@jsonforms/core';
 import { generateDefaultUISchema } from '@jsonforms/core';
 import { getBlueprintRenderers } from '../renderers/blueprint/registry';
 import { createAjv } from '../renderers/ajvInstance';
-import { createDraft } from '../shared/api';
 import { useDescriptorOptionsForColumns } from '../hooks/useDescriptorOptions';
-import { emitChanged } from '../shared/events/DraftEvents';
 import { AppToaster } from './AppToaster';
 import { isDescriptorId, stripIdSuffix } from '../core/pathTools';
+import { useCreateDraftMutation } from '../store/api';
 
 const bpRenderers = getBlueprintRenderers();
 
@@ -38,6 +37,7 @@ export default function NewDraftDrawer({
   const [saving, setSaving] = useState(false);
   const [ajv, setAjv] = useState(() => createAjv());
   
+  const [createDraft] = useCreateDraftMutation();
 
   useEffect(() => {
     if (isOpen && schema) {
@@ -137,10 +137,7 @@ export default function NewDraftDrawer({
     setSaving(true);
     try {
       const payload = data ?? {};
-      const result = await createDraft(setupId, schemaKey, payload);
-
-      // Emit event to refresh menu
-      emitChanged({ schemaKey, setupId });
+      const result = await createDraft({ setupId, schemaKey, content: payload }).unwrap();
 
       AppToaster.show({
         message: `Draft created: ${result.id}`,
@@ -157,7 +154,7 @@ export default function NewDraftDrawer({
     } finally {
       setSaving(false);
     }
-  }, [valid, data, setupId, schemaKey, onSuccess, onClose]);
+  }, [valid, data, setupId, schemaKey, onSuccess, onClose, createDraft]);
 
   // Keyboard shortcut: Escape to close
   useEffect(() => {
