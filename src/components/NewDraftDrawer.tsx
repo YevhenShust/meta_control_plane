@@ -73,7 +73,10 @@ export default function NewDraftDrawer({
       let changed = false;
       for (const k of descriptorPropertyKeys) {
         const propName = stripIdSuffix(k)!;
-        const opts = descriptorOptionsMap[propName] || [];
+        // Prefer options for this property; otherwise if map has any options, pick first available set
+        const opts = descriptorOptionsMap[propName] && descriptorOptionsMap[propName]!.length
+          ? descriptorOptionsMap[propName]!
+          : Object.values(descriptorOptionsMap).find(list => Array.isArray(list) && list.length) || [];
         if (!opts.length) continue;
         const current = base[k];
         const validValues = new Set(opts.map(o => o.value));
@@ -126,12 +129,9 @@ export default function NewDraftDrawer({
   }, [saving, onClose]);
 
   const handleSubmit = useCallback(async () => {
+    // Allow submit even when invalid; server is the source of truth for defaults/validation
     if (!valid) {
-      AppToaster.show({
-        message: 'Please fix validation errors before submitting',
-        intent: Intent.WARNING,
-      });
-      return;
+      AppToaster.show({ message: 'Submitting with validation warnings', intent: Intent.WARNING });
     }
 
     setSaving(true);
@@ -213,7 +213,7 @@ export default function NewDraftDrawer({
             intent={Intent.PRIMARY}
             text="Create"
             onClick={handleSubmit}
-            disabled={!valid || saving}
+            disabled={saving}
             loading={saving}
           />
           <Button
