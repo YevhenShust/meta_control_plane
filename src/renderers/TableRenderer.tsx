@@ -5,6 +5,7 @@ import { flattenSchemaToColumns, orderColumnsByUISchema } from '../core/schemaTo
 import { useDescriptorOptionsForColumns } from '../hooks/useDescriptorOptions';
 import { AgGridReact } from 'ag-grid-react';
 import type { ColDef } from 'ag-grid-community';
+import { stripIdSuffix } from '../core/pathTools';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
 import { useListDraftsQuery, useUpdateDraftMutation } from '../store/api';
@@ -234,19 +235,13 @@ export default function TableRenderer({ schema, uischema, setupId, schemaKey }: 
         colDef.cellEditor = 'agCheckboxCellEditor';
         colDef.cellRenderer = 'agCheckboxCellRenderer';
       } else if (isDescriptorId || (col.enumValues?.length)) {
-        const labelMap = new Map<string, string>();
-        // Pre-build label map for current enumValues
-        for (const v of (col.enumValues ?? [])) {
-          if (typeof v !== 'string' && isOptionItem(v)) {
-            labelMap.set(v.value, v.label);
-          }
-        }
-
+        const propertyName = stripIdSuffix(last || '') || '';
         colDef.cellEditor = 'agSelectCellEditor';
-        // Provide params via function to compute latest values at edit time
+        // Compute latest values at edit time from descriptorOptionsMap
         colDef.cellEditorParams = () => {
+          const opts = descriptorOptionsMap?.[propertyName] ?? [];
           const values: string[] = [];
-          for (const v of (col.enumValues ?? [])) {
+          for (const v of opts) {
             if (typeof v === 'string') values.push(v);
             else if (isOptionItem(v)) values.push(v.value);
           }
@@ -257,7 +252,11 @@ export default function TableRenderer({ schema, uischema, setupId, schemaKey }: 
         colDef.valueFormatter = p => {
           const v = p.value as string | undefined;
           if (!v) return '';
-          return labelMap.get(v) ?? v;
+          const opts = descriptorOptionsMap?.[propertyName] ?? [];
+          for (const o of opts) {
+            if (typeof o !== 'string' && isOptionItem(o) && o.value === v) return o.label;
+          }
+          return v;
         };
       } else if (col.type === 'number') {
         colDef.cellEditor = 'agNumberCellEditor';
@@ -267,7 +266,7 @@ export default function TableRenderer({ schema, uischema, setupId, schemaKey }: 
 
       return colDef;
     }),
-  [renderedColumns, handleCellChange, setNestedValue]);
+  [renderedColumns, handleCellChange, setNestedValue, descriptorOptionsMap]);
 
   // Apply quick filter to AG Grid when search term changes
   useEffect(() => {

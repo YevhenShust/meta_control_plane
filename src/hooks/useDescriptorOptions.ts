@@ -8,33 +8,10 @@ export interface DescriptorOption {
   value: string;
 }
 
-interface CacheEntry {
-  options: DescriptorOption[];
-  timestamp: number;
-}
-
-// Global cache to persist across hook instances
-const globalCache = new Map<string, CacheEntry>();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-const CACHE_VERSION = '3'; // bump when label/value format changes
-
-// Track in-flight fetches per cache key so concurrent callers share the same promise
-const inFlightRequests = new Map<string, Promise<DescriptorOption[]>>();
-
-// Dev utility: clear all caches (call on startup/HMR to avoid stale UI)
-export function clearDescriptorOptionsCache(): void {
-  try {
-    globalCache.clear();
-    inFlightRequests.clear();
-  } catch {
-    // ignore
-  }
-}
-
 /**
  * Hook to load descriptor options for a given schema key.
  * Automatically resolves descriptor schema using heuristics and fetches drafts.
- * Results are cached to avoid redundant API calls.
+ * No client-side caching; always fetches fresh data for current inputs.
  */
 export function useDescriptorOptions(
   setupId: string | undefined,
@@ -54,18 +31,6 @@ export function useDescriptorOptions(
     // Reset state when inputs change
     if (!setupId || !baseSchemaKey) {
       setOptions([]);
-      setLoading(false);
-      setError(null);
-      return;
-    }
-
-    // Generate cache key
-  const cacheKey = `${setupId}:${baseSchemaKey}:${propertyName || ''}:v${CACHE_VERSION}`;
-
-    // Check cache first
-    const cached = globalCache.get(cacheKey);
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-      setOptions(cached.options);
       setLoading(false);
       setError(null);
       return;
@@ -117,90 +82,54 @@ export async function loadDescriptorOptions(
   propertyName: string | undefined,
   signal?: AbortSignal
 ): Promise<DescriptorOption[]> {
-  // Use a stable cache key for both caching and in-flight dedupe
-  const cacheKey = `${setupId}:${baseSchemaKey}:${propertyName || ''}:v${CACHE_VERSION}`;
+  if (signal?.aborted) return [];
+  // Heuristics candidates
+  const candidates = resolveDescriptorSchemaKeyHeuristics(propertyName || baseSchemaKey, baseSchemaKey);
 
-  // Return cached if still fresh
-  const cached = globalCache.get(cacheKey);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    return cached.options;
+  // Resolve one candidate to schemaId
+  let resolvedSchemaId: string | null = null;
+  for (const candidate of candidates) {
+    try {
+      const id = await resolveSchemaIdByKey(setupId, candidate);
+      if (id) { resolvedSchemaId = id; break; }
+    } catch {
+      // Continue trying other candidates
+    }
   }
 
-  // If another caller already started the same fetch, reuse that promise
-  const existing = inFlightRequests.get(cacheKey);
-  if (existing) {
-    return existing;
+  if (!resolvedSchemaId) {
+    return [];
   }
-
   if (signal?.aborted) return [];
 
-  // Create the fetch promise and store it so concurrent callers reuse it
-  const promise = (async (): Promise<DescriptorOption[]> => {
-    // Heuristics candidates
-    const candidates = resolveDescriptorSchemaKeyHeuristics(propertyName || baseSchemaKey, baseSchemaKey);
+  const drafts = await listDrafts(setupId);
+  if (signal?.aborted) return [];
 
-    // Resolve one candidate to schemaId
-    let resolvedSchemaId: string | null = null;
-    for (const candidate of candidates) {
-      try {
-        const id = await resolveSchemaIdByKey(setupId, candidate);
-        if (id) { resolvedSchemaId = id; break; }
-      } catch { 
-        // Continue trying other candidates
-      }
+  const filteredDrafts = drafts.filter(d => String(d.schemaId || '') === String(resolvedSchemaId));
+
+  // Build options: value = content.Id (fallback to draft id); label = Id or name (no draft id suffix)
+  const rawOptions: DescriptorOption[] = filteredDrafts.map(d => {
+    const parsed = d.content;
+    let value = String(d.id ?? '');
+    let label = value;
+    if (parsed && typeof parsed === 'object') {
+      const asObj = parsed as Record<string, unknown>;
+      const descriptorId = String(asObj['Id'] ?? asObj['id'] ?? '') || undefined;
+      const nice = String(asObj['Id'] ?? asObj['name'] ?? '') || undefined;
+      if (descriptorId) value = descriptorId;
+      label = nice ?? value;
     }
+    return { label, value };
+  });
 
-    if (!resolvedSchemaId) {
-      return [];
-    }
-    if (signal?.aborted) return [];
+  // Dedupe by value and sort by label for stable UX
+  const uniqMap = new Map<string, DescriptorOption>();
+  for (const opt of rawOptions) {
+    if (!uniqMap.has(opt.value)) uniqMap.set(opt.value, opt);
+  }
+  const descriptorOptions = Array.from(uniqMap.values()).sort((a, b) => a.label.localeCompare(b.label));
 
-    const drafts = await listDrafts(setupId);
-    if (signal?.aborted) return [];
-
-    const filteredDrafts = drafts.filter(d => String(d.schemaId || '') === String(resolvedSchemaId));
-    
-
-    
-    // Build options: value = content.Id (fallback to draft id); label = Id or name (no draft id suffix)
-    const rawOptions: DescriptorOption[] = filteredDrafts.map(d => {
-      const parsed = d.content;
-      let value = String(d.id ?? '');
-      let label = value;
-      if (parsed && typeof parsed === 'object') {
-        const asObj = parsed as Record<string, unknown>;
-        const descriptorId = String(asObj['Id'] ?? asObj['id'] ?? '') || undefined;
-        const nice = String(asObj['Id'] ?? asObj['name'] ?? '') || undefined;
-        if (descriptorId) value = descriptorId;
-        label = nice ?? value;
-      }
-      return { label, value };
-    });
-
-    // Dedupe by value and sort by label for stable UX
-    const uniqMap = new Map<string, DescriptorOption>();
-    for (const opt of rawOptions) {
-      if (!uniqMap.has(opt.value)) uniqMap.set(opt.value, opt);
-    }
-    const descriptorOptions = Array.from(uniqMap.values()).sort((a, b) => a.label.localeCompare(b.label));
-
-
-
-    // Atomically update cache for this key
-    try {
-      globalCache.set(cacheKey, { options: descriptorOptions, timestamp: Date.now() });
-    } catch {
-      // non-fatal: if cache set fails for some reason, still return the data
-    }
-
-    return descriptorOptions;
-  })();
-
-  inFlightRequests.set(cacheKey, promise);
-  // Ensure removal of the in-flight record regardless of success/failure
-  promise.finally(() => { inFlightRequests.delete(cacheKey); });
-
-  return promise;
+  return descriptorOptions;
 }
 
 /**

@@ -35,24 +35,14 @@ export async function listSchemasV1(setupId: string, params?: { skip?: number; l
   }
 }
 
-// returns parsed JSON schema object; caches in-memory by schemaId
-const _schemaCache = new Map<string, unknown>();
 export async function getSchemaByIdV1(schemaId: string, setupId: string): Promise<unknown> {
   log('getSchemaByIdV1', { schemaId, setupId, useMock });
-  
-  const cached = _schemaCache.get(schemaId);
-  if (cached) {
-    log('Returning cached schema');
-    return cached;
-  }
   
   const list = await listSchemasV1(setupId);
   const hit = list.find(s => s.id === schemaId);
   if (!hit || !hit.content) throw new Error(`Schema not found or empty: ${schemaId}`);
   
   const parsed = tryParseContent(hit.content);
-  _schemaCache.set(schemaId, parsed);
-  log('Schema cached and returned');
   return parsed;
 }
 

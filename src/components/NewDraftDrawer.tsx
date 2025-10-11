@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useState, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import { Drawer, Button, ButtonGroup, Intent } from '@blueprintjs/core';
 import { JsonForms } from '@jsonforms/react';
 import type { JsonSchema, UISchemaElement } from '@jsonforms/core';
 import { generateDefaultUISchema } from '@jsonforms/core';
 import { getBlueprintRenderers } from '../renderers/blueprint/registry';
 import { createAjv } from '../renderers/ajvInstance';
-import { generateDefaultContent } from '../jsonforms/generateDefaults';
 import { createDraft } from '../shared/api';
 import { useDescriptorOptionsForColumns } from '../hooks/useDescriptorOptions';
 import { emitChanged } from '../shared/events/DraftEvents';
@@ -40,15 +39,13 @@ export default function NewDraftDrawer({
   const [valid, setValid] = useState(true);
   const [saving, setSaving] = useState(false);
   const [ajv, setAjv] = useState(() => createAjv());
-  const initialDefaultsRef = useRef<unknown>(null);
+  
 
   // Initialize with defaults when drawer opens
   useEffect(() => {
     if (isOpen && schema) {
-      // init defaults for new draft
-      const defaults = generateDefaultContent(schema, schemaKey);
-      setData(defaults);
-      initialDefaultsRef.current = defaults;
+  // Initialize with empty object; server generates defaults
+  setData({});
       
       // Create fresh AJV instance to avoid schema conflicts
       setAjv(createAjv());
@@ -154,26 +151,7 @@ export default function NewDraftDrawer({
 
     // Ensure arrays and defaults from schema are present in the submitted payload.
     // Use JsonSchema type for the default generator instead of any.
-  const defaults = (initialDefaultsRef.current ?? generateDefaultContent((patchedSchema ?? schema) as unknown as JsonSchema)) as unknown;
-      function mergeDefaults(def: unknown, src: unknown): unknown {
-        if (def === null || def === undefined) return src;
-        if (Array.isArray(def)) {
-          // if user supplied an array, keep it; otherwise use default (possibly empty array)
-          return Array.isArray(src) ? src : structuredClone(def);
-        }
-        if (typeof def === 'object' && def !== null) {
-          const base = (typeof src === 'object' && src !== null) ? (structuredClone(src) as Record<string, unknown>) : {} as Record<string, unknown>;
-          const d = def as Record<string, unknown>;
-          for (const k of Object.keys(d)) {
-            base[k] = mergeDefaults(d[k], base[k]);
-          }
-          return base;
-        }
-        // primitive default - if src provided, prefer src, otherwise default
-        return typeof src === 'undefined' ? def : src;
-      }
-
-      const payload = mergeDefaults(defaults, data ?? {});
+      const payload = data ?? {};
       const result = await createDraft(setupId, schemaKey, payload ?? {});
 
       // Emit event to refresh menu
@@ -195,7 +173,7 @@ export default function NewDraftDrawer({
     } finally {
       setSaving(false);
     }
-  }, [valid, data, setupId, schemaKey, onSuccess, onClose, patchedSchema, schema]);
+  }, [valid, data, setupId, schemaKey, onSuccess, onClose]);
 
   // Keyboard shortcut: Escape to close
   useEffect(() => {

@@ -1,37 +1,19 @@
 import { listSchemasV1, listDrafts } from '../shared/api';
 import { tryParseContent } from './parse';
 
-// cache resolved schema ids by key `${setupId}:${schemaKey}`
-const resolvedSchemaIdCache = new Map<string, string | null>();
-const inflight = new Map<string, Promise<string | null>>();
-
 export async function resolveSchemaIdByKey(setupId: string, schemaKey: string): Promise<string | null> {
-  const cacheKey = `${setupId}:${schemaKey}`;
-  if (resolvedSchemaIdCache.has(cacheKey)) return resolvedSchemaIdCache.get(cacheKey) ?? null;
-  if (inflight.has(cacheKey)) return inflight.get(cacheKey) as Promise<string | null>;
-
-  const p = (async () => {
-    try {
-      const schemas = await listSchemasV1(setupId);
-      for (const s of schemas) {
-        const raw = tryParseContent(s.content);
-        if (raw && typeof raw === 'object' && (raw as Record<string, unknown>)['$id'] === schemaKey) {
-          resolvedSchemaIdCache.set(cacheKey, String(s.id));
-          return String(s.id);
-        }
+  try {
+    const schemas = await listSchemasV1(setupId);
+    for (const s of schemas) {
+      const raw = tryParseContent(s.content);
+      if (raw && typeof raw === 'object' && (raw as Record<string, unknown>)['$id'] === schemaKey) {
+        return String(s.id);
       }
-      resolvedSchemaIdCache.set(cacheKey, null);
-      return null;
-    } catch {
-      resolvedSchemaIdCache.set(cacheKey, null);
-      return null;
-    } finally {
-      inflight.delete(cacheKey);
     }
-  })();
-
-  inflight.set(cacheKey, p);
-  return p;
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 export type SelectColumnConfig = { schemaKey: string; labelPath?: string; valuePath?: string; sort?: boolean };
