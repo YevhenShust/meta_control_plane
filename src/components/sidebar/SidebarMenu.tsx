@@ -165,7 +165,7 @@ export default function SidebarMenu({
     if (!refreshBasePath) return;
     (async () => {
       try {
-        console.debug('[SidebarMenu] refresh requested for', refreshBasePath);
+  if (import.meta.env.DEV) console.debug('[SidebarMenu] refresh requested for', refreshBasePath);
         const node = findNode(nodesRef.current, refreshBasePath);
         if (!node || !node.hasCaret || !loadDynamicChildren) return;
         setLoadingKeys((p) => ({ ...p, [refreshBasePath]: true }));
@@ -173,9 +173,9 @@ export default function SidebarMenu({
         const children = items.map((it) => ({ id: `${refreshBasePath}/${it.key}`, label: it.label, icon: 'document' }));
         setNodeChildren(refreshBasePath, children);
         setNodes((prev) => updateNodeById(prev, refreshBasePath, (n) => ({ ...n, isExpanded: true })));
-        console.debug('[SidebarMenu] refreshed children for', refreshBasePath, 'count=', children.length);
+  if (import.meta.env.DEV) console.debug('[SidebarMenu] refreshed children for', refreshBasePath, 'count=', children.length);
       } catch {
-        console.debug('[SidebarMenu] refresh failed for', refreshBasePath);
+  if (import.meta.env.DEV) console.debug('[SidebarMenu] refresh failed for', refreshBasePath);
       } finally {
         setLoadingKeys((p) => {
           const next = { ...p };

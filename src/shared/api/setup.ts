@@ -7,7 +7,7 @@ export type SetupDto = NonNullable<components['schemas']['SetupDto']>;
 export type SetupCreateRequest = NonNullable<components['schemas']['SetupCreateRequest']>;
 
 function log(...args: unknown[]) {
-  console.debug('[Setups API]', ...args);
+  if (import.meta.env.DEV) console.debug('[Setups API]', ...args);
 }
 
 // POST /api/v1/Setups

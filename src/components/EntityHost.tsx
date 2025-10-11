@@ -20,7 +20,7 @@ export default function EntityHost({ kind, params }: HostProps) {
   const draftId = kind === 'form' ? ((params || {}) as FormParams['params']).draftId : undefined;
   const navigate = useNavigate();
 
-  console.debug('[Host] route -> view=', view, 'kind=', kind, 'ids=', { setupId, schemaKey, draftId });
+  if (import.meta.env.DEV) console.debug('[Host] route -> view=', view, 'kind=', kind, 'ids=', { setupId, schemaKey, draftId });
 
   // State for new-draft drawer
   const [drawerOpen, setDrawerOpen] = useState(false);

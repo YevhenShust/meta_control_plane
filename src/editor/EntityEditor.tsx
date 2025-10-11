@@ -13,7 +13,7 @@ import { tryParseContent } from '../core/parse';
 type DraftContent = unknown;
 
 function log(...args: unknown[]) {
-  console.debug('[Editor]', ...args);
+  if (import.meta.env.DEV) console.debug('[Editor]', ...args);
 }
 
 export default function EntityEditor({ ids, view }: EntityEditorProps) {
@@ -24,7 +24,7 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
   const [resolved, setResolved] = useState<{ schemaId: string } | null>(null);
   const [ajv] = useState(() => {
     const a = createAjv();
-    console.debug('[AJV] created');
+    if (import.meta.env.DEV) console.debug('[AJV] created');
     return a;
   });
 
@@ -60,8 +60,8 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
             log('loaded uischema from schemas/ui/', schemaKey);
           }
         } catch {
-          // not fatal — log and continue. This is an expected missing-file case.
-          console.debug('[Editor] ui schema not found for', schemaKey);
+          // not fatal — expected missing-file case in some routes
+          if (import.meta.env.DEV) console.debug('[Editor] ui schema not found for', schemaKey);
         }
       } catch (e) {
         if (!alive) return;
@@ -211,7 +211,7 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
     schemaKey,
   };
 
-  log('Preparing to render view:', view);
+  if (import.meta.env.DEV) log('Preparing to render view:', view);
 
   if (state.loading && view === 'form') return <div className="content-padding">Loading…</div>;
   if (state.error && view === 'form') return <div className="content-padding">Error: {state.error}</div>;

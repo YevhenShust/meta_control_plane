@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Drawer, Button, ButtonGroup, Intent } from '@blueprintjs/core';
 import { JsonForms } from '@jsonforms/react';
 import type { JsonSchema, UISchemaElement } from '@jsonforms/core';
@@ -9,6 +9,7 @@ import { createDraft } from '../shared/api';
 import { useDescriptorOptionsForColumns } from '../hooks/useDescriptorOptions';
 import { emitChanged } from '../shared/events/DraftEvents';
 import { AppToaster } from './AppToaster';
+import { isDescriptorId, stripIdSuffix } from '../core/pathTools';
 
 const bpRenderers = getBlueprintRenderers();
 
@@ -22,9 +23,6 @@ interface NewDraftDrawerProps {
   onSuccess: (draftId: string) => void;
 }
 
-function log(...args: unknown[]) {
-  console.debug('[NewDraft]', ...args);
-}
 
 export default function NewDraftDrawer({
   isOpen,
@@ -41,31 +39,26 @@ export default function NewDraftDrawer({
   const [ajv, setAjv] = useState(() => createAjv());
   
 
-  // Initialize with defaults when drawer opens
   useEffect(() => {
     if (isOpen && schema) {
-  // Initialize with empty object; server generates defaults
-  setData({});
-      
+      // Initialize with empty object; server generates defaults
+      setData({});
       // Create fresh AJV instance to avoid schema conflicts
       setAjv(createAjv());
     }
   }, [isOpen, schema, schemaKey]);
 
   // Find descriptor property names in schema
-  const descriptorPropertyKeys = useMemo(() => {
-    if (!schema) return [];
+  const descriptorPropertyKeys = (() => {
+    if (!schema) return [] as string[];
     const jsonSchema = schema as JsonSchema;
     const props = jsonSchema.properties as { [key: string]: JsonSchema } | undefined;
-    if (!props) return [];
-    return Object.keys(props).filter(k => /DescriptorId$/i.test(k));
-  }, [schema]);
+    if (!props) return [] as string[];
+    return Object.keys(props).filter(k => isDescriptorId(k));
+  })();
 
   // Load descriptor options for all descriptor properties
-  const descriptorPropertyNames = useMemo(
-    () => descriptorPropertyKeys.map(k => k.replace(/Id$/i, '')),
-    [descriptorPropertyKeys]
-  );
+  const descriptorPropertyNames = descriptorPropertyKeys.map(k => stripIdSuffix(k)!).filter(Boolean);
   const { map: descriptorOptionsMap } = useDescriptorOptionsForColumns(
     isOpen ? setupId : undefined,
     isOpen ? schemaKey : undefined,
@@ -74,14 +67,12 @@ export default function NewDraftDrawer({
 
   // When descriptor options are loaded, ensure data has a valid value for each DescriptorId
   useEffect(() => {
-    if (!isOpen) return;
-    if (!descriptorPropertyKeys.length) return;
-    if (!descriptorOptionsMap) return;
-  setData((prev: unknown) => {
+    if (!isOpen || !descriptorPropertyKeys.length || !descriptorOptionsMap) return;
+    setData((prev: unknown) => {
       const base = (prev && typeof prev === 'object') ? { ...(prev as Record<string, unknown>) } : {} as Record<string, unknown>;
       let changed = false;
       for (const k of descriptorPropertyKeys) {
-        const propName = k.replace(/Id$/i, '');
+        const propName = stripIdSuffix(k)!;
         const opts = descriptorOptionsMap[propName] || [];
         if (!opts.length) continue;
         const current = base[k];
@@ -105,7 +96,7 @@ export default function NewDraftDrawer({
     const clone = structuredClone(jsonSchema);
 
     for (const k of descriptorPropertyKeys) {
-      const propName = k.replace(/Id$/i, '');
+      const propName = stripIdSuffix(k)!;
       const options = descriptorOptionsMap?.[propName] ?? [];
       if (!options.length) continue; // skip if no options yet
 
@@ -122,9 +113,7 @@ export default function NewDraftDrawer({
       };
 
       const prop = clone.properties[k] as JsonSchema;
-      if (!prop.default || (typeof prop.default === 'string' && prop.default === '')) {
-        delete prop.default;
-      }
+      if (!prop.default || (typeof prop.default === 'string' && prop.default === '')) delete prop.default;
     }
 
     return clone as object;
@@ -147,12 +136,8 @@ export default function NewDraftDrawer({
 
     setSaving(true);
     try {
-      log('creating draft', { setupId, schemaKey });
-
-    // Ensure arrays and defaults from schema are present in the submitted payload.
-    // Use JsonSchema type for the default generator instead of any.
       const payload = data ?? {};
-      const result = await createDraft(setupId, schemaKey, payload ?? {});
+      const result = await createDraft(setupId, schemaKey, payload);
 
       // Emit event to refresh menu
       emitChanged({ schemaKey, setupId });
@@ -165,7 +150,6 @@ export default function NewDraftDrawer({
       onSuccess(String(result.id));
       onClose();
     } catch (e) {
-      log('create failed', e);
       AppToaster.show({
         message: `Failed to create draft: ${(e as Error).message}`,
         intent: Intent.DANGER,

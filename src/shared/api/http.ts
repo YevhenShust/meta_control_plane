@@ -16,9 +16,9 @@ http.interceptors.request.use((config) => {
     const { method, url, params, data } = config;
     // Only log small previews to avoid leaking large payloads
     const dataPreview = typeof data === 'string' ? data.slice(0, 2000) : JSON.stringify(data)?.slice(0, 2000);
-    console.debug('[http] outgoing request', { method, url, params, dataPreview });
+  if (import.meta.env.DEV) console.debug('[http] outgoing request', { method, url, params, dataPreview });
   } catch (e) {
-    console.debug('[http] outgoing request preview error', e);
+  if (import.meta.env.DEV) console.debug('[http] outgoing request preview error', e);
   }
   return config;
 });

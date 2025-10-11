@@ -20,7 +20,7 @@ export default function SidebarMenuContainer({ selectedMenuPath, onSelect }: { s
   useEffect(() => {
     const off = onChanged((payload) => {
       try {
-        console.debug('[SidebarMenuContainer] Draft changed', payload);
+  if (import.meta.env.DEV) console.debug('[SidebarMenuContainer] Draft changed', payload);
         if (!payload || !payload.schemaKey || payload.setupId !== setupId) return;
 
         // Find basePath(s) in dynamicRoutes that map to this schemaKey
@@ -31,7 +31,7 @@ export default function SidebarMenuContainer({ selectedMenuPath, onSelect }: { s
         const current = selectedMenuPath.join('/');
         for (const b of bases) {
           if (current.startsWith(b)) {
-            console.debug('[SidebarMenuContainer] triggering refresh for base', b);
+            if (import.meta.env.DEV) console.debug('[SidebarMenuContainer] triggering refresh for base', b);
             setRefreshBasePath(b);
             // clear after short tick to allow SidebarMenu effect to run
                 setTimeout(() => setRefreshBasePath(null), MENU_REFRESH_RESET_MS);

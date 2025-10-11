@@ -41,6 +41,6 @@ export function getBlueprintRenderers(): JsonFormsRendererRegistryEntry[] {
     { tester: rankWith(4, uiTypeIs('Group')), renderer: BPGroupLayout as unknown as JsonFormsRendererRegistryEntry['renderer'] },
   ];
   // debug: expose how many renderers we registered
-  console.debug('[JF] blueprint renderers length:', list.length);
+  if (import.meta.env.DEV) console.debug('[JF] blueprint renderers length:', list.length);
   return list;
 }

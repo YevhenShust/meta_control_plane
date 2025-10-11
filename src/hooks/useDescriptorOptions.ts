@@ -79,7 +79,10 @@ export function useDescriptorOptionsForColumns(
     })();
 
     return () => { ac.abort(); };
-  }, [setupId, baseSchemaKey, propNamesKey, propertyNames]);
+    // Note: we intentionally depend on propNamesKey instead of propertyNames identity
+    // to avoid needless refetches when the array reference changes with same content.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setupId, baseSchemaKey, propNamesKey]);
 
   return { map, loading, error };
 }

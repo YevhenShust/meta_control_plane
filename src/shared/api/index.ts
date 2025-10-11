@@ -51,9 +51,9 @@ export async function createDraft(setupId: string, schemaKey: string, content: u
   const schemaId = await resolveSchemaIdByKey(setupId, schemaKey);
   const contentStr = typeof content === 'string' ? content : JSON.stringify(content);
   try {
-    console.debug('[api] createDraft content preview', contentStr.slice(0, 2000));
+    if (import.meta.env.DEV) console.debug('[api] createDraft content preview', contentStr.slice(0, 2000));
   } catch (e) {
-    console.debug('[api] createDraft preview error', e);
+    if (import.meta.env.DEV) console.debug('[api] createDraft preview error', e);
   }
   const draft = await createDraftV1(setupId, { schemaId, content: contentStr });
   return normalizeDraft(draft) as DraftParsed;
@@ -74,9 +74,9 @@ export async function updateDraft(draftId: string, content: unknown): Promise<Dr
   }
   const contentStr = typeof content === 'string' ? content : JSON.stringify(content);
   try {
-    console.debug('[api] updateDraft content preview', contentStr.slice(0, 2000));
+    if (import.meta.env.DEV) console.debug('[api] updateDraft content preview', contentStr.slice(0, 2000));
   } catch (e) {
-    console.debug('[api] updateDraft preview error', e);
+    if (import.meta.env.DEV) console.debug('[api] updateDraft preview error', e);
   }
   const draft = await updateDraftV1(draftId, contentStr);
   return normalizeDraft(draft) as DraftParsed;

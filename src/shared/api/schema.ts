@@ -7,7 +7,7 @@ export type SchemaDto = NonNullable<components['schemas']['SchemaDto']>;
 export type SchemaListResponse = NonNullable<components['schemas']['SchemaListResponse']>;
 
 function log(...args: unknown[]) {
-  console.debug('[Schemas API]', ...args);
+  if (import.meta.env.DEV) console.debug('[Schemas API]', ...args);
 }
 
 export async function listSchemasV1(setupId: string, params?: { skip?: number; limit?: number }): Promise<SchemaDto[]> {

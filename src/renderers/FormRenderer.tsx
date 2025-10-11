@@ -7,23 +7,25 @@ import { useEffect, useState } from 'react';
 import { Button, ButtonGroup } from '@blueprintjs/core';
 
 const bpRenderers = getBlueprintRenderers();
-console.debug('[JF] blueprint renderers (count):', bpRenderers.length);
+if (import.meta.env.DEV) console.debug('[JF] blueprint renderers (count):', bpRenderers.length);
 
 export default function FormRenderer(props: FormViewProps) {
   const { data, schema, uischema, ajv, onChange, onStatus } = props;
 
   // Mount/unmount tracing: move to effect so StrictMode double-render doesn't confuse logs.
   useEffect(() => {
-    console.debug('[Form] mounted', 'schema?', !!schema, 'uischema?', !!uischema, 'data=', Array.isArray(data) ? `array(${data.length})` : typeof data);
-    // one-time log of schema root keys if schema is an object
-    try {
-      if (schema && typeof schema === 'object') {
-        console.debug('[Form] schema keys:', Object.keys(schema as Record<string, unknown>));
+    if (import.meta.env.DEV) {
+      console.debug('[Form] mounted', 'schema?', !!schema, 'uischema?', !!uischema, 'data=', Array.isArray(data) ? `array(${data.length})` : typeof data);
+      try {
+        if (schema && typeof schema === 'object') {
+          console.debug('[Form] schema keys:', Object.keys(schema as Record<string, unknown>));
+        }
+      } catch {
+        // ignore logging errors
       }
-    } catch {
-      // ignore logging errors
+      return () => console.debug('[Form] unmounted');
     }
-    return () => console.debug('[Form] unmounted');
+    return () => {};
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -41,15 +43,15 @@ export default function FormRenderer(props: FormViewProps) {
               loading={saving}
               onClick={async () => {
                 setSaving(true);
-                console.debug('[Form] save clicked');
+                if (import.meta.env.DEV) console.debug('[Form] save clicked');
                 try {
                   const result = await props.onSave();
-                  console.debug('[Form] save result', result);
+                  if (import.meta.env.DEV) console.debug('[Form] save result', result);
                   if (result && (result as { ok?: boolean }).ok) {
                     // on successful save, mark clean locally and inform parent
                     setStatus(s => ({ ...s, dirty: false }));
                     onStatus?.({ dirty: false, valid: status.valid });
-                    console.debug('[Form] save ok');
+                    if (import.meta.env.DEV) console.debug('[Form] save ok');
                   } else {
                     console.error('[Form] save outcome indicates failure', result);
                   }
@@ -88,7 +90,7 @@ export default function FormRenderer(props: FormViewProps) {
           } catch {
             valid = false;
           }
-          console.debug('[Form] onChange');
+          if (import.meta.env.DEV) console.debug('[Form] onChange');
           onChange(d as unknown);
           const next = { dirty: true, valid };
           setStatus(next);

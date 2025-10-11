@@ -5,7 +5,7 @@ import { useMock, loadMockData } from './utils';
 export type DraftDto = components['schemas']['DraftDto'];
 
 function log(...args: unknown[]) {
-  console.debug('[Drafts API]', ...args);
+  if (import.meta.env.DEV) console.debug('[Drafts API]', ...args);
 }
 
 // List drafts for a setup (v1): GET /api/v1/Drafts/{setupId}

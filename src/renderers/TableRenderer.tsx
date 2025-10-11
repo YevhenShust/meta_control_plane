@@ -93,16 +93,13 @@ export default function TableRenderer({ schema, uischema, setupId, schemaKey }: 
     return orderColumnsByUISchema(cols, uischema);
   }, [schema, uischema]);
 
-  const descriptorColumns = useMemo(() => {
-    return columns.filter(col => isDescriptorIdUtil(col.path?.[col.path.length - 1]));
-  }, [columns]);
+  const descriptorColumns = columns.filter(col => isDescriptorIdUtil(col.path?.[col.path.length - 1]));
 
-  const descriptorPropertyNames = useMemo(() => {
-    const names = descriptorColumns
+  const descriptorPropertyNames = Array.from(new Set(
+    descriptorColumns
       .map(col => stripIdSuffix(col.path?.[col.path.length - 1]))
-      .filter((n): n is string => !!n);
-    return Array.from(new Set(names));
-  }, [descriptorColumns]);
+      .filter((n): n is string => !!n)
+  ));
 
   const { map: descriptorOptionsMap, loading: descriptorLoading } = useDescriptorOptionsForColumns(setupId, schemaKey, descriptorPropertyNames);
 

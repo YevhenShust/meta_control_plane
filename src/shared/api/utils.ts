@@ -9,7 +9,7 @@ export async function loadMockData<T>(path: string, key: string): Promise<T[]> {
     const mockData = await import(`../../../data/${path}.data.json`);
     return (mockData[key] || []) as T[];
   } catch (e) {
-    console.debug(`[API] Error loading mock data from ${path}:`, e);
+  if (import.meta.env.DEV) console.debug(`[API] Error loading mock data from ${path}:`, e);
     return [];
   }
 }
