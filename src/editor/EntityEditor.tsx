@@ -238,7 +238,10 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
           schema={drawerSchema ?? {}}
           uischema={uischema}
           onSuccess={() => {
-            // Emit change for menu refresh (table refreshes via RTK Query cache invalidation)
+            // Temporary compatibility: emit DraftEvents for useDraftMenu which still relies on this event.
+            // This will be removed in a later PR when the menu migrates to RTK Query.
+            // Table/editor refresh now happens via RTK Query cache invalidation.
+            // Event is fired only on new draft creation (NewDraftDrawer is only used for creating new drafts).
             emitChanged({ schemaKey, setupId });
           }}
         />
