@@ -4,7 +4,7 @@ import { Button, InputGroup, NonIdealState, Intent } from '@blueprintjs/core';
 import { flattenSchemaToColumns, orderColumnsByUISchema } from '../core/schemaTools';
 import { useDescriptorOptionsForColumns } from '../hooks/useDescriptorOptions';
 import { AgGridReact } from 'ag-grid-react';
-import type { ColDef } from 'ag-grid-community';
+import type { ColDef, CellDoubleClickedEvent } from 'ag-grid-community';
 import { stripIdSuffix, isDescriptorId as isDescriptorIdUtil } from '../core/pathTools';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
@@ -38,7 +38,7 @@ interface RowData {
   content: Record<string, unknown>;
 }
 
-export default function TableRenderer({ schema, uischema, setupId, schemaKey }: TableViewProps) {
+export default function TableRenderer({ schema, uischema, setupId, schemaKey, onOpenDrawer }: TableViewProps) {
   const gridRef = useRef<AgGridReact<RowData>>(null);
 
   const [schemaId, setSchemaId] = useState<string | null>(null);
@@ -292,6 +292,24 @@ export default function TableRenderer({ schema, uischema, setupId, schemaKey }: 
     }
   }, [searchTerm]);
 
+  // Handle double-click on complex fields to open drawer for editing
+  const handleCellDoubleClick = useCallback((event: CellDoubleClickedEvent<RowData>) => {
+    if (!onOpenDrawer) return;
+    
+    const { colDef, data } = event;
+    if (!colDef || !data) return;
+    
+    // Find the column definition to check if it's a complex type
+    const col = renderedColumns.find(c => c.key === colDef.colId);
+    if (!col) return;
+    
+    const isComplexType = col.type === 'object' || col.type === 'array';
+    if (isComplexType) {
+      // Open drawer for editing this draft
+      onOpenDrawer(data.id);
+    }
+  }, [onOpenDrawer, renderedColumns]);
+
   if (isLoading || descriptorLoading) {
     return (
       <NonIdealState
@@ -333,6 +351,7 @@ export default function TableRenderer({ schema, uischema, setupId, schemaKey }: 
           getRowId={(p) => p.data.id}
           reactiveCustomComponents={true}
           singleClickEdit={true}
+          onCellDoubleClicked={handleCellDoubleClick}
           pagination
           paginationPageSize={GRID_PAGINATION_PAGE_SIZE}
           paginationPageSizeSelector={GRID_PAGINATION_PAGE_SIZE_OPTIONS}

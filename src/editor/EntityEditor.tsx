@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { EntityEditorProps, EditorDataState, EditorSaveOutcome, FormViewProps, TableViewProps } from './EntityEditor.types';
 // loadSchemaByKey already imported above
 import { createAjv } from '../renderers/ajvInstance';
@@ -31,6 +31,7 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
   // Drawer state for creating new drafts from table
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerSchema, setDrawerSchema] = useState<object | null>(null);
+  const [drawerEditDraftId, setDrawerEditDraftId] = useState<string | null>(null);
 
   // RTK Query hooks for form view
   const { data: drafts, isLoading: draftsLoading } = useListDraftsQuery(
@@ -109,6 +110,7 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
         try {
           setDrawerOpen(true);
           setDrawerSchema(null);
+          setDrawerEditDraftId(null); // Creating new draft
           if (!setupId || !schemaKey) throw new Error('Missing context for new draft');
           const { json } = await loadSchemaByKey(setupId, schemaKey);
           const parsed = tryParseContent(json) as object;
@@ -121,6 +123,24 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
     window.addEventListener('table-new-request', handler as EventListener);
     return () => window.removeEventListener('table-new-request', handler as EventListener);
   }, [view, setupId, schemaKey]);
+
+  // Handler for opening drawer to edit a draft's complex field
+  const handleOpenDrawer = useCallback((draftId: string) => {
+    (async () => {
+      try {
+        setDrawerOpen(true);
+        setDrawerSchema(null);
+        setDrawerEditDraftId(draftId);
+        if (!setupId || !schemaKey) throw new Error('Missing context for edit draft');
+        const { json } = await loadSchemaByKey(setupId, schemaKey);
+        const parsed = tryParseContent(json) as object;
+        setDrawerSchema(parsed);
+      } catch {
+        setDrawerOpen(false);
+        setDrawerEditDraftId(null);
+      }
+    })();
+  }, [setupId, schemaKey]);
 
   const controller = useMemo(() => {
     async function save(): Promise<EditorSaveOutcome> {
@@ -201,6 +221,7 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
     ajv,
     setupId,
     schemaKey,
+    onOpenDrawer: handleOpenDrawer,
   };
 
   if (state.loading && view === 'form') return <div className="content-padding">Loading…</div>;
@@ -226,6 +247,7 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
           ajv={tableProps.ajv}
           setupId={tableProps.setupId}
           schemaKey={tableProps.schemaKey}
+          onOpenDrawer={tableProps.onOpenDrawer}
         />
       )}
 
@@ -237,6 +259,7 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
           schemaKey={schemaKey}
           schema={drawerSchema ?? {}}
           uischema={uischema}
+          editDraftId={drawerEditDraftId ?? undefined}
           onSuccess={() => {
             // Temporary compatibility: emit DraftEvents for useDraftMenu which still relies on this event.
             // This will be removed in a later PR when the menu migrates to RTK Query.

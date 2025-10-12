@@ -8,7 +8,7 @@ import { createAjv } from '../renderers/ajvInstance';
 import { useDescriptorOptionsForColumns } from '../hooks/useDescriptorOptions';
 import { AppToaster } from './AppToaster';
 import { isDescriptorId, stripIdSuffix } from '../core/pathTools';
-import { useCreateDraftMutation } from '../store/api';
+import { useCreateDraftMutation, useUpdateDraftMutation, useListDraftsQuery } from '../store/api';
 
 const bpRenderers = getBlueprintRenderers();
 
@@ -20,6 +20,8 @@ interface NewDraftDrawerProps {
   schema: object;
   uischema?: object;
   onSuccess: (draftId: string) => void;
+  /** Optional: If provided, edit this draft instead of creating a new one */
+  editDraftId?: string;
 }
 
 
@@ -31,6 +33,7 @@ export default function NewDraftDrawer({
   schema,
   uischema,
   onSuccess,
+  editDraftId,
 }: NewDraftDrawerProps) {
   const [data, setData] = useState<unknown>(null);
   const [valid, setValid] = useState(true);
@@ -38,15 +41,32 @@ export default function NewDraftDrawer({
   const [ajv, setAjv] = useState(() => createAjv());
   
   const [createDraft] = useCreateDraftMutation();
+  const [updateDraft] = useUpdateDraftMutation();
+  
+  // Load existing draft data if editing
+  const { data: drafts } = useListDraftsQuery(
+    { setupId: setupId || '', schemaId: undefined },
+    { skip: !isOpen || !editDraftId || !setupId }
+  );
 
   useEffect(() => {
     if (isOpen && schema) {
-      // Initialize with empty object; server generates defaults
-      setData({});
+      if (editDraftId && drafts) {
+        // Load existing draft for editing
+        const draft = drafts.find(d => String(d.id) === String(editDraftId));
+        if (draft) {
+          setData(draft.content ?? {});
+        } else {
+          setData({});
+        }
+      } else {
+        // Initialize with empty object for new draft; server generates defaults
+        setData({});
+      }
       // Create fresh AJV instance to avoid schema conflicts
       setAjv(createAjv());
     }
-  }, [isOpen, schema, schemaKey]);
+  }, [isOpen, schema, schemaKey, editDraftId, drafts]);
 
   // Find descriptor property names in schema
   const descriptorPropertyKeys = (() => {
@@ -137,24 +157,39 @@ export default function NewDraftDrawer({
     setSaving(true);
     try {
       const payload = data ?? {};
-      const result = await createDraft({ setupId, schemaKey, content: payload }).unwrap();
+      
+      if (editDraftId) {
+        // Update existing draft
+        await updateDraft({ draftId: editDraftId, content: payload, setupId: setupId || '', schemaId: undefined }).unwrap();
+        
+        AppToaster.show({
+          message: `Draft updated: ${editDraftId}`,
+          intent: Intent.SUCCESS,
+        });
+        
+        onSuccess(editDraftId);
+      } else {
+        // Create new draft
+        const result = await createDraft({ setupId, schemaKey, content: payload }).unwrap();
 
-      AppToaster.show({
-        message: `Draft created: ${result.id}`,
-        intent: Intent.SUCCESS,
-      });
+        AppToaster.show({
+          message: `Draft created: ${result.id}`,
+          intent: Intent.SUCCESS,
+        });
 
-      onSuccess(String(result.id));
+        onSuccess(String(result.id));
+      }
+      
       onClose();
     } catch (e) {
       AppToaster.show({
-        message: `Failed to create draft: ${(e as Error).message}`,
+        message: `Failed to ${editDraftId ? 'update' : 'create'} draft: ${(e as Error).message}`,
         intent: Intent.DANGER,
       });
     } finally {
       setSaving(false);
     }
-  }, [valid, data, setupId, schemaKey, onSuccess, onClose, createDraft]);
+  }, [valid, data, setupId, schemaKey, onSuccess, onClose, createDraft, editDraftId, updateDraft]);
 
   // Keyboard shortcut: Escape to close
   useEffect(() => {
@@ -174,7 +209,7 @@ export default function NewDraftDrawer({
     <Drawer
       isOpen={isOpen}
       onClose={handleClose}
-      title={`New ${schemaKey}`}
+      title={editDraftId ? `Edit ${schemaKey}` : `New ${schemaKey}`}
       size="50%"
       canOutsideClickClose={!saving}
       canEscapeKeyClose={!saving}
@@ -208,7 +243,7 @@ export default function NewDraftDrawer({
           <Button
             icon="tick"
             intent={Intent.PRIMARY}
-            text="Create"
+            text={editDraftId ? "Save" : "Create"}
             onClick={handleSubmit}
             disabled={saving}
             loading={saving}
