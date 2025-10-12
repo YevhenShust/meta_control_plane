@@ -161,14 +161,23 @@ export default function NewDraftDrawer({
       
       if (editDraftId) {
         // Update existing draft
-        const prevId = getContentId(payload); // capture candidate prev before server may modify
-        await updateDraft({ draftId: editDraftId, content: payload, setupId: setupId || '', schemaId: undefined }).unwrap();
+        const prevDraft = drafts?.find(d => String(d.id) === String(editDraftId));
+        const prevContent = prevDraft?.content;
+        await updateDraft({ 
+          draftId: editDraftId, 
+          content: payload, 
+          setupId: setupId || '', 
+          schemaId: undefined,
+          schemaKey,  // Pass schemaKey for menu invalidation
+          prevContent  // Pass prevContent for Id comparison
+        }).unwrap();
 
         AppToaster.show({
           message: `Draft updated: ${editDraftId}`,
           intent: Intent.SUCCESS,
         });
 
+        const prevId = prevContent && typeof prevContent === 'object' ? getContentId(prevContent) : undefined;
         const nextId = getContentId(payload);
         onSuccess({ draftId: editDraftId, kind: 'update', prevId, nextId });
       } else {
@@ -193,7 +202,7 @@ export default function NewDraftDrawer({
     } finally {
       setSaving(false);
     }
-  }, [valid, data, setupId, schemaKey, onSuccess, onClose, createDraft, editDraftId, updateDraft]);
+  }, [valid, data, setupId, schemaKey, onSuccess, onClose, createDraft, editDraftId, updateDraft, drafts]);
 
   // Keyboard shortcut: Escape to close
   useEffect(() => {
