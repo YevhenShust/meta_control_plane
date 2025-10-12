@@ -1,9 +1,8 @@
 // src/menu/useDraftMenu.ts
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { onChanged } from '../shared/events/DraftEvents';
+import { useCallback, useMemo } from 'react';
 import useSetups from '../setup/useSetups';
-import { resolveSchemaIdByKey } from '../core/schemaKeyResolver';
-import { listDrafts, type DraftParsed } from '../shared/api';
+import { useListMenuItemsQuery } from '../store/api';
+import type { DraftParsed } from '../shared/api';
 
 /** Те, що очікує Sidebar: листок, який відкриває форму рендерером */
 export type DraftMenuItem = {
@@ -33,74 +32,47 @@ type UseDraftMenuResult = {
   loadNow: (force?: boolean) => Promise<DraftMenuItem[]>;
 };
 
-// (no inflight dedupe for now)
-
-/** Безпечний парсер JSON контенту драфта */
-// parsing is handled centrally by DraftsContext
-
 /** Універсальний хук для побудови меню з драфтів певної схеми */
 export function useDraftMenu(options: UseDraftMenuOptions): UseDraftMenuResult {
   const { schemaKey, titleSelector } = options;
   const { selectedId } = useSetups();
 
-  const [items, setItems] = useState<DraftMenuItem[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
+  // Use RTK Query to fetch menu items
+  const { data: menuItems, isLoading, error: queryError, refetch } = useListMenuItemsQuery(
+    { setupId: selectedId || '', schemaKey },
+    { skip: !selectedId }
+  );
 
-  const mountedRef = useRef(true);
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => { mountedRef.current = false; };
-  }, []);
+  // Build DraftMenuItem array from RTK Query data
+  const items = useMemo(() => {
+    if (!menuItems) return [];
+    return menuItems.map(item => ({
+      title: titleSelector 
+        ? (titleSelector({ Id: item.label }, { id: item.id } as DraftParsed) || item.label)
+        : item.label,
+      kind: 'form' as const,
+      params: { schemaKey, draftId: item.id }
+    }));
+  }, [menuItems, schemaKey, titleSelector]);
 
-  const buildTitle = useCallback((content: unknown, d: DraftParsed): string => {
-    if (titleSelector) {
-      const t = (titleSelector(content, d) || '').trim();
-      if (t) return t;
+  const error = queryError ? String(queryError) : null;
+
+  const ensureLoaded = useCallback((force?: boolean) => {
+    if (force) {
+      void refetch();
     }
-    const id: unknown = content && typeof content === 'object' && content !== null && 'Id' in content ? (content as Record<string, unknown>).Id : '';
-    const t = (typeof id === 'string' ? id : '').trim();
-    return t || String(d.id);
-  }, [titleSelector]);
+  }, [refetch]);
 
-  const doLoad = useCallback(async (): Promise<DraftMenuItem[]> => {
-    if (!selectedId) return [];
-    setLoading(true);
-    setError(null);
-    try {
-      const schemaId = await resolveSchemaIdByKey(selectedId, schemaKey);
-      if (!schemaId) return [];
-      const all = await listDrafts(selectedId);
-      const filtered = all.filter(d => String(d.schemaId || '') === String(schemaId));
-      const mapped = filtered.map(d => {
-        const content = d.content ?? {};
-        return { title: buildTitle(content, d), kind: 'form' as const, params: { schemaKey, draftId: String(d.id) } } as DraftMenuItem;
-      });
-      if (mountedRef.current) setItems(mapped);
-      return mapped;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err) || 'Failed to load drafts';
-      if (mountedRef.current) setError(message);
-      return [];
-    } finally {
-      if (mountedRef.current) setLoading(false);
+  const refresh = useCallback(async () => {
+    await refetch();
+  }, [refetch]);
+
+  const loadNow = useCallback(async (force?: boolean) => {
+    if (force) {
+      await refetch();
     }
-  }, [selectedId, schemaKey, buildTitle]);
+    return items;
+  }, [refetch, items]);
 
-  const ensureLoaded = useCallback((force?: boolean) => { if (!loading && items.length === 0) void doLoad(); else if (force) void doLoad(); }, [doLoad, items.length, loading]);
-
-  const refresh = useCallback(async () => { await doLoad(); }, [doLoad]);
-
-  const loadNow = useCallback(async () => { return await doLoad(); }, [doLoad]);
-
-  useEffect(() => { setItems([]); if (selectedId) void doLoad(); }, [selectedId, schemaKey, doLoad]);
-
-  useEffect(() => {
-    const off = onChanged((payload: { schemaKey: string; setupId: string }) => {
-  if (payload.schemaKey === schemaKey && payload.setupId === selectedId) void doLoad();
-    });
-    return off;
-  }, [doLoad, schemaKey, selectedId]);
-
-  return { items, loading, error, ensureLoaded, refresh, loadNow };
+  return { items, loading: isLoading, error, ensureLoaded, refresh, loadNow };
 }

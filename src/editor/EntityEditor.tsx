@@ -5,8 +5,6 @@ import { createAjv } from '../renderers/ajvInstance';
 import FormRenderer from '../renderers/FormRenderer';
 import TableRenderer from '../renderers/TableRenderer';
 import NewDraftDrawer from '../components/NewDraftDrawer';
-import { emitChanged } from '../shared/events/DraftEvents';
-import { getContentId } from '../core/contentId';
 import { loadSchemaByKey } from '../core/schemaKeyResolver';
 import { tryParseContent } from '../core/parse';
 import { useListDraftsQuery, useUpdateDraftMutation } from '../store/api';
@@ -148,15 +146,16 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
       if (view === 'form') {
         if (!draftId) return { ok: false, error: 'No draftId' };
         try {
-          const prevId = getContentId(snapshot as unknown);
-          await updateDraft({ draftId, content: state.data ?? {}, setupId: setupId || '', schemaId: resolved?.schemaId }).unwrap();
-          const nextId = getContentId(state.data as unknown);
+          await updateDraft({ 
+            draftId, 
+            content: state.data ?? {}, 
+            setupId: setupId || '', 
+            schemaId: resolved?.schemaId,
+            schemaKey,
+            prevContent: snapshot
+          }).unwrap();
           setState(s => ({ ...s, isDirty: false }));
           setSnapshot(state.data ?? null);
-          // emit menu refresh only when content Id changed
-          if (nextId !== prevId) {
-            emitChanged({ schemaKey, setupId });
-          }
           return { ok: true };
         } catch (e) {
           console.error('[Editor] save failed', { draftId, err: (e as Error).message });
@@ -267,12 +266,8 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
           schema={drawerSchema ?? {}}
           uischema={uischema}
           editDraftId={drawerEditDraftId ?? undefined}
-          onSuccess={(res) => {
-            // Temporary compatibility: emit DraftEvents for useDraftMenu which still relies on this event.
-            // Emit only on create or when the content Id changed.
-            if (res.kind === 'create' || (res.prevId ?? '') !== (res.nextId ?? '')) {
-              emitChanged({ schemaKey, setupId });
-            }
+          onSuccess={() => {
+            // RTK Query cache invalidation handles menu refresh automatically
           }}
         />
       )}
