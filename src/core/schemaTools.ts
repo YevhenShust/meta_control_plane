@@ -188,6 +188,8 @@ function resolveRef(ref: string, schema: JsonSchema): JsonSchema {
 // Helper: Infer type from schema
 function inferType(schema: JsonSchema): string {
   if (schema.enum) return 'enum';
+  if (schema.type === 'object') return 'object';
+  if (schema.type === 'array') return 'array';
   if (schema.type === 'number' || schema.type === 'integer') return 'number';
   if (schema.type === 'boolean') return 'boolean';
   return 'string';

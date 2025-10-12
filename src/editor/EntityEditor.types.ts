@@ -66,4 +66,6 @@ export interface TableViewProps<Row = unknown> {
   onSaveRow?: (rowId: string, nextRow: Row) => Promise<EditorSaveOutcome>; // Optional now - RTK Query handles saving
   /** Optional: invoked when the user wants to create a new draft from the table UI */
   onCreate?: () => void;
+  /** Optional: invoked when the user double-clicks a complex field to edit it in a drawer */
+  onOpenDrawer?: (draftId: string) => void;
 }
