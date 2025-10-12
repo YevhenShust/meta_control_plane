@@ -37,8 +37,8 @@ export default function SidebarMenuContainer({ selectedMenuPath, onSelect }: { s
         label: d.label
       })) || [];
       
-      // Prepend "New" item with plus icon hint
-      return [{ key: 'new', label: '+ New' }, ...items];
+      // Append "New" item with plus icon hint at the end
+      return [...items, { key: 'new', label: '+ New' }];
     }
 
     return [];
