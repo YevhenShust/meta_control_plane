@@ -164,7 +164,7 @@ export default function NewDraftDrawer({
         // Update existing draft
         const prevId = getContentId(payload);
         if (import.meta.env.DEV) console.debug('[Drawer] update start', { draftId: editDraftId, prevId });
-        await updateDraft({ draftId: editDraftId, content: payload, setupId: setupId || '', schemaId: undefined }).unwrap();
+        await updateDraft({ draftId: editDraftId, content: payload, setupId: setupId || '', schemaId: undefined, schemaKey }).unwrap();
 
         AppToaster.show({
           message: `Draft updated: ${editDraftId}`,

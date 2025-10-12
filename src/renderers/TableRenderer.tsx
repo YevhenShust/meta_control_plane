@@ -173,8 +173,8 @@ export default function TableRenderer({ schema, uischema, setupId, schemaKey, on
 
       for (const [id, { content }] of entries) {
         try {
-          // RTK mutation expects { draftId, content, setupId, schemaId }
-          await updateDraft({ draftId: id, content, setupId: setupId || '', schemaId: schemaId || undefined }).unwrap();
+          // RTK mutation expects { draftId, content, setupId, schemaId, schemaKey }
+          await updateDraft({ draftId: id, content, setupId: setupId || '', schemaId: schemaId || undefined, schemaKey }).unwrap();
         } catch (e) {
           AppToaster.show({
             message: `Save failed for ${id}: ${e instanceof Error ? e.message : 'Unknown error'}`,
@@ -190,7 +190,7 @@ export default function TableRenderer({ schema, uischema, setupId, schemaKey, on
         }
       }
     }, 700);
-  }, [setupId, schemaId, updateDraft, setNestedValue]);
+  }, [setupId, schemaId, schemaKey, updateDraft, setNestedValue]);
 
   // AG Grid colDefs — ONLY BUILT-IN EDITORS (reactive-compatible)
   const defaultColDef = useMemo<ColDef>(() => ({
