@@ -113,13 +113,18 @@ export const apiSlice = createApi({
     >({
       queryFn: async (arg) => {
         try {
-          // Use centralized schema resolution helper
+          // Use centralized schema resolution helper (tolerant)
           const schemaId = await resolveSchemaIdByKey(arg.setupId, arg.schemaKey);
-          
+          if (!schemaId) {
+            console.debug('[menu] schemaId not found for', arg.schemaKey, '-> return empty');
+            return { data: [] };
+          }
+
           // List all drafts and filter by schemaId
           const drafts = await api.listDrafts(arg.setupId);
           const filtered = drafts.filter(d => String(d.schemaId || '') === String(schemaId));
-          
+          console.debug('[menu] schemaId', schemaId, 'drafts=', drafts.length, 'filtered=', filtered.length);
+
           // Build menu items with labels from content.Id or draft.id
           const items = filtered.map(d => {
             let label = String(d.id ?? '');
