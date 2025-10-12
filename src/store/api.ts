@@ -4,6 +4,7 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
 import * as api from '../shared/api';
 import type { DraftParsed, SchemaRecord } from '../shared/api';
+import { resolveSchemaIdByKey } from '../core/schemaKeyResolver';
 
 // Custom base query that uses our existing API facade
 // This ensures we keep using Axios with auth, headers, and mock fallback
@@ -104,20 +105,11 @@ export const apiSlice = createApi({
     >({
       queryFn: async (arg) => {
         try {
-          const drafts = await api.listDrafts(arg.setupId);
-          // Resolve schemaId from schemaKey
-          const schemas = await api.listSchemasV1(arg.setupId);
-          let schemaId: string | null = null;
-          for (const s of schemas) {
-            const parsed = typeof s.content === 'string' ? JSON.parse(s.content) : s.content;
-            if (parsed && typeof parsed === 'object' && (parsed as Record<string, unknown>)['$id'] === arg.schemaKey) {
-              schemaId = String(s.id);
-              break;
-            }
-          }
-          if (!schemaId) return { data: [] };
+          // Use centralized schema resolution helper
+          const schemaId = await resolveSchemaIdByKey(arg.setupId, arg.schemaKey);
           
-          // Filter drafts by schemaId
+          // List all drafts and filter by schemaId
+          const drafts = await api.listDrafts(arg.setupId);
           const filtered = drafts.filter(d => String(d.schemaId || '') === String(schemaId));
           
           // Build menu items with labels from content.Id or draft.id
