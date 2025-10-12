@@ -8,6 +8,7 @@ import { createAjv } from '../renderers/ajvInstance';
 import { useDescriptorOptionsForColumns } from '../hooks/useDescriptorOptions';
 import { AppToaster } from './AppToaster';
 import { isDescriptorId, stripIdSuffix } from '../core/pathTools';
+import { getContentId } from '../core/contentId';
 import { useCreateDraftMutation, useUpdateDraftMutation, useListDraftsQuery } from '../store/api';
 
 const bpRenderers = getBlueprintRenderers();
@@ -19,7 +20,7 @@ interface NewDraftDrawerProps {
   schemaKey: string;
   schema: object;
   uischema?: object;
-  onSuccess: (draftId: string) => void;
+  onSuccess: (res: { draftId: string; kind: 'create' | 'update'; prevId?: string; nextId?: string }) => void;
   /** Optional: If provided, edit this draft instead of creating a new one */
   editDraftId?: string;
 }
@@ -160,14 +161,16 @@ export default function NewDraftDrawer({
       
       if (editDraftId) {
         // Update existing draft
+        const prevId = getContentId(payload); // capture candidate prev before server may modify
         await updateDraft({ draftId: editDraftId, content: payload, setupId: setupId || '', schemaId: undefined }).unwrap();
-        
+
         AppToaster.show({
           message: `Draft updated: ${editDraftId}`,
           intent: Intent.SUCCESS,
         });
-        
-        onSuccess(editDraftId);
+
+        const nextId = getContentId(payload);
+        onSuccess({ draftId: editDraftId, kind: 'update', prevId, nextId });
       } else {
         // Create new draft
         const result = await createDraft({ setupId, schemaKey, content: payload }).unwrap();
@@ -177,7 +180,8 @@ export default function NewDraftDrawer({
           intent: Intent.SUCCESS,
         });
 
-        onSuccess(String(result.id));
+        const nextId = getContentId(payload);
+        onSuccess({ draftId: String(result.id), kind: 'create', nextId });
       }
       
       onClose();

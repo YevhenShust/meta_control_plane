@@ -71,10 +71,13 @@ export default function EntityHost({ kind, params }: HostProps) {
             schemaKey={schemaKey}
             schema={schema}
             uischema={uischema}
-            onSuccess={(draftId) => {
-              // Navigate to the newly created draft
-              navigate(['Game', 'Chests', draftId]);
-            }}
+            onSuccess={(res) => {
+                // Navigate to the newly created draft (res.draftId)
+                // res is { draftId, kind, prevId?, nextId? }
+                if (res && res.draftId) {
+                  navigate(['Game', 'Chests', res.draftId]);
+                }
+              }}
           />
         )}
       </>
