@@ -4,11 +4,11 @@ import type { EntityEditorProps, EditorDataState, EditorSaveOutcome, FormViewPro
 import { createAjv } from '../renderers/ajvInstance';
 import FormRenderer from '../renderers/FormRenderer';
 import TableRenderer from '../renderers/TableRenderer';
-import { listDrafts, updateDraft } from '../shared/api';
 import NewDraftDrawer from '../components/NewDraftDrawer';
 import { emitChanged } from '../shared/events/DraftEvents';
 import { loadSchemaByKey } from '../core/schemaKeyResolver';
 import { tryParseContent } from '../core/parse';
+import { useListDraftsQuery, useUpdateDraftMutation } from '../store/api';
 
 type DraftContent = unknown;
 
@@ -31,6 +31,14 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
   // Drawer state for creating new drafts from table
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerSchema, setDrawerSchema] = useState<object | null>(null);
+
+  // RTK Query hooks for form view
+  const { data: drafts, isLoading: draftsLoading } = useListDraftsQuery(
+    { setupId: setupId || '', schemaId: resolved?.schemaId || undefined },
+    { skip: view !== 'form' || !setupId || !resolved?.schemaId }
+  );
+  
+  const [updateDraft] = useUpdateDraftMutation();
 
   // resolve schema id and JSON
   useEffect(() => {
@@ -73,23 +81,24 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
       return;
     }
     
-    let mounted = true;
-    (async () => {
+    // For form view, use RTK Query data
+    if (draftsLoading) {
+      setState(s => ({ ...s, loading: true }));
+      return;
+    }
+
+    if (drafts) {
       try {
         if (!draftId) throw new Error('draftId required for form view');
-        const all = await listDrafts(setupId);
-        if (!mounted) return;
-        const hit = all.find(d => String(d.id) === String(draftId) && String(d.schemaId || '') === String(resolved.schemaId));
+        const hit = drafts.find(d => String(d.id) === String(draftId) && String(d.schemaId || '') === String(resolved.schemaId));
         const content = hit?.content ?? {};
         setState({ data: content, isDirty: false, isValid: true, loading: false });
         setSnapshot(content ?? null);
       } catch (e) {
-        if (!mounted) return;
         setState({ data: null, isDirty: false, isValid: false, loading: false, error: (e as Error).message });
       }
-    })();
-    return () => { mounted = false; };
-  }, [resolved?.schemaId, view, draftId, setupId]);
+    }
+  }, [resolved?.schemaId, view, draftId, drafts, draftsLoading]);
 
   // Listen for table 'new' requests from TableRenderer (simple DOM event bridge)
   useEffect(() => {
@@ -118,7 +127,7 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
       if (view === 'form') {
         if (!draftId) return { ok: false, error: 'No draftId' };
         try {
-          await updateDraft(draftId, state.data ?? {});
+          await updateDraft({ draftId, content: state.data ?? {}, setupId: setupId || '', schemaId: resolved?.schemaId }).unwrap();
           setState(s => ({ ...s, isDirty: false }));
           setSnapshot(state.data ?? null);
           return { ok: true };
@@ -132,7 +141,7 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
 
     async function saveRow(rowId: string, nextRow: unknown): Promise<EditorSaveOutcome> {
       try {
-        await updateDraft(rowId, nextRow);
+        await updateDraft({ draftId: rowId, content: nextRow, setupId: setupId || '', schemaId: resolved?.schemaId }).unwrap();
         setState(s => ({ ...s, isDirty: false }));
         return { ok: true };
       } catch (e) {
@@ -166,7 +175,7 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
       save,
       saveRow,
     } as const;
-  }, [state, snapshot, draftId, view]);
+  }, [state, snapshot, draftId, view, updateDraft, setupId, resolved?.schemaId]);
 
   // Handlers passed to views
   const formProps: FormViewProps = {
