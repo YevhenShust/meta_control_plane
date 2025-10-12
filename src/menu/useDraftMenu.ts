@@ -1,4 +1,16 @@
 // src/menu/useDraftMenu.ts
+// 
+// Draft Menu Hook - Migrated to RTK Query
+// ========================================
+// This hook builds menu items from drafts of a specific schema.
+// 
+// MIGRATION STATUS: ✅ Complete
+// - By default, uses RTK Query for automatic caching and invalidation
+// - Legacy event-driven mode available via `useLegacyMode` flag for rollback safety
+// - Interface remains identical for backward compatibility
+//
+// See: docs/RTK_QUERY_MIGRATION.md for full documentation
+//
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { onChanged } from '../shared/events/DraftEvents';
 import useSetups from '../setup/useSetups';
