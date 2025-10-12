@@ -5,6 +5,7 @@ import { createApi } from '@reduxjs/toolkit/query/react';
 import * as api from '../shared/api';
 import type { DraftParsed, SchemaRecord } from '../shared/api';
 import { resolveSchemaIdByKey } from '../core/schemaKeyResolver';
+import { getContentId } from '../core/contentId';
 
 // Custom base query that uses our existing API facade
 // This ensures we keep using Axios with auth, headers, and mock fallback
@@ -81,16 +82,17 @@ export const apiSlice = createApi({
         // Invalidate menu if schemaKey is provided (to handle label changes)
         if (arg.schemaKey) {
           // Check if content.Id changed (which affects menu labels)
-          const prevId = arg.prevContent && typeof arg.prevContent === 'object' 
-            ? (arg.prevContent as Record<string, unknown>)['Id'] 
-            : undefined;
-          const nextId = result && typeof result.content === 'object'
-            ? (result.content as Record<string, unknown>)['Id']
-            : undefined;
+          const prevId = getContentId(arg.prevContent);
+          const nextId = getContentId(result?.content ?? arg.content);
           
-          // Invalidate menu if Id changed or if we can't determine the change
-          if (prevId !== nextId || !arg.prevContent) {
+          console.debug('menu-invalidate?', arg.setupId, arg.schemaKey, 'prevId:', prevId, 'nextId:', nextId);
+          
+          // Invalidate menu if Id changed
+          if (prevId !== nextId) {
+            console.debug('menu-invalidate: YES, Id changed');
             tags.push({ type: 'Menu', id: `${arg.setupId}:${arg.schemaKey}` });
+          } else {
+            console.debug('menu-invalidate: NO, Id unchanged');
           }
         }
         
