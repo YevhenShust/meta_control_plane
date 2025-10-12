@@ -81,18 +81,24 @@ export const apiSlice = createApi({
         
         // Invalidate menu if schemaKey is provided (to handle label changes)
         if (arg.schemaKey) {
-          // Check if content.Id changed (which affects menu labels)
-          const prevId = getContentId(arg.prevContent);
-          const nextId = getContentId(result?.content ?? arg.content);
-          
-          console.debug('menu-invalidate?', arg.setupId, arg.schemaKey, 'prevId:', prevId, 'nextId:', nextId);
-          
-          // Invalidate menu if Id changed
-          if (prevId !== nextId) {
-            console.debug('menu-invalidate: YES, Id changed');
+          // If prevContent is missing, invalidate menu as fallback (can't determine change)
+          if (!arg.prevContent) {
+            console.debug('menu-invalidate?', arg.setupId, arg.schemaKey, 'prevContent missing - invalidating as fallback');
             tags.push({ type: 'Menu', id: `${arg.setupId}:${arg.schemaKey}` });
           } else {
-            console.debug('menu-invalidate: NO, Id unchanged');
+            // Check if content.Id changed (which affects menu labels)
+            const prevId = getContentId(arg.prevContent);
+            const nextId = getContentId(result?.content ?? arg.content);
+            
+            console.debug('menu-invalidate?', arg.setupId, arg.schemaKey, 'prevId:', prevId, 'nextId:', nextId);
+            
+            // Invalidate menu if Id changed
+            if (prevId !== nextId) {
+              console.debug('menu-invalidate: YES, Id changed');
+              tags.push({ type: 'Menu', id: `${arg.setupId}:${arg.schemaKey}` });
+            } else {
+              console.debug('menu-invalidate: NO, Id unchanged');
+            }
           }
         }
         
