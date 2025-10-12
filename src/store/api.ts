@@ -62,7 +62,7 @@ export const apiSlice = createApi({
     // Update an existing draft
     updateDraft: builder.mutation<
       DraftParsed,
-      { draftId: string; content: unknown; setupId: string; schemaId?: string; schemaKey?: string }
+      { draftId: string; content: unknown; setupId: string; schemaId?: string; schemaKey?: string; prevContent?: unknown }
     >({
       queryFn: async (arg) => {
         try {
@@ -79,9 +79,35 @@ export const apiSlice = createApi({
           { type: 'Drafts', id: `${arg.setupId}:all` },
         ];
         
-        // If schemaKey is provided, invalidate specific menu items
+        // Only invalidate MenuItems if content.Id changed (or prevContent is missing)
         if (arg.schemaKey) {
-          tags.push({ type: 'MenuItems', id: `${arg.setupId}:${arg.schemaKey}` });
+          const prevId = arg.prevContent && typeof arg.prevContent === 'object' && 'Id' in arg.prevContent 
+            ? String((arg.prevContent as Record<string, unknown>).Id || '').trim()
+            : '';
+          const nextId = arg.content && typeof arg.content === 'object' && 'Id' in arg.content
+            ? String((arg.content as Record<string, unknown>).Id || '').trim()
+            : '';
+          
+          // Invalidate if Id changed or if we don't have prevContent (can't compare)
+          if (!arg.prevContent || prevId !== nextId) {
+            tags.push({ type: 'MenuItems', id: `${arg.setupId}:${arg.schemaKey}` });
+            
+            if (import.meta.env.VITE_DEBUG_MENU === '1') {
+              console.debug('[updateDraft] Invalidating MenuItems', { 
+                setupId: arg.setupId, 
+                schemaKey: arg.schemaKey, 
+                prevId, 
+                nextId,
+                reason: !arg.prevContent ? 'no prevContent' : 'Id changed'
+              });
+            }
+          } else if (import.meta.env.VITE_DEBUG_MENU === '1') {
+            console.debug('[updateDraft] NOT invalidating MenuItems (Id unchanged)', { 
+              setupId: arg.setupId, 
+              schemaKey: arg.schemaKey, 
+              id: prevId 
+            });
+          }
         }
         
         return tags;
@@ -110,12 +136,24 @@ export const apiSlice = createApi({
     // Resolves schemaKey to schemaId via cached resolver, then returns menu-ready items
     listMenuItems: builder.query<
       { id: string; label: string }[],
-      { setupId: string; schemaKey: string; titleSelector?: (content: unknown, draft: DraftParsed) => string }
+      { setupId: string; schemaKey: string }
     >({
       queryFn: async (arg) => {
         try {
           // Resolve schema ID via cached resolver
           const schemaId = await resolveSchemaIdByKey(arg.setupId, arg.schemaKey);
+          
+          // Return empty array if schema not found (tolerant mode)
+          if (!schemaId) {
+            if (import.meta.env.VITE_DEBUG_MENU === '1') {
+              console.debug('[listMenuItems] Schema not found, returning empty list', { setupId: arg.setupId, schemaKey: arg.schemaKey });
+            }
+            return { data: [] };
+          }
+          
+          if (import.meta.env.VITE_DEBUG_MENU === '1') {
+            console.debug('[listMenuItems] Loading drafts', { setupId: arg.setupId, schemaKey: arg.schemaKey, schemaId });
+          }
           
           // List all drafts for this setup
           const drafts = await api.listDrafts(arg.setupId);
@@ -123,31 +161,25 @@ export const apiSlice = createApi({
           // Filter by schemaId
           const filtered = drafts.filter(d => String(d.schemaId || '') === String(schemaId));
           
-          // Build menu items with labels
+          // Build menu items with labels (always use content.Id || draft.id)
           const items = filtered.map(d => {
             const content = d.content ?? {};
-            let label = String(d.id);
-            
-            // Use custom title selector if provided
-            if (arg.titleSelector) {
-              const customLabel = arg.titleSelector(content, d);
-              if (customLabel && customLabel.trim()) {
-                label = customLabel.trim();
-              }
-            } else {
-              // Default: try content.Id, fall back to draft.id
-              const id: unknown = content && typeof content === 'object' && content !== null && 'Id' in content 
-                ? (content as Record<string, unknown>).Id 
-                : '';
-              const idStr = (typeof id === 'string' ? id : '').trim();
-              label = idStr || String(d.id);
-            }
+            // Default: try content.Id, fall back to draft.id
+            const id: unknown = content && typeof content === 'object' && content !== null && 'Id' in content 
+              ? (content as Record<string, unknown>).Id 
+              : '';
+            const idStr = (typeof id === 'string' ? id : '').trim();
+            const label = idStr || String(d.id);
             
             return {
               id: String(d.id),
               label
             };
           });
+          
+          if (import.meta.env.VITE_DEBUG_MENU === '1') {
+            console.debug('[listMenuItems] Loaded items', { count: items.length, ids: items.map(i => i.id) });
+          }
           
           return { data: items };
         } catch (error) {

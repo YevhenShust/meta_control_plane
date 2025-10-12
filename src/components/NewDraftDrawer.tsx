@@ -38,6 +38,7 @@ export default function NewDraftDrawer({
   editDraftId,
 }: NewDraftDrawerProps) {
   const [data, setData] = useState<unknown>(null);
+  const [originalData, setOriginalData] = useState<unknown>(null); // Track original for prevContent
   const [valid, setValid] = useState(true);
   const [saving, setSaving] = useState(false);
   const [ajv, setAjv] = useState(() => createAjv());
@@ -58,12 +59,15 @@ export default function NewDraftDrawer({
         const draft = drafts.find(d => String(d.id) === String(editDraftId));
         if (draft) {
           setData(draft.content ?? {});
+          setOriginalData(draft.content ?? {}); // Store original
         } else {
           setData({});
+          setOriginalData(null);
         }
       } else {
         // Initialize with empty object for new draft; server generates defaults
         setData({});
+        setOriginalData(null);
       }
       // Create fresh AJV instance to avoid schema conflicts
       setAjv(createAjv());
@@ -164,7 +168,14 @@ export default function NewDraftDrawer({
         // Update existing draft
         const prevId = getContentId(payload);
         if (import.meta.env.DEV) console.debug('[Drawer] update start', { draftId: editDraftId, prevId });
-        await updateDraft({ draftId: editDraftId, content: payload, setupId: setupId || '', schemaId: undefined, schemaKey }).unwrap();
+        await updateDraft({ 
+          draftId: editDraftId, 
+          content: payload, 
+          setupId: setupId || '', 
+          schemaId: undefined, 
+          schemaKey,
+          prevContent: originalData
+        }).unwrap();
 
         AppToaster.show({
           message: `Draft updated: ${editDraftId}`,
@@ -205,7 +216,7 @@ export default function NewDraftDrawer({
     } finally {
       setSaving(false);
     }
-  }, [valid, data, setupId, schemaKey, onSuccess, onClose, createDraft, editDraftId, updateDraft]);
+  }, [valid, data, setupId, schemaKey, onSuccess, onClose, createDraft, editDraftId, updateDraft, originalData]);
 
   // Keyboard shortcut: Escape to close
   useEffect(() => {

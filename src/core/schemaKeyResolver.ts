@@ -11,9 +11,10 @@ const schemaDataCache = new Map<string, { id: string; json: unknown }>();
 
 /**
  * Resolve schema ID by schema key with in-memory caching
+ * Returns null if schema not found (tolerant mode to avoid crashes on deep-link)
  */
-export async function resolveSchemaIdByKey(setupId: string, schemaKey: string): Promise<string> {
-  if (!setupId) throw new Error('No setup selected');
+export async function resolveSchemaIdByKey(setupId: string, schemaKey: string): Promise<string | null> {
+  if (!setupId) return null;
   
   // Check cache first
   const cacheKey = `${setupId}:${schemaKey}`;
@@ -21,9 +22,15 @@ export async function resolveSchemaIdByKey(setupId: string, schemaKey: string): 
   if (cached) return cached;
   
   // Load and cache
-  const loaded = await loadSchemaByKey(setupId, schemaKey);
-  schemaIdCache.set(cacheKey, loaded.id);
-  return loaded.id;
+  try {
+    const loaded = await loadSchemaByKey(setupId, schemaKey);
+    schemaIdCache.set(cacheKey, loaded.id);
+    return loaded.id;
+  } catch (error) {
+    // Return null instead of throwing to avoid menu crashes on deep-link
+    if (import.meta.env.DEV) console.warn('[schemaKeyResolver] Schema not found', { setupId, schemaKey, error });
+    return null;
+  }
 }
 
 /**

@@ -173,8 +173,19 @@ export default function TableRenderer({ schema, uischema, setupId, schemaKey, on
 
       for (const [id, { content }] of entries) {
         try {
-          // RTK mutation expects { draftId, content, setupId, schemaId, schemaKey }
-          await updateDraft({ draftId: id, content, setupId: setupId || '', schemaId: schemaId || undefined, schemaKey }).unwrap();
+          // Get original content for comparison
+          const original = draftsRef.current.find(r => r.id === id);
+          const prevContent = original?.content;
+          
+          // RTK mutation expects { draftId, content, setupId, schemaId, schemaKey, prevContent }
+          await updateDraft({ 
+            draftId: id, 
+            content, 
+            setupId: setupId || '', 
+            schemaId: schemaId || undefined, 
+            schemaKey,
+            prevContent
+          }).unwrap();
         } catch (e) {
           AppToaster.show({
             message: `Save failed for ${id}: ${e instanceof Error ? e.message : 'Unknown error'}`,

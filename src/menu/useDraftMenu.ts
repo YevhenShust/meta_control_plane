@@ -63,7 +63,7 @@ export function useDraftMenu(options: UseDraftMenuOptions): UseDraftMenuResult {
 
   // RTK Query mode (default)
   const { data: menuItems, isLoading: rtkLoading, error: rtkError, refetch } = useListMenuItemsQuery(
-    { setupId: selectedId || '', schemaKey, titleSelector },
+    { setupId: selectedId || '', schemaKey },
     { skip: useLegacyMode || !selectedId }
   );
 

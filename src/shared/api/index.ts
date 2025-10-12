@@ -49,6 +49,9 @@ export async function listDrafts(setupId: string, params?: { skip?: number; limi
  */
 export async function createDraft(setupId: string, schemaKey: string, content: unknown): Promise<DraftParsed> {
   const schemaId = await resolveSchemaIdByKey(setupId, schemaKey);
+  if (!schemaId) {
+    throw new Error(`Schema not found by key: ${schemaKey}`);
+  }
   const contentStr = typeof content === 'string' ? content : JSON.stringify(content);
   const draft = await createDraftV1(setupId, { schemaId, content: contentStr });
   return normalizeDraft(draft) as DraftParsed;

@@ -150,7 +150,14 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
         try {
           const prevId = getContentId(snapshot as unknown);
           if (import.meta.env.DEV) console.debug('[Editor] save start', { draftId, prevId });
-          await updateDraft({ draftId, content: state.data ?? {}, setupId: setupId || '', schemaId: resolved?.schemaId, schemaKey }).unwrap();
+          await updateDraft({ 
+            draftId, 
+            content: state.data ?? {}, 
+            setupId: setupId || '', 
+            schemaId: resolved?.schemaId, 
+            schemaKey,
+            prevContent: snapshot
+          }).unwrap();
           const nextId = getContentId(state.data as unknown);
           setState(s => ({ ...s, isDirty: false }));
           setSnapshot(state.data ?? null);
