@@ -65,17 +65,21 @@ export function useDraftMenu(options: UseDraftMenuOptions): UseDraftMenuResult {
 
   const doLoad = useCallback(async (): Promise<DraftMenuItem[]> => {
     if (!selectedId) return [];
+    if (import.meta.env.DEV) console.debug('[menu] doLoad start', { setupId: selectedId, schemaKey });
     setLoading(true);
     setError(null);
     try {
       const schemaId = await resolveSchemaIdByKey(selectedId, schemaKey);
+      if (import.meta.env.DEV) console.debug('[menu] doLoad schemaId', { schemaId });
       if (!schemaId) return [];
       const all = await listDrafts(selectedId);
       const filtered = all.filter(d => String(d.schemaId || '') === String(schemaId));
+      if (import.meta.env.DEV) console.debug('[menu] doLoad filtered', { count: filtered.length });
       const mapped = filtered.map(d => {
         const content = d.content ?? {};
         return { title: buildTitle(content, d), kind: 'form' as const, params: { schemaKey, draftId: String(d.id) } } as DraftMenuItem;
       });
+      if (import.meta.env.DEV) console.debug('[menu] doLoad mapped', { count: mapped.length });
       if (mountedRef.current) setItems(mapped);
       return mapped;
     } catch (err) {
@@ -97,7 +101,8 @@ export function useDraftMenu(options: UseDraftMenuOptions): UseDraftMenuResult {
 
   useEffect(() => {
     const off = onChanged((payload: { schemaKey: string; setupId: string }) => {
-  if (payload.schemaKey === schemaKey && payload.setupId === selectedId) void doLoad();
+      if (import.meta.env.DEV) console.debug('[menu] onChanged', payload, { for: { schemaKey, selectedId } });
+      if (payload.schemaKey === schemaKey && payload.setupId === selectedId) void doLoad();
     });
     return off;
   }, [doLoad, schemaKey, selectedId]);

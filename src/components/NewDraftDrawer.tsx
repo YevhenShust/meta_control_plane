@@ -9,6 +9,7 @@ import { useDescriptorOptionsForColumns } from '../hooks/useDescriptorOptions';
 import { AppToaster } from './AppToaster';
 import { isDescriptorId, stripIdSuffix } from '../core/pathTools';
 import { getContentId } from '../core/contentId';
+import { emitChanged } from '../shared/events/DraftEvents';
 import { useCreateDraftMutation, useUpdateDraftMutation, useListDraftsQuery } from '../store/api';
 
 const bpRenderers = getBlueprintRenderers();
@@ -161,7 +162,8 @@ export default function NewDraftDrawer({
       
       if (editDraftId) {
         // Update existing draft
-        const prevId = getContentId(payload); // capture candidate prev before server may modify
+        const prevId = getContentId(payload);
+        if (import.meta.env.DEV) console.debug('[Drawer] update start', { draftId: editDraftId, prevId });
         await updateDraft({ draftId: editDraftId, content: payload, setupId: setupId || '', schemaId: undefined }).unwrap();
 
         AppToaster.show({
@@ -170,6 +172,12 @@ export default function NewDraftDrawer({
         });
 
         const nextId = getContentId(payload);
+        if (import.meta.env.DEV) console.debug('[Drawer] update success', { draftId: editDraftId, nextId });
+        // Optionally emit only if Id changed
+        if (prevId !== nextId) {
+          if (import.meta.env.DEV) console.debug('[Drawer] emitChanged (update)', { setupId, schemaKey, prevId, nextId });
+          emitChanged({ setupId, schemaKey });
+        }
         onSuccess({ draftId: editDraftId, kind: 'update', prevId, nextId });
       } else {
         // Create new draft
@@ -181,6 +189,10 @@ export default function NewDraftDrawer({
         });
 
         const nextId = getContentId(payload);
+        if (import.meta.env.DEV) console.debug('[Drawer] create success', { draftId: String(result.id), nextId });
+        // Emit change for menu refresh
+        if (import.meta.env.DEV) console.debug('[Drawer] emitChanged (create)', { setupId, schemaKey });
+        emitChanged({ setupId, schemaKey });
         onSuccess({ draftId: String(result.id), kind: 'create', nextId });
       }
       
