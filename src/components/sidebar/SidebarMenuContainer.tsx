@@ -1,11 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import SidebarMenu from './SidebarMenu';
 import menuStructure, { getDynamicConfig as getDynCfg } from './menuStructure';
 import useSetups from '../../setup/useSetups';
-import { listDrafts } from '../../shared/api';
-import { resolveSchemaIdByKey } from '../../core/uiLinking';
-import { onChanged } from '../../shared/events/DraftEvents';
 import { dynamicRoutes } from './menuStructure';
+import { useListMenuItemsQuery } from '../../store/api';
 import { MENU_REFRESH_RESET_MS } from '../../shared/constants';
 
 /** Container that provides dynamic loader for routes defined in menuStructure.tsx
@@ -16,34 +14,7 @@ export default function SidebarMenuContainer({ selectedMenuPath, onSelect }: { s
 
   const [refreshBasePath, setRefreshBasePath] = useState<string | null>(null);
 
-  // subscribe to draft change events to refresh menu branches for Game when applicable
-  useEffect(() => {
-    const off = onChanged((payload) => {
-      try {
-        if (!payload || !payload.schemaKey || payload.setupId !== setupId) return;
-
-        // Find basePath(s) in dynamicRoutes that map to this schemaKey
-        const bases = Object.entries(dynamicRoutes).filter(([, cfg]) => cfg.kind === 'form' && cfg.schemaKey === payload.schemaKey).map(([b]) => b);
-        if (bases.length === 0) return;
-
-        // If current selectedMenuPath starts with any of the found bases (Game container view), trigger refresh
-        const current = selectedMenuPath.join('/');
-        for (const b of bases) {
-          if (current.startsWith(b)) {
-            setRefreshBasePath(b);
-            // clear after short tick to allow SidebarMenu effect to run
-                setTimeout(() => setRefreshBasePath(null), MENU_REFRESH_RESET_MS);
-            return;
-          }
-        }
-      } catch {
-        // ignore
-      }
-    });
-    return off;
-  }, [setupId, selectedMenuPath]);
-
-    const getDynamicConfigForMenu = useCallback((b: string) => {
+  const getDynamicConfigForMenu = useCallback((b: string) => {
     const cfg = getDynCfg(b);
     if (cfg && typeof cfg === 'object' && 'schemaKey' in cfg) {
       const maybeSchemaKey = (cfg as { schemaKey: unknown }).schemaKey;
@@ -52,34 +23,61 @@ export default function SidebarMenuContainer({ selectedMenuPath, onSelect }: { s
       }
     }
     return undefined;
-    }, []);
+  }, []);
+
+  // Create a stable map of basePath -> schemaKey for dynamic routes
+  const dynamicRouteMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const [basePath, cfg] of Object.entries(dynamicRoutes)) {
+      if (cfg.kind === 'form') {
+        map[basePath] = cfg.schemaKey;
+      }
+    }
+    return map;
+  }, []);
+
+  // Use RTK Query hooks for each dynamic route (must be stable)
+  // For now we support a fixed set of dynamic routes; Game/Chests is the only one
+  const gameChestsQuery = useListMenuItemsQuery(
+    { setupId: setupId || '', schemaKey: 'ChestDescriptor' },
+    { skip: !setupId }
+  );
+  const { data: gameChestsData } = gameChestsQuery;
+
+  // Trigger refresh when RTK Query data changes (after refetch from tag invalidation)
+  useEffect(() => {
+    // Only trigger refresh if we have data and the menu is expanded
+    if (gameChestsQuery.data && selectedMenuPath.length > 0) {
+      const current = selectedMenuPath.join('/');
+      // Check if we're viewing the Game/Chests branch
+      if (current.startsWith('Game/Chests')) {
+        setRefreshBasePath('Game/Chests');
+        setTimeout(() => setRefreshBasePath(null), MENU_REFRESH_RESET_MS);
+      }
+    }
+  }, [gameChestsQuery.data, selectedMenuPath]);
 
   const loadDynamicChildren = useCallback(async (basePath: string) => {
-    // Only handle Game/Chests dynamic form listing here. Keep this logic in the container.
-    try {
-  const cfg = getDynCfg(basePath);
-      if (!cfg || cfg.kind !== 'form') return [];
-      if (!setupId) return [];
-      // resolve schema id by key and list drafts, then filter by schemaId
-      const schemaId = await resolveSchemaIdByKey(setupId, cfg.schemaKey);
-      if (!schemaId) return [];
-      const drafts = await listDrafts(setupId);
-      const filtered = drafts.filter(d => String(d.schemaId || '') === String(schemaId));
-      const items = filtered.map(d => {
-        let label = String(d.id ?? '');
-        const parsed = d.content;
-        if (parsed && typeof parsed === 'object') {
-          const asObj = parsed as Record<string, unknown>;
-          label = String(asObj['Id'] ?? asObj['name'] ?? label);
-        }
-        return { key: String(d.id ?? ''), label };
-      });
-      // Prepend "New" item with plus icon hint
-      return [{ key: 'new', label: '+ New' }, ...items];
-    } catch {
-      return [];
+    // Map basePath to the appropriate query result
+    const schemaKey = dynamicRouteMap[basePath];
+    if (!schemaKey) return [];
+    
+    // For now, we only have Game/Chests
+    let queryData;
+    if (basePath === 'Game/Chests') {
+      queryData = gameChestsData;
     }
-  }, [setupId]);
+    
+    if (!queryData) return [];
+    
+    const items = queryData.map(item => ({
+      key: item.id,
+      label: item.label,
+    }));
+    
+    // Prepend "New" item with plus icon hint
+    return [{ key: 'new', label: '+ New' }, ...items];
+  }, [dynamicRouteMap, gameChestsData]);
 
   return (
     <SidebarMenu

@@ -9,7 +9,6 @@ import { useDescriptorOptionsForColumns } from '../hooks/useDescriptorOptions';
 import { AppToaster } from './AppToaster';
 import { isDescriptorId, stripIdSuffix } from '../core/pathTools';
 import { getContentId } from '../core/contentId';
-import { emitChanged } from '../shared/events/DraftEvents';
 import { useCreateDraftMutation, useUpdateDraftMutation, useListDraftsQuery } from '../store/api';
 
 const bpRenderers = getBlueprintRenderers();
@@ -164,7 +163,14 @@ export default function NewDraftDrawer({
         // Update existing draft
         const prevId = getContentId(payload);
         console.debug('[Drawer] update start', { draftId: editDraftId, prevId });
-        await updateDraft({ draftId: editDraftId, content: payload, setupId: setupId || '', schemaId: undefined }).unwrap();
+        await updateDraft({ 
+          draftId: editDraftId, 
+          content: payload, 
+          setupId: setupId || '', 
+          schemaId: undefined,
+          schemaKey,
+          invalidateMenu: true, // Always invalidate menu for now; can optimize later with prevId/nextId comparison
+        }).unwrap();
 
         AppToaster.show({
           message: `Draft updated: ${editDraftId}`,
@@ -173,11 +179,6 @@ export default function NewDraftDrawer({
 
         const nextId = getContentId(payload);
         console.debug('[Drawer] update success', { draftId: editDraftId, nextId });
-        // Optionally emit only if Id changed
-        if (prevId !== nextId) {
-          console.debug('[Drawer] emitChanged (update)', { setupId, schemaKey, prevId, nextId });
-          emitChanged({ setupId, schemaKey });
-        }
         onSuccess({ draftId: editDraftId, kind: 'update', prevId, nextId });
       } else {
         // Create new draft
@@ -190,9 +191,6 @@ export default function NewDraftDrawer({
 
         const nextId = getContentId(payload);
         console.debug('[Drawer] create success', { draftId: String(result.id), nextId });
-        // Emit change for menu refresh
-        console.debug('[Drawer] emitChanged (create)', { setupId, schemaKey });
-        emitChanged({ setupId, schemaKey });
         onSuccess({ draftId: String(result.id), kind: 'create', nextId });
       }
       

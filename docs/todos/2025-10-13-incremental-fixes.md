@@ -99,6 +99,50 @@ Purpose: track concrete, small, verifiable improvements we agreed to implement l
   - Docs describe modes and UX indicators.
   - Minimal UI indicator implemented (toast + badge) for the current mock flag.
 
+## 15) Sidebar dynamic children — declarative model
+- Summary: Remove the imperative `refreshBasePath` signal; make Sidebar rebuild dynamic branches when data (props) changes.
+- Rationale: RTK Query tags already drive data refetch; the view should be fully data-driven to avoid extra glue.
+- Approach:
+  - Pass either:
+    - a `dynamicChildrenMap: Record<BasePath, Array<{ id: string; label: string }>>`, or
+    - a lightweight `dataVersionMap: Record<BasePath, number>` (e.g., fulfilledTimeStamp) and let Sidebar call its loader when versions change.
+  - Keep `dynamicRoutes` as the source of truth; remove the imperative refresh wiring in the container.
+  - Continue to use targeted invalidation: `MenuItems[setupId:schemaKey]`.
+- Steps:
+  1. Introduce a thin selector/hook to expose `{ basePath -> items }` (or `dataVersion`).
+  2. Update `SidebarMenu` props to accept the declarative input and rebuild node children on prop changes.
+  3. Remove `refreshBasePath` usage and dead code.
+- Acceptance:
+  - Menu labels update immediately after `content.Id` change without any imperative calls.
+  - No references to `refreshBasePath` remain; Sidebar reflects RTK Query data directly.
+
+## 16) Optimize menu invalidation in callers
+- Summary: Avoid unnecessary MenuItems invalidation on updates when the display label (content.Id) hasn’t changed.
+- Actions:
+  - In `NewDraftDrawer`: compute `prevId`/`nextId` and pass `invalidateMenu: prevId !== nextId`.
+  - In table row saves: attempt `prevId`/`nextId` computation when feasible; otherwise keep conservative invalidation with a comment.
+- Acceptance: No MenuItems invalidation if Id is unchanged; visible flicker reduced.
+
+## 17) Unify label builder
+- Summary: Factor out a small helper `buildMenuItemLabel(content, draft)` that prefers `content.Id`, falls back to `content.name` or `draft.id`.
+- Actions:
+  - Place under `src/menu/` or `src/shared/` and reuse in `listMenuItems` endpoint and any local loaders.
+- Acceptance: Single point of truth for menu labels; no duplicated label logic.
+
+## 18) Remove legacy menu refresh code
+- Summary: After validating RTK-driven menu updates, remove DraftEvents paths used only for menu refresh.
+- Actions:
+  - Delete `DraftEvents` import/usages tied to menu.
+  - Remove `useDraftMenu.ts` if fully superseded; otherwise add a deprecation note.
+- Acceptance: No event-bus code remains for menu updates; Sidebar relies entirely on RTK tags.
+
+## 19) Minimal tests for tag-driven updates
+- Summary: Add a tiny test or fast check to ensure MenuItems invalidation/refetch behavior.
+- Ideas:
+  - Unit: verify `invalidatesTags` logic in `updateDraft` includes/excludes `MenuItems` based on `invalidateMenu`.
+  - Integration-lite: mock facade to assert `listMenuItems` is called after an update with `invalidateMenu: true`.
+- Acceptance: Tests pass locally and in CI; low maintenance burden.
+
 ## Notes
 - These tasks should be delivered as small, isolated PRs, each keeping `yarn lint`, `yarn tsc --noEmit`, and `yarn build` green.
 - All code comments and logs must be in English.

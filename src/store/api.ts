@@ -4,6 +4,7 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
 import * as api from '../shared/api';
 import type { DraftParsed, SchemaRecord } from '../shared/api';
+import { resolveSchemaIdByKey } from '../core/schemaKeyResolver';
 
 // Custom base query that uses our existing API facade
 // This ensures we keep using Axios with auth, headers, and mock fallback
@@ -12,7 +13,7 @@ const facadeBaseQuery = async () => ({ data: null });
 export const apiSlice = createApi({
   reducerPath: 'api',
   baseQuery: facadeBaseQuery,
-  tagTypes: ['Drafts', 'Schemas'],
+  tagTypes: ['Drafts', 'Schemas', 'MenuItems'],
   endpoints: (builder) => ({
     // List drafts for a setup with optional schema filtering
     listDrafts: builder.query<
@@ -49,17 +50,19 @@ export const apiSlice = createApi({
           return { error: { status: 'CUSTOM_ERROR', error: String(error) } };
         }
       },
-      invalidatesTags: (_result, _error, arg) => [
-        // Invalidate the list for this setup and the specific schema
+      invalidatesTags: (result, _error, arg) => [
+        // Invalidate the draft list for this setup and the specific schema
+        { type: 'Drafts', id: `${arg.setupId}:${result?.schemaId ?? 'all'}` },
         { type: 'Drafts', id: `${arg.setupId}:all` },
-        // Also invalidate any schema-specific lists (we don't know the schemaId yet)
+        // Always invalidate menu items when a draft is created
+        { type: 'MenuItems', id: `${arg.setupId}:${arg.schemaKey}` },
       ],
     }),
 
     // Update an existing draft
     updateDraft: builder.mutation<
       DraftParsed,
-      { draftId: string; content: unknown; setupId: string; schemaId?: string }
+      { draftId: string; content: unknown; setupId: string; schemaId?: string; schemaKey?: string; invalidateMenu?: boolean }
     >({
       queryFn: async (arg) => {
         try {
@@ -69,11 +72,18 @@ export const apiSlice = createApi({
           return { error: { status: 'CUSTOM_ERROR', error: String(error) } };
         }
       },
-      invalidatesTags: (_result, _error, arg) => [
-        // Invalidate the list for this setup and schema
-        { type: 'Drafts', id: `${arg.setupId}:${arg.schemaId ?? 'all'}` },
-        { type: 'Drafts', id: `${arg.setupId}:all` },
-      ],
+      invalidatesTags: (_result, _error, arg) => {
+        const tags: Array<{ type: 'Drafts' | 'MenuItems'; id: string }> = [
+          // Invalidate the list for this setup and schema
+          { type: 'Drafts', id: `${arg.setupId}:${arg.schemaId ?? 'all'}` },
+          { type: 'Drafts', id: `${arg.setupId}:all` },
+        ];
+        // Only invalidate menu items if explicitly requested (when content.Id changed)
+        if (arg.invalidateMenu && arg.schemaKey) {
+          tags.push({ type: 'MenuItems', id: `${arg.setupId}:${arg.schemaKey}` });
+        }
+        return tags;
+      },
     }),
 
     // List schemas for a setup
@@ -93,6 +103,35 @@ export const apiSlice = createApi({
         { type: 'Schemas', id: arg.setupId }
       ],
     }),
+
+    // List menu items for a dynamic menu branch
+    listMenuItems: builder.query<
+      Array<{ id: string; label: string }>,
+      { setupId: string; schemaKey: string }
+    >({
+      queryFn: async (arg) => {
+        try {
+          const schemaId = await resolveSchemaIdByKey(arg.setupId, arg.schemaKey);
+          const drafts = await api.listDrafts(arg.setupId);
+          const filtered = drafts.filter(d => String(d.schemaId || '') === String(schemaId));
+          const items = filtered.map(d => {
+            let label = String(d.id ?? '');
+            const parsed = d.content;
+            if (parsed && typeof parsed === 'object') {
+              const asObj = parsed as Record<string, unknown>;
+              label = String(asObj['Id'] ?? asObj['name'] ?? label);
+            }
+            return { id: String(d.id ?? ''), label };
+          });
+          return { data: items };
+        } catch (error) {
+          return { error: { status: 'CUSTOM_ERROR', error: String(error) } };
+        }
+      },
+      providesTags: (_result, _error, arg) => [
+        { type: 'MenuItems', id: `${arg.setupId}:${arg.schemaKey}` }
+      ],
+    }),
   }),
 });
 
@@ -102,4 +141,5 @@ export const {
   useCreateDraftMutation,
   useUpdateDraftMutation,
   useListSchemasQuery,
+  useListMenuItemsQuery,
 } = apiSlice;
