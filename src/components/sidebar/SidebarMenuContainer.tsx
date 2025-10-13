@@ -42,6 +42,7 @@ export default function SidebarMenuContainer({ selectedMenuPath, onSelect }: { s
     { setupId: setupId || '', schemaKey: 'ChestDescriptor' },
     { skip: !setupId }
   );
+  const { data: gameChestsData } = gameChestsQuery;
 
   // Trigger refresh when RTK Query data changes (after refetch from tag invalidation)
   useEffect(() => {
@@ -64,7 +65,7 @@ export default function SidebarMenuContainer({ selectedMenuPath, onSelect }: { s
     // For now, we only have Game/Chests
     let queryData;
     if (basePath === 'Game/Chests') {
-      queryData = gameChestsQuery.data;
+      queryData = gameChestsData;
     }
     
     if (!queryData) return [];
@@ -76,7 +77,7 @@ export default function SidebarMenuContainer({ selectedMenuPath, onSelect }: { s
     
     // Prepend "New" item with plus icon hint
     return [{ key: 'new', label: '+ New' }, ...items];
-  }, [dynamicRouteMap, gameChestsQuery.data]);
+  }, [dynamicRouteMap, gameChestsData]);
 
   return (
     <SidebarMenu

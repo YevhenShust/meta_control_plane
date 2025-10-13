@@ -99,6 +99,23 @@ Purpose: track concrete, small, verifiable improvements we agreed to implement l
   - Docs describe modes and UX indicators.
   - Minimal UI indicator implemented (toast + badge) for the current mock flag.
 
+## 15) Sidebar dynamic children — declarative model
+- Summary: Remove the imperative `refreshBasePath` signal; make Sidebar rebuild dynamic branches when data (props) changes.
+- Rationale: RTK Query tags already drive data refetch; the view should be fully data-driven to avoid extra glue.
+- Approach:
+  - Pass either:
+    - a `dynamicChildrenMap: Record<BasePath, Array<{ id: string; label: string }>>`, or
+    - a lightweight `dataVersionMap: Record<BasePath, number>` (e.g., fulfilledTimeStamp) and let Sidebar call its loader when versions change.
+  - Keep `dynamicRoutes` as the source of truth; remove the imperative refresh wiring in the container.
+  - Continue to use targeted invalidation: `MenuItems[setupId:schemaKey]`.
+- Steps:
+  1. Introduce a thin selector/hook to expose `{ basePath -> items }` (or `dataVersion`).
+  2. Update `SidebarMenu` props to accept the declarative input and rebuild node children on prop changes.
+  3. Remove `refreshBasePath` usage and dead code.
+- Acceptance:
+  - Menu labels update immediately after `content.Id` change without any imperative calls.
+  - No references to `refreshBasePath` remain; Sidebar reflects RTK Query data directly.
+
 ## Notes
 - These tasks should be delivered as small, isolated PRs, each keeping `yarn lint`, `yarn tsc --noEmit`, and `yarn build` green.
 - All code comments and logs must be in English.
