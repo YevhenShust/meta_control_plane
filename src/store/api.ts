@@ -12,7 +12,7 @@ const facadeBaseQuery = async () => ({ data: null });
 export const apiSlice = createApi({
   reducerPath: 'api',
   baseQuery: facadeBaseQuery,
-  tagTypes: ['Drafts', 'Schemas'],
+  tagTypes: ['Drafts', 'Schemas', 'Menu'],
   endpoints: (builder) => ({
     // List drafts for a setup with optional schema filtering
     listDrafts: builder.query<
@@ -52,6 +52,8 @@ export const apiSlice = createApi({
       invalidatesTags: (_result, _error, arg) => [
         // Invalidate the list for this setup and the specific schema
         { type: 'Drafts', id: `${arg.setupId}:all` },
+        // Invalidate menu for this schema
+        { type: 'Menu', id: `${arg.setupId}:${arg.schemaKey}` },
         // Also invalidate any schema-specific lists (we don't know the schemaId yet)
       ],
     }),
@@ -59,7 +61,7 @@ export const apiSlice = createApi({
     // Update an existing draft
     updateDraft: builder.mutation<
       DraftParsed,
-      { draftId: string; content: unknown; setupId: string; schemaId?: string }
+      { draftId: string; content: unknown; setupId: string; schemaId?: string; schemaKey?: string }
     >({
       queryFn: async (arg) => {
         try {
@@ -69,11 +71,20 @@ export const apiSlice = createApi({
           return { error: { status: 'CUSTOM_ERROR', error: String(error) } };
         }
       },
-      invalidatesTags: (_result, _error, arg) => [
-        // Invalidate the list for this setup and schema
-        { type: 'Drafts', id: `${arg.setupId}:${arg.schemaId ?? 'all'}` },
-        { type: 'Drafts', id: `${arg.setupId}:all` },
-      ],
+      invalidatesTags: (_result, _error, arg) => {
+        const tags: Array<{ type: 'Drafts' | 'Menu'; id: string }> = [
+          // Invalidate the list for this setup and schema
+          { type: 'Drafts', id: `${arg.setupId}:${arg.schemaId ?? 'all'}` },
+          { type: 'Drafts', id: `${arg.setupId}:all` },
+        ];
+        
+        // Only invalidate menu if schemaKey is provided (form edits, not table edits)
+        if (arg.schemaKey) {
+          tags.push({ type: 'Menu', id: `${arg.setupId}:${arg.schemaKey}` });
+        }
+        
+        return tags;
+      },
     }),
 
     // List schemas for a setup
@@ -93,6 +104,42 @@ export const apiSlice = createApi({
         { type: 'Schemas', id: arg.setupId }
       ],
     }),
+
+    // List menu items for a specific schema
+    listMenuItems: builder.query<
+      Array<{ id: string; label: string }>,
+      { setupId: string; schemaKey: string }
+    >({
+      queryFn: async (arg) => {
+        try {
+          const drafts = await api.listDrafts(arg.setupId);
+          // Need to resolve schemaId from schemaKey to filter drafts
+          const { resolveSchemaIdByKey } = await import('../core/schemaKeyResolver');
+          const schemaId = await resolveSchemaIdByKey(arg.setupId, arg.schemaKey);
+          
+          // Filter drafts by schema
+          const filtered = drafts.filter(d => String(d.schemaId || '') === String(schemaId));
+          
+          // Transform to menu items with labels
+          const items = filtered.map(d => {
+            let label = String(d.id ?? '');
+            const content = d.content;
+            if (content && typeof content === 'object') {
+              const asObj = content as Record<string, unknown>;
+              label = String(asObj['Id'] ?? asObj['name'] ?? label);
+            }
+            return { id: String(d.id ?? ''), label };
+          });
+          
+          return { data: items };
+        } catch (error) {
+          return { error: { status: 'CUSTOM_ERROR', error: String(error) } };
+        }
+      },
+      providesTags: (_result, _error, arg) => [
+        { type: 'Menu', id: `${arg.setupId}:${arg.schemaKey}` }
+      ],
+    }),
   }),
 });
 
@@ -102,4 +149,5 @@ export const {
   useCreateDraftMutation,
   useUpdateDraftMutation,
   useListSchemasQuery,
+  useListMenuItemsQuery,
 } = apiSlice;

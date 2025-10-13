@@ -1,12 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import SidebarMenu from './SidebarMenu';
 import menuStructure, { getDynamicConfig as getDynCfg } from './menuStructure';
 import useSetups from '../../setup/useSetups';
-import { listDrafts } from '../../shared/api';
-import { resolveSchemaIdByKey } from '../../core/uiLinking';
-import { onChanged } from '../../shared/events/DraftEvents';
-import { dynamicRoutes } from './menuStructure';
-import { MENU_REFRESH_RESET_MS } from '../../shared/constants';
 
 /** Container that provides dynamic loader for routes defined in menuStructure.tsx
  * Keeps SidebarMenu presentational and free of schema-specific logic.
@@ -14,34 +9,7 @@ import { MENU_REFRESH_RESET_MS } from '../../shared/constants';
 export default function SidebarMenuContainer({ selectedMenuPath, onSelect }: { selectedMenuPath: string[]; onSelect: (p: string[]) => void }) {
   const { selectedId: setupId } = useSetups();
 
-  const [refreshBasePath, setRefreshBasePath] = useState<string | null>(null);
-
-  // subscribe to draft change events to refresh menu branches for Game when applicable
-  useEffect(() => {
-    const off = onChanged((payload) => {
-      try {
-        if (!payload || !payload.schemaKey || payload.setupId !== setupId) return;
-
-        // Find basePath(s) in dynamicRoutes that map to this schemaKey
-        const bases = Object.entries(dynamicRoutes).filter(([, cfg]) => cfg.kind === 'form' && cfg.schemaKey === payload.schemaKey).map(([b]) => b);
-        if (bases.length === 0) return;
-
-        // If current selectedMenuPath starts with any of the found bases (Game container view), trigger refresh
-        const current = selectedMenuPath.join('/');
-        for (const b of bases) {
-          if (current.startsWith(b)) {
-            setRefreshBasePath(b);
-            // clear after short tick to allow SidebarMenu effect to run
-                setTimeout(() => setRefreshBasePath(null), MENU_REFRESH_RESET_MS);
-            return;
-          }
-        }
-      } catch {
-        // ignore
-      }
-    });
-    return off;
-  }, [setupId, selectedMenuPath]);
+  const [refreshBasePath] = useState<string | null>(null);
 
     const getDynamicConfigForMenu = useCallback((b: string) => {
     const cfg = getDynCfg(b);
@@ -57,25 +25,40 @@ export default function SidebarMenuContainer({ selectedMenuPath, onSelect }: { s
   const loadDynamicChildren = useCallback(async (basePath: string) => {
     // Only handle Game/Chests dynamic form listing here. Keep this logic in the container.
     try {
-  const cfg = getDynCfg(basePath);
+      const cfg = getDynCfg(basePath);
       if (!cfg || cfg.kind !== 'form') return [];
       if (!setupId) return [];
-      // resolve schema id by key and list drafts, then filter by schemaId
-      const schemaId = await resolveSchemaIdByKey(setupId, cfg.schemaKey);
-      if (!schemaId) return [];
-      const drafts = await listDrafts(setupId);
-      const filtered = drafts.filter(d => String(d.schemaId || '') === String(schemaId));
-      const items = filtered.map(d => {
-        let label = String(d.id ?? '');
-        const parsed = d.content;
-        if (parsed && typeof parsed === 'object') {
-          const asObj = parsed as Record<string, unknown>;
-          label = String(asObj['Id'] ?? asObj['name'] ?? label);
-        }
-        return { key: String(d.id ?? ''), label };
-      });
-      // Prepend "New" item with plus icon hint
-      return [{ key: 'new', label: '+ New' }, ...items];
+      
+      // Use the schemaKey directly from config to query menu items
+      // Note: This is a synchronous callback that needs to return a promise
+      // We'll fetch the data imperatively here
+      const { store } = await import('../../store');
+      const state = store.getState();
+      const apiState = state.api;
+      
+      // Check if we have cached data
+      const cacheKey = `listMenuItems({"setupId":"${setupId}","schemaKey":"${cfg.schemaKey}"})`;
+      const cached = apiState.queries[cacheKey];
+      
+      if (cached && cached.status === 'fulfilled' && cached.data) {
+        const items = (cached.data as Array<{ id: string; label: string }>).map(d => ({
+          key: d.id,
+          label: d.label
+        }));
+        // Prepend "New" item
+        return [{ key: 'new', label: '+ New' }, ...items];
+      }
+      
+      // If not cached, trigger a fetch and return empty for now
+      // The menu will update when the data arrives via RTK Query cache
+      store.dispatch(
+        (await import('../../store/api')).apiSlice.endpoints.listMenuItems.initiate({
+          setupId,
+          schemaKey: cfg.schemaKey
+        })
+      );
+      
+      return [{ key: 'new', label: '+ New' }];
     } catch {
       return [];
     }

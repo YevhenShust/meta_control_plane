@@ -5,7 +5,6 @@ import { createAjv } from '../renderers/ajvInstance';
 import FormRenderer from '../renderers/FormRenderer';
 import TableRenderer from '../renderers/TableRenderer';
 import NewDraftDrawer from '../components/NewDraftDrawer';
-import { emitChanged } from '../shared/events/DraftEvents';
 import { getContentId } from '../core/contentId';
 import { loadSchemaByKey } from '../core/schemaKeyResolver';
 import { tryParseContent } from '../core/parse';
@@ -150,14 +149,18 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
         try {
           const prevId = getContentId(snapshot as unknown);
           if (import.meta.env.DEV) console.debug('[Editor] save start', { draftId, prevId });
-          await updateDraft({ draftId, content: state.data ?? {}, setupId: setupId || '', schemaId: resolved?.schemaId }).unwrap();
+          await updateDraft({ 
+            draftId, 
+            content: state.data ?? {}, 
+            setupId: setupId || '', 
+            schemaId: resolved?.schemaId,
+            schemaKey // Pass schemaKey to trigger menu invalidation
+          }).unwrap();
           const nextId = getContentId(state.data as unknown);
           setState(s => ({ ...s, isDirty: false }));
           setSnapshot(state.data ?? null);
-          // emit menu refresh only when content Id changed
-          if (nextId !== prevId) {
-            if (import.meta.env.DEV) console.debug('[Editor] save emitChanged', { schemaKey, setupId, nextId });
-            emitChanged({ schemaKey, setupId });
+          if (import.meta.env.DEV && nextId !== prevId) {
+            console.debug('[Editor] content Id changed', { schemaKey, setupId, prevId, nextId });
           }
           return { ok: true };
         } catch (e) {
@@ -170,7 +173,13 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
 
     async function saveRow(rowId: string, nextRow: unknown): Promise<EditorSaveOutcome> {
       try {
-        await updateDraft({ draftId: rowId, content: nextRow, setupId: setupId || '', schemaId: resolved?.schemaId }).unwrap();
+        // Table view saves should NOT pass schemaKey to avoid menu refresh
+        await updateDraft({ 
+          draftId: rowId, 
+          content: nextRow, 
+          setupId: setupId || '', 
+          schemaId: resolved?.schemaId 
+        }).unwrap();
         setState(s => ({ ...s, isDirty: false }));
         return { ok: true };
       } catch (e) {
@@ -270,10 +279,9 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
           uischema={uischema}
           editDraftId={drawerEditDraftId ?? undefined}
           onSuccess={(res) => {
-            // Temporary compatibility: emit DraftEvents for useDraftMenu which still relies on this event.
-            // Emit only on create or when the content Id changed.
-            if (res.kind === 'create' || (res.prevId ?? '') !== (res.nextId ?? '')) {
-              emitChanged({ schemaKey, setupId });
+            // Menu refresh is now handled by RTK Query cache invalidation
+            if (import.meta.env.DEV) {
+              console.debug('[Editor] drawer success', res);
             }
           }}
         />
