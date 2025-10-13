@@ -149,14 +149,14 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
         if (!draftId) return { ok: false, error: 'No draftId' };
         try {
           const prevId = getContentId(snapshot as unknown);
-          if (import.meta.env.DEV) console.debug('[Editor] save start', { draftId, prevId });
+          console.debug('[Editor] save start', { draftId, prevId });
           await updateDraft({ draftId, content: state.data ?? {}, setupId: setupId || '', schemaId: resolved?.schemaId }).unwrap();
           const nextId = getContentId(state.data as unknown);
           setState(s => ({ ...s, isDirty: false }));
           setSnapshot(state.data ?? null);
           // emit menu refresh only when content Id changed
           if (nextId !== prevId) {
-            if (import.meta.env.DEV) console.debug('[Editor] save emitChanged', { schemaKey, setupId, nextId });
+            console.debug('[Editor] save emitChanged', { schemaKey, setupId, nextId });
             emitChanged({ schemaKey, setupId });
           }
           return { ok: true };

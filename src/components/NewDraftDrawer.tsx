@@ -163,7 +163,7 @@ export default function NewDraftDrawer({
       if (editDraftId) {
         // Update existing draft
         const prevId = getContentId(payload);
-        if (import.meta.env.DEV) console.debug('[Drawer] update start', { draftId: editDraftId, prevId });
+        console.debug('[Drawer] update start', { draftId: editDraftId, prevId });
         await updateDraft({ draftId: editDraftId, content: payload, setupId: setupId || '', schemaId: undefined }).unwrap();
 
         AppToaster.show({
@@ -172,10 +172,10 @@ export default function NewDraftDrawer({
         });
 
         const nextId = getContentId(payload);
-        if (import.meta.env.DEV) console.debug('[Drawer] update success', { draftId: editDraftId, nextId });
+        console.debug('[Drawer] update success', { draftId: editDraftId, nextId });
         // Optionally emit only if Id changed
         if (prevId !== nextId) {
-          if (import.meta.env.DEV) console.debug('[Drawer] emitChanged (update)', { setupId, schemaKey, prevId, nextId });
+          console.debug('[Drawer] emitChanged (update)', { setupId, schemaKey, prevId, nextId });
           emitChanged({ setupId, schemaKey });
         }
         onSuccess({ draftId: editDraftId, kind: 'update', prevId, nextId });
@@ -189,9 +189,9 @@ export default function NewDraftDrawer({
         });
 
         const nextId = getContentId(payload);
-        if (import.meta.env.DEV) console.debug('[Drawer] create success', { draftId: String(result.id), nextId });
+        console.debug('[Drawer] create success', { draftId: String(result.id), nextId });
         // Emit change for menu refresh
-        if (import.meta.env.DEV) console.debug('[Drawer] emitChanged (create)', { setupId, schemaKey });
+        console.debug('[Drawer] emitChanged (create)', { setupId, schemaKey });
         emitChanged({ setupId, schemaKey });
         onSuccess({ draftId: String(result.id), kind: 'create', nextId });
       }
