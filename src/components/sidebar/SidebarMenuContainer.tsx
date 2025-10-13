@@ -22,34 +22,45 @@ export default function SidebarMenuContainer({ selectedMenuPath, onSelect }: { s
     return undefined;
   }, []);
 
-  // Build a map of all dynamic routes to their query results
-  const dynamicRouteEntries = useMemo(() => Object.entries(dynamicRoutes), []);
-  
-  // Create queries for all dynamic routes
-  const menuQueries = dynamicRouteEntries.map(([basePath, cfg]) => {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const result = useListMenuItemsQuery(
-      { setupId: setupId || '', schemaKey: cfg.schemaKey },
-      { skip: !setupId || cfg.kind !== 'form' }
-    );
-    return { basePath, result, cfg };
-  });
+  // Create a stable map of basePath -> schemaKey for dynamic routes
+  const dynamicRouteMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const [basePath, cfg] of Object.entries(dynamicRoutes)) {
+      if (cfg.kind === 'form') {
+        map[basePath] = cfg.schemaKey;
+      }
+    }
+    return map;
+  }, []);
+
+  // Use RTK Query hooks for each dynamic route (must be stable)
+  // For now we support a fixed set of dynamic routes; Game/Chests is the only one
+  const gameChestsQuery = useListMenuItemsQuery(
+    { setupId: setupId || '', schemaKey: 'ChestDescriptor' },
+    { skip: !setupId }
+  );
 
   const loadDynamicChildren = useCallback(async (basePath: string) => {
-    // Find the query result for this basePath
-    const query = menuQueries.find(q => q.basePath === basePath);
-    if (!query || !query.result.data) {
-      return [];
+    // Map basePath to the appropriate query result
+    const schemaKey = dynamicRouteMap[basePath];
+    if (!schemaKey) return [];
+    
+    // For now, we only have Game/Chests
+    let queryData;
+    if (basePath === 'Game/Chests') {
+      queryData = gameChestsQuery.data;
     }
     
-    const items = query.result.data.map(item => ({
+    if (!queryData) return [];
+    
+    const items = queryData.map(item => ({
       key: item.id,
       label: item.label,
     }));
     
     // Prepend "New" item with plus icon hint
     return [{ key: 'new', label: '+ New' }, ...items];
-  }, [menuQueries]);
+  }, [dynamicRouteMap, gameChestsQuery.data]);
 
   return (
     <SidebarMenu
