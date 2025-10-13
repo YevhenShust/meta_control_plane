@@ -1,15 +1,18 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import SidebarMenu from './SidebarMenu';
 import menuStructure, { getDynamicConfig as getDynCfg } from './menuStructure';
 import useSetups from '../../setup/useSetups';
 import { dynamicRoutes } from './menuStructure';
 import { useListMenuItemsQuery } from '../../store/api';
+import { MENU_REFRESH_RESET_MS } from '../../shared/constants';
 
 /** Container that provides dynamic loader for routes defined in menuStructure.tsx
  * Keeps SidebarMenu presentational and free of schema-specific logic.
  */
 export default function SidebarMenuContainer({ selectedMenuPath, onSelect }: { selectedMenuPath: string[]; onSelect: (p: string[]) => void }) {
   const { selectedId: setupId } = useSetups();
+
+  const [refreshBasePath, setRefreshBasePath] = useState<string | null>(null);
 
   const getDynamicConfigForMenu = useCallback((b: string) => {
     const cfg = getDynCfg(b);
@@ -40,6 +43,19 @@ export default function SidebarMenuContainer({ selectedMenuPath, onSelect }: { s
     { skip: !setupId }
   );
 
+  // Trigger refresh when RTK Query data changes (after refetch from tag invalidation)
+  useEffect(() => {
+    // Only trigger refresh if we have data and the menu is expanded
+    if (gameChestsQuery.data && selectedMenuPath.length > 0) {
+      const current = selectedMenuPath.join('/');
+      // Check if we're viewing the Game/Chests branch
+      if (current.startsWith('Game/Chests')) {
+        setRefreshBasePath('Game/Chests');
+        setTimeout(() => setRefreshBasePath(null), MENU_REFRESH_RESET_MS);
+      }
+    }
+  }, [gameChestsQuery.data, selectedMenuPath]);
+
   const loadDynamicChildren = useCallback(async (basePath: string) => {
     // Map basePath to the appropriate query result
     const schemaKey = dynamicRouteMap[basePath];
@@ -69,7 +85,7 @@ export default function SidebarMenuContainer({ selectedMenuPath, onSelect }: { s
       onSelect={onSelect}
       getDynamicConfig={getDynamicConfigForMenu}
       loadDynamicChildren={loadDynamicChildren}
-      refreshBasePath={null}
+      refreshBasePath={refreshBasePath}
     />
   );
 }
