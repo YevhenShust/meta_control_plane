@@ -19,3 +19,7 @@ export const MENU_REFRESH_RESET_MS = 2000;
 export const GRID_PAGINATION_PAGE_SIZE = 25;
 export const GRID_PAGINATION_PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 export const GRID_HEIGHT_PX = 600;
+
+// Table inline-edit limits
+// Allow shallow normalized objects inline; deeper structures go to drawer/form.
+export const MAX_INLINE_OBJECT_FIELDS = 3;

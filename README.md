@@ -1,167 +1,135 @@
-# React + TypeScript + Vite
+# Meta Control Plane
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Schema‑driven editors for game/atlas metadata (Drafts/Schemas/Setups) built with React + TypeScript + Vite.
+UI uses Blueprint and JSON Forms; tables use AG Grid.
 
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
-
-# meta_control_plane
-
-Lightweight React + TypeScript + Vite workspace used for schema-driven editors (JSON Forms)
-
-This repository contains an editor for entity drafts based on JSON Schema + JSON Forms. The UI uses BlueprintJS components and custom JSON Forms renderers. The codebase is structured to be both human-readable and assistant-friendly.
+- Tech: React 18, TypeScript, Vite, JSON Forms (Blueprint renderers), AG Grid, RTK Query, Axios, AJV.
+- Docs: see `docs/AGENT_MANIFEST.md` and `docs/architecture/README.md`.
 
 ---
 
-## Quick metadata (machine-friendly)
+## Requirements
 
-```json
-{
-  "name": "meta_control_plane",
-  "stack": ["react", "typescript", "vite", "jsonforms", "blueprintjs"],
-  "defaultBranch": "main",
-  "currentBranch": "copilot/refactor-react-rendering-approach"
-}
+- Node 18+ (LTS recommended)
+- Yarn Berry 4.x (managed by Corepack; PnP)
+- Windows, macOS, or Linux (examples below use PowerShell)
+
+If Yarn is not available, enable Corepack:
+```powershell
+corepack enable
 ```
-
----
-
-## Table of contents
-
-- [Quickstart](#quickstart)
-- [Project overview](#project-overview)
-- [AppToaster (global toast notifications)](#app-toaster-global-toast-notifications)
-- [Agent manifest (short)](#agent-manifest-short)
-- [ESLint / TypeScript tips](#eslint--typescript-tips)
-- [Contributing](#contributing)
-- [Docs](#docs)
 
 ---
 
 ## Quickstart
 
-Requirements: Node 18+ (or the version the project uses), yarn (or npm).
-
-1. Install dependencies
-
+Install dependencies (PnP, deterministic):
 ```powershell
-yarn install
-# or
-# npm install
+yarn install --immutable
 ```
 
-2. Run the dev server
-
+Run the dev server:
 ```powershell
 yarn dev
 ```
 
-3. Open http://localhost:5173/ and use the app. HMR is enabled via Vite.
+Open:
+- http://localhost:5173/
 
----
+Stop the server with Ctrl+C.
 
-## Project overview
-
-- src/: application source
-  - `src/renderers`: custom JSON Forms renderers (Blueprint-based)
-  - `src/jsonforms`: schema helpers and default generation utilities
-  - `src/shared/api`: thin HTTP layer + a facade that parses stored draft content
-  - `src/components`: UI components (including `NewDraftDrawer` and `AppToaster`)
-
-- data/: sample data and schemas used by the app
-
-Design goals:
-- Keep file-level responsibilities small and obvious.
-- Prefer explicit types (`unknown` instead of `any`) where appropriate.
-- Centralize shared utilities (parsing, schema tooling, toasts).
-
----
-
-## AppToaster (global toast notifications)
-
-Why this exists
-- React 18 changes portal creation semantics. BlueprintJS provides `OverlayToaster.createAsync()` which returns a Promise that resolves to a toaster instance once the portal is ready. Creating multiple toasters from different components can cause race conditions or duplicate overlay roots.
-
-What `AppToaster` provides
-- A single, cached async factory for the Blueprint `OverlayToaster`.
-- A small async-friendly API: `show`, `dismiss`, `clear`, `getToasts`.
-
-File: `src/components/AppToaster.ts`
-
-Usage (examples)
-
-```ts
-// schedule a toast (no need to await if you don't need confirmation)
-AppToaster.show({ message: 'Saved', intent: 'success' });
-
-// await when you need to ensure the toast was created/scheduled
-await AppToaster.show({ message: 'Saved', intent: 'success' });
+Build for production:
+```powershell
+yarn build
 ```
 
-Notes
-- Keeping an app-wide toaster avoids duplicated portal creation and makes testing and automation easier.
-
----
-
-## Agent manifest (short)
-
-This project includes a concise, machine-oriented manifest to speed up contributions and automated assistants. Read `docs/AGENT_MANIFEST.md` for the full manifest.
-
-Highlights
-- UI stack: JSON Forms with custom Blueprint.js renderers
-- Validation: AJV (draft-07) + `ajv-formats` and a small custom TimeSpan format
-- Important folders: `src/renderers`, `src/jsonforms`, `src/shared/api`
-
-When changing behavior, include a short comment and prefer small assumptions rather than large implicit ones.
-
----
-
-## ESLint / TypeScript tips
-
-For a production application enable type-aware lint rules (this example shows how to extend an existing config):
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-    },
-  },
-])
+Lint and type-check:
+```powershell
+yarn lint
+yarn tsc --noEmit
 ```
 
-Style notes
-- Prefer `unknown` over `any` unless you intentionally opt-out of type-safety.
+---
+
+## Configuration
+
+Vite reads environment variables prefixed with `VITE_`. Create a `.env.local` in the repo root to override defaults.
+
+```dotenv
+# Backend base URL (no trailing slash). Default: http://localhost:8100
+VITE_API_URL=http://localhost:8100
+
+# Use local mock data from /data instead of backend: 1 = on, anything else = off. Default: off
+VITE_USE_MOCK=1
+```
+
+PowerShell one‑off overrides:
+```powershell
+$env:VITE_USE_MOCK='1'; yarn dev
+# or
+$env:VITE_API_URL='http://localhost:8100'; yarn dev
+```
+
+Transport defaults:
+- Axios base URL: `VITE_API_URL` or `http://localhost:8100` if unset (see `src/shared/api/http.ts`).
+- Mock toggle: `VITE_USE_MOCK === '1'` (see `src/shared/api/utils.ts`).
+
+---
+
+## Project structure (at a glance)
+
+- `src/components/` — UI (sidebar, drawers, host, header)
+  - `NewDraftDrawer.tsx` — create flow drawer
+  - `sidebar/menuStructure.tsx` — static menu + dynamic route map
+- `src/editor/EntityEditor.tsx` — form/table editor host
+- `src/renderers/` — JSON Forms renderers (Blueprint)
+- `src/jsonforms/` — schema prep and defaults
+- `src/store/api.ts` — RTK Query endpoints (uses Axios facade)
+- `src/shared/api/` — HTTP facade and helpers (mock handling, schema/draft/setup)
+- `src/core/` — domain-agnostic helpers (paths, parsing, schema tools)
+- `data/` — sample JSON used when `VITE_USE_MOCK=1`
+- `docs/` — Agent Manifest and Architecture docs
+
+Useful constants:
+- `src/shared/constants.ts` — grid sizes, debounce, and `MAX_INLINE_OBJECT_FIELDS`.
+
+---
+
+## How navigation works (short)
+
+- URL query param `?path=...` drives the view.
+  - Table: `?path=<BasePath>`
+  - Form (existing draft): `?path=<BasePath>/<draftId>`
+  - New draft: `?path=<BasePath>/new`
+- Dynamic route map binds `BasePath → { kind: 'table' | 'form', schemaKey, uiSchema }`.
+  - See `src/components/sidebar/menuStructure.tsx`.
+- `EntityHost` selects renderer by `kind` and parameters parsed from `path`.
 
 ---
 
 ## Contributing
 
-- Read `docs/AGENT_MANIFEST.md` before making non-trivial changes.
-- Run `yarn lint` and `yarn dev` to verify changes locally.
-- Keep PR descriptions explicit about any assumptions or incomplete decisions.
+- Read `docs/AGENT_MANIFEST.md` before non-trivial changes.
+- Keep changes focused and reviewable.
+  - Local/agent mode: very small, visible steps.
+  - PR mode: a cohesive task can span multiple small, logical commits (keep branch buildable).
+- CI gates: `yarn lint`, `yarn tsc --noEmit`, `yarn build` must pass.
+
+---
+
+## Troubleshooting
+
+- “Command not found: yarn”
+  - Run `corepack enable`, then retry.
+- PnP editor tooling (optional)
+  - If your IDE needs TS SDK wiring: `yarn dlx @yarnpkg/sdks`.
+- Backend not reachable
+  - Set `VITE_API_URL` to your backend, or use `VITE_USE_MOCK=1` to run with local `data/`.
 
 ---
 
 ## Docs
 
-Full agent manifest and development notes: `docs/AGENT_MANIFEST.md`
-
-If something in this README is unclear (or you want it more machine-readable), open a small PR with the change — the project aims to be both human- and AI-friendly.
+- Agent Manifest: `docs/AGENT_MANIFEST.md`
+- Architecture: `docs/architecture/README.md`
+- ADRs (decisions): `docs/architecture/decisions/`

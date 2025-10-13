@@ -3,9 +3,18 @@ on:
   pull_request:
     branches: [ "main" ]
 
+concurrency:
+  group: ci-web-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
   build_lint_test:
     runs-on: ubuntu-latest
+    env:
+      CI: true
     steps:
       - uses: actions/checkout@v4
 
@@ -27,7 +36,7 @@ jobs:
         with:
           path: |
             .yarn/cache
-            .pnp.cjs
+            .yarn/install-state.gz
           key: ${{ runner.os }}-yarn4-${{ hashFiles('yarn.lock') }}
           restore-keys: |
             ${{ runner.os }}-yarn4-
