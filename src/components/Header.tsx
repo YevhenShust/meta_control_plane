@@ -1,5 +1,6 @@
-import { Navbar, Alignment, Button, ButtonGroup, Menu, MenuItem, Icon } from '@blueprintjs/core';
+import { Navbar, Alignment, Button, ButtonGroup, Menu, MenuItem, Icon, Tag, Tooltip } from '@blueprintjs/core';
 import useSetups from '../setup/useSetups';
+import { useMock } from '../shared/api/utils';
 
 export default function Header() {
   const { setups, selectedId, setSelectedId, createSetup } = useSetups();
@@ -16,6 +17,11 @@ export default function Header() {
             ))}
           </MenuItem>
         </Menu>
+        {useMock && (
+          <Tooltip content="Mock data mode: changes are not persisted" hoverOpenDelay={200}>
+            <Tag intent="warning" round minimal style={{ marginLeft: 8 }}>MOCK</Tag>
+          </Tooltip>
+        )}
       </Navbar.Group>
 
       <Navbar.Group align={Alignment.END}>

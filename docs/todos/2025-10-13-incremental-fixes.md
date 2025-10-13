@@ -85,6 +85,20 @@ Purpose: track concrete, small, verifiable improvements we agreed to implement l
 - Constraints: Add custom editors only when justified by UX/data needs; keep default editors elsewhere.
 - Acceptance: Example editor wired for one concrete field; no regressions in default table flows.
 
+## 14) Explicit data modes (docs + wiring)
+- Summary: Replace ambiguous mock fallback with explicit modes.
+- Modes:
+  - real: use API only; surface errors; no mock fallback.
+  - mock: use mock data only; mutations are local-only; clearly indicated in UI.
+  - fallback: attempt API, and if endpoint fails, fall back to mock with a visible, scoped warning.
+- Actions:
+  - Add `VITE_DATA_MODE` env with values `real|mock|fallback` (docs-only for now); keep `VITE_USE_MOCK` for backward compatibility until migration.
+  - Show a startup toast and persistent header badge when running in `mock` or when a `fallback` is in effect.
+  - Ensure CI defaults to `mock` for deterministic runs unless E2E against real API is intended.
+- Acceptance:
+  - Docs describe modes and UX indicators.
+  - Minimal UI indicator implemented (toast + badge) for the current mock flag.
+
 ## Notes
 - These tasks should be delivered as small, isolated PRs, each keeping `yarn lint`, `yarn tsc --noEmit`, and `yarn build` green.
 - All code comments and logs must be in English.

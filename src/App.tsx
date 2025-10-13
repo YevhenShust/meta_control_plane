@@ -3,6 +3,8 @@ import Header from './components/Header';
 import { Card } from '@blueprintjs/core';
 import SidebarMenuContainer from './components/sidebar/SidebarMenuContainer';
 import MainContent from './components/MainContent';
+import { AppToaster } from './components/AppToaster';
+import { useMock } from './shared/api/utils';
 
 const App: React.FC = () => {
   const [selectedMenuPath, setSelectedMenuPath] = useState<string[]>([]);
@@ -22,6 +24,19 @@ const App: React.FC = () => {
     const onPop = () => readPath();
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
+  // Minimal hygiene: show a startup toast when mock data mode is enabled.
+  useEffect(() => {
+    if (useMock) {
+      // Intentionally not awaiting; fire-and-forget is fine for a toast.
+      void AppToaster.show({
+        message: 'Mock data mode is enabled. Changes will not be persisted.',
+        intent: 'warning',
+        icon: 'warning-sign',
+        timeout: 5000,
+      });
+    }
   }, []);
 
 const wroteOnce = useRef(false);

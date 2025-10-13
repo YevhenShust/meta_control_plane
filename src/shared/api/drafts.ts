@@ -36,8 +36,23 @@ export async function createDraftV1(setupId: string, body: { schemaId?: string; 
     } as DraftDto;
   }
 
-  const res = await http.post(`/api/v1/Drafts/${encodeURIComponent(setupId)}`, body);
-  return res.data?.draft as DraftDto;
+  try {
+    const res = await http.post(`/api/v1/Drafts/${encodeURIComponent(setupId)}`, body);
+    return res.data?.draft as DraftDto;
+  } catch (e) {
+    // Only simulate when mock mode is enabled; otherwise surface the error
+    if (useMock) {
+      return {
+        id: `mock-draft-${Date.now()}`,
+        setupId,
+        schemaId: body.schemaId || '',
+        content: body.content || '{}',
+        created: new Date().toISOString(),
+        modified: new Date().toISOString(),
+      } as DraftDto;
+    }
+    throw e;
+  }
 }
 
 // Update draft (v1): PUT /api/v1/Drafts/{draftId}?content=...
@@ -56,7 +71,21 @@ export async function updateDraftV1(draftId: string, content: string): Promise<D
     } as DraftDto;
   }
 
-  // Note: content is sent as a query param in the v1 API (legacy). Ensure encoding is handled by axios.
-  const res = await http.put(`/api/v1/Drafts/${encodeURIComponent(draftId)}`, null, { params: { content } });
-  return res.data?.draft as DraftDto;
+  try {
+    // Note: content is sent as a query param in the v1 API (legacy). Ensure encoding is handled by axios.
+    const res = await http.put(`/api/v1/Drafts/${encodeURIComponent(draftId)}`, null, { params: { content } });
+    return res.data?.draft as DraftDto;
+  } catch (e) {
+    // Only simulate when mock mode is enabled; otherwise surface the error
+    if (useMock) {
+      return {
+        id: draftId,
+        setupId: '',
+        schemaId: '',
+        content,
+        modified: new Date().toISOString(),
+      } as DraftDto;
+    }
+    throw e;
+  }
 }

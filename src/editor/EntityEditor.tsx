@@ -10,6 +10,7 @@ import { getContentId } from '../core/contentId';
 import { loadSchemaByKey } from '../core/schemaKeyResolver';
 import { tryParseContent } from '../core/parse';
 import { useListDraftsQuery, useUpdateDraftMutation } from '../store/api';
+import { AppToaster } from '../components/AppToaster';
 
 type DraftContent = unknown;
 
@@ -144,6 +145,18 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
   }, [setupId, schemaKey]);
 
   const controller = useMemo(() => {
+    const toErrorMessage = (err: unknown): string => {
+      if (!err) return 'Unknown error';
+      if (typeof err === 'string') return err;
+      if (err instanceof Error) return err.message;
+      try {
+        const anyErr = err as { error?: string; message?: string };
+        return anyErr?.error || anyErr?.message || JSON.stringify(err);
+      } catch {
+        return String(err);
+      }
+    };
+
     async function save(): Promise<EditorSaveOutcome> {
       if (view === 'form') {
         if (!draftId) return { ok: false, error: 'No draftId' };
@@ -159,10 +172,14 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
             console.debug('[Editor] save emitChanged', { schemaKey, setupId, nextId });
             emitChanged({ schemaKey, setupId });
           }
+          // user feedback
+          void AppToaster.show({ message: 'Saved', intent: 'success', icon: 'tick' });
           return { ok: true };
         } catch (e) {
-          console.error('[Editor] save failed', { draftId, err: (e as Error).message });
-          return { ok: false, error: (e as Error).message };
+          const msg = toErrorMessage(e);
+          console.error('[Editor] save failed', { draftId, err: msg });
+          void AppToaster.show({ message: `Save failed: ${msg}`, intent: 'danger', icon: 'error' });
+          return { ok: false, error: msg };
         }
       }
       return { ok: false, error: 'save not implemented for this view' };
@@ -172,10 +189,13 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
       try {
         await updateDraft({ draftId: rowId, content: nextRow, setupId: setupId || '', schemaId: resolved?.schemaId }).unwrap();
         setState(s => ({ ...s, isDirty: false }));
+        void AppToaster.show({ message: 'Row saved', intent: 'success', icon: 'tick' });
         return { ok: true };
       } catch (e) {
-        console.error('[Editor] saveRow failed', { rowId, err: (e as Error).message });
-        return { ok: false, error: (e as Error).message };
+        const msg = toErrorMessage(e);
+        console.error('[Editor] saveRow failed', { rowId, err: msg });
+        void AppToaster.show({ message: `Save failed: ${msg}`, intent: 'danger', icon: 'error' });
+        return { ok: false, error: msg };
       }
     }
 
