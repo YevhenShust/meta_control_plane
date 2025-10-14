@@ -1,26 +1,46 @@
-The Meta Service performs authentication and authorization independently. For this purpose, it includes a dedicated subsystem called the Auth Engine.
+# Authentication and Authorization (Draft Overview)
 
-Authentication
-A simple authentication sequence is applied:
+## Overview
+The Meta Service separates authentication and authorization via a dedicated Auth Engine. This PR phase focuses only on authentication (obtaining and attaching a JWT access token).
 
-Issue an access token based on the provided credentials via a dedicated endpoint.
+## Authentication Flow
+1. Client submits credentials (username + password hash) to the auth endpoint.
+2. Service issues a permanent, non-revocable access token (JWT).
+3. Client includes the token with every subsequent request (Authorization header).
+4. No refresh token or expiry handling at this stage.
 
-Verify the token with each request to the service.
+## Constraints
+- Token is permanent (no refresh cycle).
+- Password is never sent in plain text: a one-way hash is generated client-side (placeholder algorithm until finalized).
+- User provisioning (creation of credentials and stored hashes) occurs outside of public API (static configuration file read at service startup).
 
-The following constraints apply:
+## JWT Payload Fields
+- `iss` — issuer (Meta Service identity).
+- `sub` — subject (user id).
+- `iat` — issued at timestamp.
+- `jti` — unique token identifier.
 
-The access token is permanent and non-revocable.
+## Endpoint (Draft Spec)
+See OpenAPI file: `meta.auth.v0.0.1.yml`
 
-No refresh token is provided.
+```
+POST /meta/auth/token
+Request: { "username": "...", "password": "<hashed>" }
+Success 200: { "access_token": "<jwt>", "token_type": "Bearer" }
+Failure 401: Invalid credentials
+```
 
-Adding users and their credentials is done outside the API. A special configuration file, accessible to the Meta Service and read at startup, is used for this purpose.
-Instead of a password, a hash is used to ensure minimal security, generated using a specific one-way algorithm. This algorithm is applied on the API client side to hash the password, and the same algorithm is used to generate the password hash stored in the credentials configuration file.
+## Client Responsibilities
+- Hash password locally (replace placeholder with final algorithm later).
+- Store token securely (memory + localStorage for persistence).
+- Attach `Authorization: Bearer <token>` to all API requests.
+- Handle `401` by clearing session and returning to Login.
 
-JWT is used as an access token, with payload fields:
-iss – token issuer, issuer meta service identity.
-sub – token subject, user id in Meta Service, who gets an access.
-iat – issued at, date and time when token is created.
-jti - JWT id, token identificator for traceability and further purposes.
+## Future (Authorization)
+- Role / permission model (ACL).
+- Enforced action-level restrictions.
+- Token revocation / rotation.
 
-Open API specification for auth endpoints is provided below /meta.auth.v0.0.1.yml
+## OpenAPI Reference
+See: `docs/Auth/meta.auth.v0.0.1.yml`
 
