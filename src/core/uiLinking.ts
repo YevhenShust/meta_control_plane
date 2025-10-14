@@ -1,12 +1,11 @@
-import { listSchemasV1, listDrafts } from '../shared/api';
-import { tryParseContent } from './parse';
+import { listSchemas, listDrafts } from '../shared/api';
 
 export async function resolveSchemaIdByKey(setupId: string, schemaKey: string): Promise<string | null> {
   try {
-    const schemas = await listSchemasV1(setupId);
+    const schemas = await listSchemas(setupId);
     for (const s of schemas) {
-      const raw = tryParseContent(s.content);
-      if (raw && typeof raw === 'object' && (raw as Record<string, unknown>)['$id'] === schemaKey) {
+        const raw = s.content;
+        if (raw && typeof raw === 'object' && (raw as Record<string, unknown>)['$id'] === schemaKey) {
         return String(s.id);
       }
     }

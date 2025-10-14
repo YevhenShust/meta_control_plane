@@ -1,5 +1,4 @@
-import { listSchemasV1, type SchemaParsed } from '../shared/api';
-import { tryParseContent } from './parse';
+import { listSchemas, type SchemaParsed } from '../shared/api';
 
 // Simple in-memory cache: setupId -> (schemaKey -> { id, json })
 const resolverCache = new Map<string, Map<string, { id: string; json: unknown }>>();
@@ -18,10 +17,9 @@ export async function loadSchemaByKey(setupId: string, schemaKey: string): Promi
   const cached = bySetup.get(schemaKey);
   if (cached) return cached;
 
-  const list = await listSchemasV1(setupId);
+  const list = await listSchemas(setupId);
   for (const s of list as SchemaParsed[]) {
-    if (!s?.content) continue;
-    const parsed = tryParseContent(s.content);
+    const parsed = s?.content;
     if (parsed && typeof parsed === 'object' && ('$id' in parsed) && (parsed as Record<string, unknown>)['$id'] === schemaKey) {
       const id = String(s.id ?? '');
       const out = { id, json: parsed };

@@ -7,7 +7,7 @@ export type SetupDto = NonNullable<components['schemas']['SetupDto']>;
 export type SetupCreateRequest = NonNullable<components['schemas']['SetupCreateRequest']>;
 
 // POST /api/v1/Setups
-export async function createSetup(body: SetupCreateRequest): Promise<SetupDto> {
+export async function createSetupV1(body: SetupCreateRequest): Promise<SetupDto> {
   if (useMock) {
     return {
       id: `mock-setup-${Date.now()}`,
@@ -22,7 +22,7 @@ export async function createSetup(body: SetupCreateRequest): Promise<SetupDto> {
 }
 
 // GET /api/v1/Setups
-export async function listSetups(params?: { skip?: number; limit?: number }): Promise<SetupDto[]> {
+export async function listSetupsV1(params?: { skip?: number; limit?: number }): Promise<SetupDto[]> {
   if (useMock) {
     const setups = await loadMockData<SetupDto>('Setups', 'setups');
     return setups;
@@ -32,14 +32,15 @@ export async function listSetups(params?: { skip?: number; limit?: number }): Pr
     const res = await http.get<components['schemas']['SetupListResponse']>('/api/v1/Setups', { params });
     const setups = ((res.data as unknown as any)?.setups ?? []) as SetupDto[];
     return setups;
-  } catch {
-    const setups = await loadMockData<SetupDto>('Setups', 'setups');
-    return setups;
+  } catch (e) {
+    // Do not fallback to mock data when useMock is false; surface the error instead
+    const msg = (e as Error)?.message || String(e);
+    throw new Error(`Failed to list setups: ${msg}`);
   }
 }
 
 // GET /api/v1/Setups/{setupId}
-export async function getSetupById(setupId: string): Promise<SetupDto | null> {
+export async function getSetupByIdV1(setupId: string): Promise<SetupDto | null> {
   if (useMock) {
     const setups = await loadMockData<SetupDto>('Setups', 'setups');
     const setup = setups.find((s: SetupDto) => String(s.id) === String(setupId));
@@ -49,9 +50,8 @@ export async function getSetupById(setupId: string): Promise<SetupDto | null> {
   try {
     const res = await http.get<components['schemas']['SetupResponse']>(`/api/v1/Setups/${encodeURIComponent(setupId)}`);
     return ((res.data as unknown as any)?.setup ?? null) as SetupDto | null;
-  } catch {
-    const setups = await loadMockData<SetupDto>('Setups', 'setups');
-    const setup = setups.find((s: SetupDto) => String(s.id) === String(setupId));
-    return setup || null;
+  } catch (e) {
+    const msg = (e as Error)?.message || String(e);
+    throw new Error(`Failed to get setup by id: ${msg}`);
   }
 }

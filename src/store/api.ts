@@ -113,7 +113,7 @@ export const apiSlice = createApi({
     >({
       queryFn: async (arg) => {
         try {
-          const schemas = await api.listSchemasV1(arg.setupId, arg.params);
+          const schemas = await api.listSchemas(arg.setupId, arg.params);
           return { data: schemas as SchemaRecord[] };
         } catch (error) {
           return { error: { status: 'CUSTOM_ERROR', error: String(error) } };
