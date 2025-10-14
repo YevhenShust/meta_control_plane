@@ -18,7 +18,7 @@ interface NewDraftDrawerProps {
   onClose: () => void;
   setupId: string;
   schemaKey: string;
-  schema: object;
+  schema?: object;
   uischema?: object;
   onSuccess: (res: { draftId: string; kind: 'create' | 'update'; prevId?: string; nextId?: string }) => void;
   /** Optional: If provided, edit this draft instead of creating a new one */
@@ -230,6 +230,9 @@ export default function NewDraftDrawer({
     >
       <div className="bp5-drawer-body">
         <div className="bp5-dialog-body">
+          {!schema ? (
+            <div>Loading schema…</div>
+          ) : (
           <JsonForms
             ajv={ajv}
             schema={(patchedSchema ?? schema) as unknown as JsonSchema}
@@ -250,6 +253,7 @@ export default function NewDraftDrawer({
               setValid(isValid);
             }}
           />
+          )}
         </div>
       </div>
       <div className="bp5-drawer-footer">

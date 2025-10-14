@@ -3,9 +3,9 @@ import EntityEditor from '../editor/EntityEditor';
 import useSetups from '../setup/useSetups';
 import { useState, useEffect } from 'react';
 import NewDraftDrawer from './NewDraftDrawer';
-import { loadSchemaByKey } from '../core/schemaKeyResolver';
+// Schema loading now via RTK Query prepared endpoint
 import { useNavigate } from '../hooks/useNavigate';
-import { tryParseContent } from '../core/parse';
+import { useGetPreparedSchemaByKeyQuery } from '../store/api';
 
 type FormParams = { kind: 'form';  params: { schemaKey: string; draftId: string; uiSchema?: UISchemaElement | Record<string, unknown> } };
 type TableParams = { kind: 'table'; params: { schemaKey: string; uiSchema?: Record<string, unknown> } };
@@ -32,21 +32,31 @@ export default function EntityHost({ kind, params }: HostProps) {
   useEffect(() => {
     if (kind === 'new-draft' && setupId && schemaKey) {
       setDrawerOpen(true);
-      setSchemaError(null);
-      // Load schema for the drawer
-      loadSchemaByKey(setupId, schemaKey).then(({ json }) => {
-        const parsed = tryParseContent(json) as object;
-        setSchema(parsed);
-      }).catch(e => {
-        console.error('[Host] failed to load schema for new-draft', e);
-        setSchemaError((e as Error).message);
-      });
     } else {
       setDrawerOpen(false);
+    }
+  }, [kind, setupId, schemaKey]);
+
+  // Use RTK Query to fetch prepared schema for new-draft drawer
+  const { data: prepared, error: preparedError, isFetching: isPreparing } = useGetPreparedSchemaByKeyQuery(
+    { setupId: setupId || '', schemaKey: schemaKey || '' },
+    { skip: kind !== 'new-draft' || !setupId || !schemaKey }
+  );
+
+  useEffect(() => {
+    if (preparedError) {
+      setSchemaError(String((preparedError as { error?: string }).error ?? 'Failed to load schema'));
+      setSchema(null);
+      return;
+    }
+    if (prepared && prepared.schema) {
+      setSchema(prepared.schema as object);
+      setSchemaError(null);
+    } else if (isPreparing) {
       setSchema(null);
       setSchemaError(null);
     }
-  }, [kind, setupId, schemaKey]);
+  }, [prepared, preparedError, isPreparing]);
 
   if (!setupId) return <div className="pad-sm">Select a Setup</div>;
 

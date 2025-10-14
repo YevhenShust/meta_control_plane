@@ -4,7 +4,8 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
 import * as api from '../shared/api';
 import type { DraftParsed, SchemaRecord } from '../shared/api';
-import { resolveSchemaIdByKey } from '../core/schemaKeyResolver';
+import { loadSchemaByKey, resolveSchemaIdByKey } from '../core/schemaKeyResolver';
+import prepareSchemaForJsonForms from '../jsonforms/prepareSchema';
 
 // Custom base query that uses our existing API facade
 // This ensures we keep using Axios with auth, headers, and mock fallback
@@ -34,6 +35,25 @@ export const apiSlice = createApi({
       },
       providesTags: (_result, _error, arg) => [
         { type: 'Drafts', id: `${arg.setupId}:${arg.schemaId ?? 'all'}` }
+      ],
+    }),
+
+    // Prepared JSON Schema by schemaKey with server list resolution and local normalization
+    getPreparedSchemaByKey: builder.query<
+      { schemaId: string; schema: unknown },
+      { setupId: string; schemaKey: string }
+    >({
+      queryFn: async (arg) => {
+        try {
+          const { id, json } = await loadSchemaByKey(arg.setupId, arg.schemaKey);
+          const prepared = prepareSchemaForJsonForms(json);
+          return { data: { schemaId: String(id), schema: prepared } };
+        } catch (error) {
+          return { error: { status: 'CUSTOM_ERROR', error: String(error) } };
+        }
+      },
+      providesTags: (_result, _error, arg) => [
+        { type: 'Schemas', id: arg.setupId }
       ],
     }),
 
@@ -142,4 +162,5 @@ export const {
   useUpdateDraftMutation,
   useListSchemasQuery,
   useListMenuItemsQuery,
+  useGetPreparedSchemaByKeyQuery,
 } = apiSlice;

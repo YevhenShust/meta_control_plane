@@ -1,14 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { EntityEditorProps, EditorDataState, EditorSaveOutcome, FormViewProps, TableViewProps } from './EntityEditor.types';
-// loadSchemaByKey already imported above
 import { createAjv } from '../renderers/ajvInstance';
 import FormRenderer from '../renderers/FormRenderer';
 import TableRenderer from '../renderers/TableRenderer';
 import NewDraftDrawer from '../components/NewDraftDrawer';
 import { getContentId } from '../core/contentId';
-import { loadSchemaByKey } from '../core/schemaKeyResolver';
-import { tryParseContent } from '../core/parse';
-import { useListDraftsQuery, useUpdateDraftMutation } from '../store/api';
+import { useListDraftsQuery, useUpdateDraftMutation, useGetPreparedSchemaByKeyQuery } from '../store/api';
 import { AppToaster } from '../components/AppToaster';
 
 type DraftContent = unknown;
@@ -42,37 +39,45 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
   
   const [updateDraft] = useUpdateDraftMutation();
 
-  // resolve schema id and JSON
+  // Prepared schema hook and resolver state updates
+  const { data: preparedSchema, error: preparedError, isFetching: schemaFetching } = useGetPreparedSchemaByKeyQuery(
+    { setupId: setupId || '', schemaKey: schemaKey || '' },
+    { skip: !setupId || !schemaKey }
+  );
+
   useEffect(() => {
     let alive = true;
     setResolved(null);
     setState(s => ({ ...s, loading: true, error: undefined }));
     (async () => {
       try {
-        const { id: sId, json } = await loadSchemaByKey(setupId, schemaKey);
-        if (!alive) return;
-        setResolved({ schemaId: String(sId) });
-        const parsed = tryParseContent(json) as object;
-        setSchema(parsed);
-        // try to load a matching ui schema file from the ui folder using schemaKey
-        try {
-          // First try: ui schema files under src/schemas/ui/<SchemaKey>.uischema.json
-          const maybe = await import(`../schemas/ui/${schemaKey}.uischema.json`);
+        if (preparedError) throw new Error(String((preparedError as { error?: string }).error || 'Schema load error'));
+        if (schemaFetching) return; // wait
+        if (preparedSchema) {
           if (!alive) return;
-          if (maybe && maybe.default) {
-            setUischema(maybe.default as object);
+          setResolved({ schemaId: preparedSchema.schemaId });
+          setSchema((preparedSchema.schema as object) ?? {});
+          try {
+            const maybe = await import(`../schemas/ui/${schemaKey}.uischema.json`);
+            if (!alive) return;
+            if (maybe && maybe.default) {
+              setUischema(maybe.default as object);
+            }
+          } catch {
+            // optional missing uischema
           }
-        } catch {
-          // not fatal — expected missing-file case in some routes
+          // For table view we can render immediately; for form view wait for drafts
+          if (view !== 'form') {
+            setState(s => ({ ...s, loading: false }));
+          }
         }
       } catch (e) {
         if (!alive) return;
         setState({ data: null, isDirty: false, isValid: false, loading: false, error: (e as Error).message });
-        console.error('[Editor] resolve failed', e);
       }
     })();
     return () => { alive = false; };
-  }, [setupId, schemaKey]);
+  }, [preparedSchema, preparedError, schemaFetching, schemaKey, view]);
 
   // load data after schema resolved (only for form view - table handles its own data)
   useEffect(() => {
@@ -106,42 +111,21 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
   useEffect(() => {
     if (view !== 'table') return;
     const handler = () => {
-      // open drawer and load schema for new draft
-      (async () => {
-        try {
-          setDrawerOpen(true);
-          setDrawerSchema(null);
-          setDrawerEditDraftId(null); // Creating new draft
-          if (!setupId || !schemaKey) throw new Error('Missing context for new draft');
-          const { json } = await loadSchemaByKey(setupId, schemaKey);
-          const parsed = tryParseContent(json) as object;
-          setDrawerSchema(parsed);
-        } catch {
-          setDrawerOpen(false);
-        }
-      })();
+      // open drawer and reuse prepared schema
+      setDrawerOpen(true);
+      setDrawerSchema((preparedSchema?.schema as object) ?? null);
+      setDrawerEditDraftId(null); // Creating new draft
     };
     window.addEventListener('table-new-request', handler as EventListener);
     return () => window.removeEventListener('table-new-request', handler as EventListener);
-  }, [view, setupId, schemaKey]);
+  }, [view, setupId, schemaKey, preparedSchema]);
 
   // Handler for opening drawer to edit a draft's complex field
   const handleOpenDrawer = useCallback((draftId: string) => {
-    (async () => {
-      try {
-        setDrawerOpen(true);
-        setDrawerSchema(null);
-        setDrawerEditDraftId(draftId);
-        if (!setupId || !schemaKey) throw new Error('Missing context for edit draft');
-        const { json } = await loadSchemaByKey(setupId, schemaKey);
-        const parsed = tryParseContent(json) as object;
-        setDrawerSchema(parsed);
-      } catch {
-        setDrawerOpen(false);
-        setDrawerEditDraftId(null);
-      }
-    })();
-  }, [setupId, schemaKey]);
+    setDrawerOpen(true);
+    setDrawerSchema((preparedSchema?.schema as object) ?? null);
+    setDrawerEditDraftId(draftId);
+  }, [preparedSchema]);
 
   const controller = useMemo(() => {
     const toErrorMessage = (err: unknown): string => {
