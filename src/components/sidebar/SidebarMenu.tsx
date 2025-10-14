@@ -59,11 +59,19 @@ export default function SidebarMenu({
   refreshBasePath,
 }: SidebarMenuProps) {
   const [nodes, setNodes] = useState<any[]>(() => buildTreeNodes(menu, [], getDynamicConfig));
-  const [loadingKeys, setLoadingKeys] = useState<Record<string, boolean>>({});
+  
+  // Stable refs for internal use to avoid dependency cycles
   const nodesRef = useRef<any[]>(nodes);
   useEffect(() => {
     nodesRef.current = nodes;
   }, [nodes]);
+  
+  const loadingKeysRef = useRef<Record<string, boolean>>({});
+  
+  const loadDynamicChildrenRef = useRef(loadDynamicChildren);
+  useEffect(() => {
+    loadDynamicChildrenRef.current = loadDynamicChildren;
+  }, [loadDynamicChildren]);
 
   /** Пошук ноди за id у поточному дереві */
   const findNode = useCallback((items: any[], id: string): any | null => {
@@ -108,15 +116,19 @@ export default function SidebarMenu({
       // якщо це динамічний контейнер і діти ще не завантажені — тягнемо
       const snapshot = nodesRef.current;
       const node = findNode(snapshot, containerId);
-      if (!node || !node.hasCaret || !loadDynamicChildren) return;
+      if (!node || !node.hasCaret) return;
+      
+      const loader = loadDynamicChildrenRef.current;
+      if (!loader) return;
 
       const needsLoad = !node.childNodes || node.childNodes.length === 0;
       if (!needsLoad) return;
 
-      if (loadingKeys[containerId]) return; // уже вантажиться
-      setLoadingKeys((p) => ({ ...p, [containerId]: true }));
+      if (loadingKeysRef.current[containerId]) return; // уже вантажиться
+      loadingKeysRef.current[containerId] = true;
+      
       try {
-        const items = await loadDynamicChildren(containerId);
+        const items = await loader(containerId);
         const children = items.map((it) => ({
           id: `${containerId}/${it.key}`,
           label: it.label,
@@ -124,14 +136,10 @@ export default function SidebarMenu({
         }));
         setNodeChildren(containerId, children);
       } finally {
-        setLoadingKeys((p) => {
-          const next = { ...p };
-          delete next[containerId];
-          return next;
-        });
+        delete loadingKeysRef.current[containerId];
       }
     },
-    [findNode, loadDynamicChildren, loadingKeys, setNodeChildren, updateNodeById]
+    [findNode, setNodeChildren, updateNodeById]
   );
 
   /** 1) Перебудовуємо дерево тільки коли міняється menu/getDynamicConfig */
@@ -166,23 +174,23 @@ export default function SidebarMenu({
     (async () => {
       try {
         const node = findNode(nodesRef.current, refreshBasePath);
-        if (!node || !node.hasCaret || !loadDynamicChildren) return;
-        setLoadingKeys((p) => ({ ...p, [refreshBasePath]: true }));
-        const items = await loadDynamicChildren(refreshBasePath);
+        if (!node || !node.hasCaret) return;
+        
+        const loader = loadDynamicChildrenRef.current;
+        if (!loader) return;
+        
+        loadingKeysRef.current[refreshBasePath] = true;
+        const items = await loader(refreshBasePath);
         const children = items.map((it) => ({ id: `${refreshBasePath}/${it.key}`, label: it.label, icon: 'document' }));
         setNodeChildren(refreshBasePath, children);
         setNodes((prev) => updateNodeById(prev, refreshBasePath, (n) => ({ ...n, isExpanded: true })));
       } catch {
         // ignore refresh errors
       } finally {
-        setLoadingKeys((p) => {
-          const next = { ...p };
-          delete next[refreshBasePath];
-          return next;
-        });
+        delete loadingKeysRef.current[refreshBasePath];
       }
     })();
-  }, [refreshBasePath, findNode, loadDynamicChildren, setNodeChildren, updateNodeById]);
+  }, [refreshBasePath, findNode, setNodeChildren, updateNodeById]);
 
   /** Клік по вузлу */
   const onNodeClick = (node: any) => {
