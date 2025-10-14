@@ -44,3 +44,38 @@ Failure 401: Invalid credentials
 ## OpenAPI Reference
 See: `docs/Auth/meta.auth.v0.0.1.yml`
 
+## Local Development Bypass
+
+For local development without a real auth backend, the SPA supports a dev-only admin login bypass.
+
+### How to Enable
+Set the environment variable:
+```
+VITE_AUTH_DEV_BYPASS=1
+```
+or
+```
+VITE_AUTH_DEV_BYPASS=true
+```
+
+### Behavior
+- Username: `admin` (case-insensitive)
+- Password: empty (leave blank)
+- No network call is made to `/meta/auth/token`
+- Session is set with a stable token: `dev-admin-token`
+- User is authenticated as `admin`
+
+### Limitations and Warnings
+⚠️ **DEV-ONLY**: This bypass is intended exclusively for local development and testing.
+
+⚠️ **NEVER** enable `VITE_AUTH_DEV_BYPASS` in production builds or deployment environments.
+
+⚠️ The dev token (`dev-admin-token`) should not be considered secure and must not be used in any production context.
+
+### Default Behavior
+When `VITE_AUTH_DEV_BYPASS` is not set (default), the normal authentication flow is required:
+- All credentials must be validated by the backend
+- Password hashing is performed
+- Network call to `/meta/auth/token` is made
+- Valid JWT token is returned
+
