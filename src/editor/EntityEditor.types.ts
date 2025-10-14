@@ -61,6 +61,8 @@ export interface TableViewProps<Row = unknown> {
   setupId?: string;
   /** schemaKey of the current table (required for RTK Query) */
   schemaKey?: string;
+  /** Optional pre-resolved schemaId for the current table (preferred to avoid extra network calls) */
+  schemaId?: string;
 
   onEdit?: (rowId: string, patch: Partial<Row> | Row) => void; // Optional now
   onSaveRow?: (rowId: string, nextRow: Row) => Promise<EditorSaveOutcome>; // Optional now - RTK Query handles saving

@@ -9,7 +9,6 @@ import { stripIdSuffix, isDescriptorId as isDescriptorIdUtil } from '../core/pat
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
 import { useListDraftsQuery, useUpdateDraftMutation } from '../store/api';
-import { resolveSchemaIdByKey } from '../core/schemaKeyResolver';
 import { AppToaster } from '../components/AppToaster';
 import {
   LABEL_NEW_BUTTON,
@@ -38,10 +37,10 @@ interface RowData {
   content: Record<string, unknown>;
 }
 
-export default function TableRenderer({ schema, uischema, setupId, schemaKey, onOpenDrawer }: TableViewProps) {
+export default function TableRenderer({ schema, uischema, setupId, schemaKey, schemaId: schemaIdProp, onOpenDrawer }: TableViewProps) {
   const gridRef = useRef<AgGridReact<RowData>>(null);
 
-  const [schemaId, setSchemaId] = useState<string | null>(null);
+  const [schemaId, setSchemaId] = useState<string | null>(schemaIdProp ?? null);
   const [localRows, setLocalRows] = useState<RowData[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -53,14 +52,9 @@ export default function TableRenderer({ schema, uischema, setupId, schemaKey, on
   const draftsRef = useRef<RowData[]>([]);
 
   useEffect(() => {
-    if (!setupId || !schemaKey) return;
-    let mounted = true;
-    (async () => {
-      const id = await resolveSchemaIdByKey(setupId, schemaKey);
-      if (mounted) setSchemaId(id);
-    })();
-    return () => { mounted = false; };
-  }, [setupId, schemaKey]);
+    // Prefer schemaId from props to avoid extra resolution calls
+    setSchemaId(schemaIdProp ?? null);
+  }, [schemaIdProp]);
 
   const { data: drafts, error, isLoading } = useListDraftsQuery(
     { setupId: setupId || '', schemaId: schemaId || undefined },

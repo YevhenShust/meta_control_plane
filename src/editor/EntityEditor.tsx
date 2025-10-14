@@ -238,6 +238,7 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
     ajv,
     setupId,
     schemaKey,
+    schemaId: resolved?.schemaId,
     onOpenDrawer: handleOpenDrawer,
   };
 
@@ -264,6 +265,7 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
           ajv={tableProps.ajv}
           setupId={tableProps.setupId}
           schemaKey={tableProps.schemaKey}
+          schemaId={tableProps.schemaId}
           onOpenDrawer={tableProps.onOpenDrawer}
         />
       )}
