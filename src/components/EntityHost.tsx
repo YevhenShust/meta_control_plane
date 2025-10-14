@@ -1,6 +1,8 @@
 import type { UISchemaElement } from '@jsonforms/core';
 import EntityEditor from '../editor/EntityEditor';
-import useSetups from '../setup/useSetups';
+import useCurrentSetupId from '../hooks/useCurrentSetupId';
+import { useContext } from 'react';
+import SetupsContext from '../setup/SetupsContext';
 import { useState, useEffect } from 'react';
 import NewDraftDrawer from './NewDraftDrawer';
 // Schema loading now via RTK Query prepared endpoint
@@ -14,7 +16,9 @@ type Placeholder = { kind: string; params?: Record<string, unknown> };
 type HostProps = FormParams | TableParams | NewDraftParams | Placeholder;
 
 export default function EntityHost({ kind, params }: HostProps) {
-  const { selectedId: setupId } = useSetups();
+  const [setupIdLocal] = useCurrentSetupId();
+  const ctx = useContext(SetupsContext);
+  const setupId = ctx?.selectedId ?? setupIdLocal;
   const view = kind === 'table' ? 'table' : kind === 'form' ? 'form' : undefined;
   const schemaKey = (params || {})?.schemaKey as string | undefined;
   const draftId = kind === 'form' ? ((params || {}) as FormParams['params']).draftId : undefined;

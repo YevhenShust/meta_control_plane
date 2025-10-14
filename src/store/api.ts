@@ -3,7 +3,7 @@
 
 import { createApi } from '@reduxjs/toolkit/query/react';
 import * as api from '../shared/api';
-import type { DraftParsed, SchemaRecord } from '../shared/api';
+import type { DraftParsed, SchemaRecord, SetupDto } from '../shared/api';
 import { loadSchemaByKey, resolveSchemaIdByKey } from '../core/schemaKeyResolver';
 import prepareSchemaForJsonForms from '../jsonforms/prepareSchema';
 
@@ -14,8 +14,59 @@ const facadeBaseQuery = async () => ({ data: null });
 export const apiSlice = createApi({
   reducerPath: 'api',
   baseQuery: facadeBaseQuery,
-  tagTypes: ['Drafts', 'Schemas', 'MenuItems'],
+  tagTypes: ['Drafts', 'Schemas', 'MenuItems', 'Setups'],
   endpoints: (builder) => ({
+    // List setups
+    listSetups: builder.query<
+      SetupDto[],
+      { params?: { skip?: number; limit?: number } } | void
+    >({
+      queryFn: async (arg) => {
+        try {
+          const setups = await api.listSetups(arg && 'params' in (arg as object) ? (arg as { params?: { skip?: number; limit?: number } }).params : undefined);
+          return { data: setups as SetupDto[] };
+        } catch (error) {
+          return { error: { status: 'CUSTOM_ERROR', error: String(error) } };
+        }
+      },
+      providesTags: () => [{ type: 'Setups' as const }],
+    }),
+
+    // Get setup by id
+    getSetupById: builder.query<
+      SetupDto | null,
+      { setupId: string }
+    >({
+      queryFn: async (arg) => {
+        try {
+          const s = await api.getSetupById(arg.setupId);
+          return { data: s as SetupDto | null };
+        } catch (error) {
+          return { error: { status: 'CUSTOM_ERROR', error: String(error) } };
+        }
+      },
+      providesTags: (_res, _err, arg) => [{ type: 'Setups' as const, id: arg.setupId }],
+    }),
+
+    // Create setup
+    createSetup: builder.mutation<
+      SetupDto,
+      { name: string }
+    >({
+      queryFn: async (arg) => {
+        try {
+          const created = await api.createSetup({ name: arg.name });
+          return { data: created as SetupDto };
+        } catch (error) {
+          return { error: { status: 'CUSTOM_ERROR', error: String(error) } };
+        }
+      },
+      invalidatesTags: (res) => {
+        const tags: Array<{ type: 'Setups'; id?: string }> = [{ type: 'Setups' } as const];
+        if (res?.id) tags.push({ type: 'Setups', id: String(res.id) } as const);
+        return tags;
+      },
+    }),
     // List drafts for a setup with optional schema filtering
     listDrafts: builder.query<
       DraftParsed[],
@@ -163,4 +214,7 @@ export const {
   useListSchemasQuery,
   useListMenuItemsQuery,
   useGetPreparedSchemaByKeyQuery,
+  useListSetupsQuery,
+  useGetSetupByIdQuery,
+  useCreateSetupMutation,
 } = apiSlice;

@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import SidebarMenu from './SidebarMenu';
 import menuStructure, { getDynamicConfig as getDynCfg } from './menuStructure';
-import useSetups from '../../setup/useSetups';
+import useCurrentSetupId from '../../hooks/useCurrentSetupId';
+import { useContext } from 'react';
+import SetupsContext from '../../setup/SetupsContext';
 import { dynamicRoutes } from './menuStructure';
 import { useListMenuItemsQuery } from '../../store/api';
 import { MENU_REFRESH_RESET_MS } from '../../shared/constants';
@@ -10,7 +12,9 @@ import { MENU_REFRESH_RESET_MS } from '../../shared/constants';
  * Keeps SidebarMenu presentational and free of schema-specific logic.
  */
 export default function SidebarMenuContainer({ selectedMenuPath, onSelect }: { selectedMenuPath: string[]; onSelect: (p: string[]) => void }) {
-  const { selectedId: setupId } = useSetups();
+  const [setupIdLocal] = useCurrentSetupId();
+  const ctx = useContext(SetupsContext);
+  const setupId = ctx?.selectedId ?? setupIdLocal;
 
   const [refreshBasePath, setRefreshBasePath] = useState<string | null>(null);
 
@@ -40,7 +44,7 @@ export default function SidebarMenuContainer({ selectedMenuPath, onSelect }: { s
   // For now we support a fixed set of dynamic routes; Game/Chests is the only one
   const gameChestsQuery = useListMenuItemsQuery(
     { setupId: setupId || '', schemaKey: 'ChestDescriptor' },
-    { skip: !setupId }
+    { skip: !setupId, refetchOnMountOrArgChange: true }
   );
   const { data: gameChestsData } = gameChestsQuery;
 
@@ -55,7 +59,7 @@ export default function SidebarMenuContainer({ selectedMenuPath, onSelect }: { s
         setTimeout(() => setRefreshBasePath(null), MENU_REFRESH_RESET_MS);
       }
     }
-  }, [gameChestsQuery.data, selectedMenuPath]);
+  }, [gameChestsQuery.data, selectedMenuPath, setupId]);
 
   const loadDynamicChildren = useCallback(async (basePath: string) => {
     // Map basePath to the appropriate query result
@@ -81,6 +85,7 @@ export default function SidebarMenuContainer({ selectedMenuPath, onSelect }: { s
 
   return (
     <SidebarMenu
+      key={`menu-${setupId || 'none'}`}
       menu={menuStructure}
       selectedMenuPath={selectedMenuPath}
       onSelect={onSelect}

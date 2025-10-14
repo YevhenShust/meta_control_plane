@@ -1,9 +1,25 @@
 import { Navbar, Alignment, Button, ButtonGroup, Menu, MenuItem, Icon, Tag, Tooltip } from '@blueprintjs/core';
-import useSetups from '../setup/useSetups';
 import { useMock } from '../shared/api/utils';
+import { useCreateSetupMutation, useListSetupsQuery } from '../store/api';
+import { useEffect, useMemo } from 'react';
+import useCurrentSetupId from '../hooks/useCurrentSetupId';
+import { useContext } from 'react';
+import SetupsContext from '../setup/SetupsContext';
 
 export default function Header() {
-  const { setups, selectedId, setSelectedId, createSetup } = useSetups();
+  const { data: setupsData } = useListSetupsQuery();
+  const setups = useMemo(() => (setupsData ?? []).map(s => ({ id: String(s.id), name: String((s as { name?: unknown }).name ?? s.id ?? '') })), [setupsData]);
+  const [selectedIdLocal, setSelectedIdLocal] = useCurrentSetupId();
+  const ctx = useContext(SetupsContext);
+  const selectedId = ctx?.selectedId ?? selectedIdLocal;
+  const setSelectedId = ctx?.setSelectedId ?? setSelectedIdLocal;
+  useEffect(() => {
+    if (selectedId && !setups.find(s => s.id === selectedId)) {
+      setSelectedId(null);
+      try { localStorage.removeItem('selectedSetupId'); } catch { /* ignore */ }
+    }
+  }, [setups, selectedId, setSelectedId]);
+  const [createSetupMutation] = useCreateSetupMutation();
 
   // Header using Blueprint Navbar; theme classes are applied globally via body
   return (
@@ -28,7 +44,9 @@ export default function Header() {
         <ButtonGroup minimal>
           <Button icon={<Icon icon="add" />} onClick={async () => {
             const name = prompt('Setup name');
-            if (name) await createSetup(name);
+            if (name) {
+              await createSetupMutation({ name }).unwrap();
+            }
           }} />
         </ButtonGroup>
         <div className="muted-text">Current ID:</div>
