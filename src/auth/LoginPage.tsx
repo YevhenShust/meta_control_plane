@@ -20,8 +20,8 @@ export default function LoginPage({ onSuccess }: LoginPageProps) {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     
-    if (!username || !password) {
-      setError('Please enter both username and password');
+    if (!username) {
+      setError('Please enter username');
       return;
     }
 
@@ -29,6 +29,28 @@ export default function LoginPage({ onSuccess }: LoginPageProps) {
     setError(null);
 
     try {
+      // DEV-ONLY: Admin bypass for local development
+      // Enabled via VITE_AUTH_DEV_BYPASS=1 (or 'true')
+      // NEVER enable in production builds
+      const devBypass = import.meta.env.VITE_AUTH_DEV_BYPASS === '1' || 
+                        import.meta.env.VITE_AUTH_DEV_BYPASS === 'true';
+      
+      if (devBypass && username.toLowerCase() === 'admin' && password === '') {
+        // Dev-only admin login: bypass network call and use a stable dev token
+        setSession('dev-admin-token', 'admin');
+        
+        if (onSuccess) {
+          onSuccess();
+        }
+        return;
+      }
+
+      // Standard authentication flow
+      if (!password) {
+        setError('Please enter password');
+        return;
+      }
+
       const hashedPassword = await hashPassword(password);
       const response = await loginRequest(username, hashedPassword);
       
