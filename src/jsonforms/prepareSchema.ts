@@ -9,6 +9,11 @@ export default function prepareSchemaForJsonForms(schema: unknown): unknown {
     root['$schema'] = 'http://json-schema.org/draft-07/schema#';
   }
 
+  // Drop root $id to prevent Ajv collisions when schema is recompiled with runtime patches
+  if (typeof root['$id'] !== 'undefined') {
+    delete root['$id'];
+  }
+
   // Normalize legacy "definitions" -> "$defs"
   if ((root as { definitions?: unknown }).definitions && !(root as { $defs?: unknown }).$defs) {
     (root as { $defs?: unknown }).$defs = (root as { definitions?: unknown }).definitions;

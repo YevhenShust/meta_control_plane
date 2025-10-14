@@ -7,6 +7,7 @@ import NewDraftDrawer from '../components/NewDraftDrawer';
 import { getContentId } from '../core/contentId';
 import { useListDraftsQuery, useUpdateDraftMutation, useGetPreparedSchemaByKeyQuery } from '../store/api';
 import { AppToaster } from '../components/AppToaster';
+import { getUiSchemaByKey } from '../schemas/ui';
 
 type DraftContent = unknown;
 
@@ -57,14 +58,9 @@ export default function EntityEditor({ ids, view }: EntityEditorProps) {
           if (!alive) return;
           setResolved({ schemaId: preparedSchema.schemaId });
           setSchema((preparedSchema.schema as object) ?? {});
-          try {
-            const maybe = await import(`../schemas/ui/${schemaKey}.uischema.json`);
-            if (!alive) return;
-            if (maybe && maybe.default) {
-              setUischema(maybe.default as object);
-            }
-          } catch {
-            // optional missing uischema
+          const ui = schemaKey ? getUiSchemaByKey(schemaKey) : undefined;
+          if (ui) {
+            setUischema(ui as object);
           }
           // For table view we can render immediately; for form view wait for drafts
           if (view !== 'form') {
