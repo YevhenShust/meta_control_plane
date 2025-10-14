@@ -1,0 +1,49 @@
+openapi: 3.0.0
+info:
+  title: Service.MetaAuth API
+  description: Draft.
+  version: 0.0.1
+servers:
+  - url: /meta
+
+paths:
+  /auth/token:
+    post:
+      summary: Get token by username and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                  example: user@example.com
+                password:
+                  type: string
+                  example: Secret123!
+              required:
+                - username
+                - password
+      responses:
+        '200':
+          description: Authentification successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthTokenResponse'
+        '401':
+          description: Login or password incorrect
+
+components:
+  schemas:
+    AuthTokenResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+          description: JWT access token
+        token_type:
+          type: string
+          example: Bearer
