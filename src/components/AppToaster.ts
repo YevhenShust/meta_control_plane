@@ -1,5 +1,7 @@
 import { OverlayToaster, Position } from '@blueprintjs/core';
 import type { Toaster } from '@blueprintjs/core';
+import React from 'react';
+import { createRoot, type Root } from 'react-dom/client';
 
 /**
  * AppToaster — centralized, async toaster helper for the app.
@@ -25,22 +27,44 @@ import type { Toaster } from '@blueprintjs/core';
  */
 
 let toasterInstance: Toaster | null = null;
-let toasterPromise: Promise<Toaster> | null = null;
+let mountPromise: Promise<Toaster> | null = null;
+let root: Root | null = null;
 
-function getToaster(): Promise<Toaster> {
+function ensureContainer(): HTMLElement {
+  const id = 'bp-toaster-root';
+  let el = document.getElementById(id);
+  if (!el) {
+    el = document.createElement('div');
+    el.id = id;
+    document.body.appendChild(el);
+  }
+  return el;
+}
+
+function mountToaster(): Promise<Toaster> {
   if (toasterInstance) return Promise.resolve(toasterInstance);
-
-  if (!toasterPromise) {
-    toasterPromise = OverlayToaster.createAsync({
+  if (mountPromise) return mountPromise;
+  mountPromise = new Promise<Toaster>((resolve) => {
+    const container = ensureContainer();
+    root = createRoot(container);
+    const element = React.createElement(OverlayToaster, {
       position: Position.TOP,
       maxToasts: 3,
-    }).then(instance => {
-      toasterInstance = instance;
-      return instance;
-    });
-  }
+      // ref receives the public Toaster API instance
+      ref: (ref: Toaster | null) => {
+        if (ref) {
+          toasterInstance = ref;
+          resolve(ref);
+        }
+      },
+    } as unknown as React.ComponentProps<typeof OverlayToaster>);
+    root.render(element);
+  });
+  return mountPromise;
+}
 
-  return toasterPromise;
+function getToaster(): Promise<Toaster> {
+  return mountToaster();
 }
 
 export const AppToaster = {
