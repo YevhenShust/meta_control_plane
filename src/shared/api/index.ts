@@ -4,6 +4,7 @@
 import { listDraftsV1, createDraftV1, updateDraftV1 } from './drafts';
 import { listSchemasV1, getSchemaByIdV1, uploadSchemaV1 } from './schema';
 import { listSetupsV1, getSetupByIdV1, createSetupV1 } from './setup';
+import { postAuthTokenV1 } from './auth';
 import { resolveSchemaIdByKey } from '../../core/schemaKeyResolver';
 
 // Facade types (type-only imports)
@@ -19,6 +20,7 @@ import { normalizeSetup } from './facade/setup';
 // Re-export canonical application-level types from `src/types/*`
 export type { SchemaRecord } from '../../types/schema';
 export type { SetupDto } from '../../types/setup';
+export type { AuthTokenResponse } from '../../types/auth';
 
 // Re-export facade parsed types (for consumers that want parsed shapes)
 export type { DraftParsed, SchemaParsed, SetupParsed };
@@ -116,4 +118,11 @@ export async function updateDraft(draftId: string, content: unknown): Promise<Dr
   const contentStr = typeof content === 'string' ? content : JSON.stringify(content);
   const draft = await updateDraftV1(draftId, contentStr);
   return normalizeDraft(draft) as DraftParsed;
+}
+
+/**
+ * Versionless auth facade: issue token
+ */
+export async function loginRequest(username: string, password: string) {
+  return await postAuthTokenV1({ username, password });
 }

@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Card, FormGroup, InputGroup, Button, Callout, Intent } from '@blueprintjs/core';
-import { loginRequest } from '../shared/api/authApi';
+import { loginRequest } from '../shared/api';
+import { useMock } from '../shared/api/utils';
 import { setSession } from './session';
 
 interface LoginPageProps {
@@ -28,15 +29,21 @@ export default function LoginPage({ onSuccess }: LoginPageProps) {
     setError(null);
 
     try {
-      // DEV-ONLY: Admin bypass for local development
-      // Enabled via VITE_AUTH_DEV_BYPASS=1 (or 'true')
-      // NEVER enable in production builds
-      const devBypass = import.meta.env.VITE_AUTH_DEV_BYPASS === '1' || 
-                        import.meta.env.VITE_AUTH_DEV_BYPASS === 'true';
+  // DEV-ONLY: Admin bypass for local development
+  // Enabled via VITE_AUTH_DEV_BYPASS=1 (or 'true').
+  // Additionally, when mock mode is ON in dev (VITE_USE_MOCK=1),
+  // we auto-enable bypass to simplify CI/agent and local UI demos.
+  // This has no effect in production builds.
+  const devBypassEnv = import.meta.env.VITE_AUTH_DEV_BYPASS === '1' || import.meta.env.VITE_AUTH_DEV_BYPASS === 'true';
+  const devBypassAuto = import.meta.env.DEV && useMock; // auto when mocks are used in dev
+  const devBypass = devBypassEnv || devBypassAuto;
       
       if (devBypass && username.toLowerCase() === 'admin' && password === '') {
         // Dev-only admin login: bypass network call and use a stable dev token
         setSession('dev-admin-token', 'admin');
+        if (import.meta.env.DEV) {
+          console.warn('[auth] DEV AUTH BYPASS active; mock mode:', useMock ? 'ON' : 'OFF');
+        }
         
         if (onSuccess) {
           onSuccess();
