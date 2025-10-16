@@ -79,7 +79,7 @@ http.interceptors.request.use(
         const method = (config.method || 'get').toUpperCase();
         const base = (http.defaults.baseURL || '').replace(/\/+$/, '');
         const url = String(config.url ?? '');
-  console.debug(`[http] ${method} ${base}${url}`);
+  process?.stdout?.write(`[http] ${method} ${base}${url}\n`);
       } catch {
         // ignore logging issues in dev
       }
