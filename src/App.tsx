@@ -5,9 +5,20 @@ import SidebarMenuContainer from './components/sidebar/SidebarMenuContainer';
 import MainContent from './components/MainContent';
 import { AppToaster } from './components/AppToaster';
 import { useMock } from './shared/api/utils';
+import LoginPage from './auth/LoginPage';
+import { isAuthenticated, onSessionChange } from './auth/session';
 
 const App: React.FC = () => {
+  const [authenticated, setAuthenticated] = useState(isAuthenticated());
   const [selectedMenuPath, setSelectedMenuPath] = useState<string[]>([]);
+
+  useEffect(() => {
+    // Listen for session changes (login/logout)
+    const unsubscribe = onSessionChange(() => {
+      setAuthenticated(isAuthenticated());
+    });
+    return unsubscribe;
+  }, []);
 
   useEffect(() => {
     const readPath = () => {
@@ -57,6 +68,11 @@ const wroteOnce = useRef(false);
 
     window.history.replaceState(null, '', url.toString());
   }, [selectedMenuPath]);
+
+  // Show login page if not authenticated
+  if (!authenticated) {
+    return <LoginPage onSuccess={() => setAuthenticated(true)} />;
+  }
 
   return (
     <div className="app-shell">

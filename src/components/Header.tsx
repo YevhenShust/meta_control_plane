@@ -5,6 +5,7 @@ import { useEffect, useMemo } from 'react';
 import useCurrentSetupId from '../hooks/useCurrentSetupId';
 import { useContext } from 'react';
 import SetupsContext from '../setup/SetupsContext';
+import { getUsername, clearSession } from '../auth/session';
 
 export default function Header() {
   const { data: setupsData } = useListSetupsQuery();
@@ -13,6 +14,8 @@ export default function Header() {
   const ctx = useContext(SetupsContext);
   const selectedId = ctx?.selectedId ?? selectedIdLocal;
   const setSelectedId = ctx?.setSelectedId ?? setSelectedIdLocal;
+  const username = getUsername();
+  
   useEffect(() => {
     if (selectedId && !setups.find(s => s.id === selectedId)) {
       setSelectedId(null);
@@ -20,6 +23,11 @@ export default function Header() {
     }
   }, [setups, selectedId, setSelectedId]);
   const [createSetupMutation] = useCreateSetupMutation();
+
+  const handleLogout = () => {
+    clearSession();
+    window.location.reload();
+  };
 
   // Header using Blueprint Navbar; theme classes are applied globally via body
   return (
@@ -51,6 +59,26 @@ export default function Header() {
         </ButtonGroup>
         <div className="muted-text">Current ID:</div>
         <div aria-label="current-setup-id" className="current-setup-id">{selectedId ?? '\u0014'}</div>
+        
+        <Navbar.Divider />
+        
+        {username ? (
+          <>
+            <Tag minimal icon="user">
+              {username}
+            </Tag>
+            <Button 
+              minimal 
+              icon="log-out" 
+              text="Logout" 
+              onClick={handleLogout}
+            />
+          </>
+        ) : (
+          <Tag minimal intent="warning">
+            Not signed in
+          </Tag>
+        )}
       </Navbar.Group>
     </Navbar>
   );
