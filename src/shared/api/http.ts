@@ -68,7 +68,10 @@ http.interceptors.request.use(
           config.url = `${pathPrefix}${url}`;
         } else if (url) {
           // Relative without a leading slash — normalize to '/<prefix>/<url>'
-          config.url = `${pathPrefix}/${url}`.replace(/\/{2,}/g, '/');
+          // Safely join pathPrefix and url with a single slash, avoiding double slashes
+          const trimmedPrefix = pathPrefix.replace(/\/+$/, '');
+          const trimmedUrl = url.replace(/^\/+/, '');
+          config.url = `${trimmedPrefix}/${trimmedUrl}`;
         }
       }
     }
