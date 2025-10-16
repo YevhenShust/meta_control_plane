@@ -80,7 +80,7 @@ http.interceptors.request.use(
     if (import.meta.env.DEV) {
       try {
         const method = (config.method || 'get').toUpperCase();
-        const base = (http.defaults.baseURL || '').replace(/\/+$/, '');
+        const base = (baseOrigin || '').replace(/\/+$/, '');
         const url = String(config.url ?? '');
   process?.stdout?.write(`[http] ${method} ${base}${url}\n`);
       } catch {
