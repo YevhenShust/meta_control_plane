@@ -22,9 +22,6 @@ const serverConfig: UserConfig['server'] = proxyTarget
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
-  define: {
-    'import.meta.env.DEV': 'true',
-    'process.env.NODE_ENV': '"development"',
-  },
+  // In dev, you may set VITE_PROXY_TARGET to proxy /api -> backend
   server: serverConfig,
 });
