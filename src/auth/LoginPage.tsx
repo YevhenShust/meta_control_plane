@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Card, FormGroup, InputGroup, Button, Callout, Intent } from '@blueprintjs/core';
-import { hashPassword } from './hash';
 import { loginRequest } from '../shared/api/authApi';
 import { setSession } from './session';
 
@@ -51,8 +50,8 @@ export default function LoginPage({ onSuccess }: LoginPageProps) {
         return;
       }
 
-      const hashedPassword = await hashPassword(password);
-      const response = await loginRequest(username, hashedPassword);
+  // Send raw password (HTTPS-protected). Client-side hashing removed per updated protocol.
+  const response = await loginRequest(username, password);
       
       setSession(response.access_token, username);
       

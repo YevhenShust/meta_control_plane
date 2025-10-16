@@ -6,18 +6,18 @@ import type { AuthTokenResponse, AuthLoginRequest } from '../../types/auth';
 /**
  * Login request to obtain JWT token
  * @param username - User's username/email
- * @param hashedPassword - Pre-hashed password
+ * @param password - Raw password (sent over HTTPS)
  * @returns Token response with access_token and token_type
  */
 export async function loginRequest(
   username: string,
-  hashedPassword: string
+  password: string
 ): Promise<AuthTokenResponse> {
   const payload: AuthLoginRequest = {
     username,
-    password: hashedPassword,
+    password,
   };
   
-  const response = await http.post<AuthTokenResponse>('/meta/auth/token', payload);
+  const response = await http.post<AuthTokenResponse>('/meta/api/v1/Auth/login', payload);
   return response.data;
 }
