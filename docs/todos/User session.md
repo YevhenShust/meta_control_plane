@@ -33,7 +33,7 @@ As a GD / ND / LD I want to authenticate in the Meta Service so that I can acces
 
 ### Scope for This Stage
 - Access token is treated as permanent (no refresh flow).
-- Password hashing performed client-side before sending (placeholder algorithm until finalized).
+- Password is sent raw over HTTPS; no client-side hashing. Server validates using secure hashing (e.g., Argon2/bcrypt).
 
 ### Functional
 - Authentication flow implemented per `docs/Auth/Authentication and Authorization.md`.

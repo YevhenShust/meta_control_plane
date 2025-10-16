@@ -3,7 +3,7 @@
 ## Summary
 Implements initial user authentication in the Meta Control Plane SPA:
 - Login screen + session gating.
-- Permanent JWT token retrieval via `/meta/auth/token`.
+- Permanent JWT token retrieval via `/api/v1/Auth/token`.
 - Authorization header injection on all subsequent API requests.
 - Logout handling and UI integration (username + logout button in header).
 
@@ -12,46 +12,28 @@ Per product requirements, all domain resources must be protected. This lays the 
 
 ## Scope Included
 - New auth module (`src/auth/*`) for session management.
-- Password hashing placeholder (SHA-256) — easily replaceable.
-- Axios request interceptor adding `Authorization: Bearer <token>`.
-- 401 response interceptor → automatic logout.
-- Login page (Blueprint form) + conditional rendering in `App.tsx`.
 - Header augmentation to show current user + logout.
 - Updated docs: `User session.md`, `Authentication and Authorization.md`.
 
 ## Not Included (Future Work)
 - Token refresh / expiry.
-- ACL enforcement / role-based rendering.
-- User management / registration flows.
-- OpenAPI-generated Auth client (placeholder now).
-
-## Implementation Overview
-- Session state kept in lightweight in‑memory module + localStorage persistence.
-- No RTK Query mutation for login yet (kept decoupled until OpenAPI client arrives).
-- Interceptor approach avoids touching every facade call.
-- Clean fallback when unauthenticated.
-
-## Files Added
-- `src/auth/session.ts` — token + username storage APIs.
-- `src/auth/hash.ts` — password hashing helper.
-- `src/auth/LoginPage.tsx` — UI & logic.
-- `src/auth/AuthContext.tsx` — optional context (if needed) (skeleton).
-- `src/types/auth.ts` — auth DTO types.
-- `src/shared/api/authApi.ts` — explicit login facade (stub for future OpenAPI).
-
+- Role-based access control and UI gating by role.
+- Generated OpenAPI runtime client for auth (current: lightweight facade).
+- E2E tests.
 ## Files Modified
 - `src/shared/api/http.ts` — interceptors.
 - `src/App.tsx` — gating logic.
 - `src/components/Header.tsx` — user display + logout.
 - `docs/todos/User session.md`, `docs/Auth/Authentication and Authorization.md` — formatting.
+ - `src/auth/LoginPage.tsx` — raw-password submission; dev-bypass handling.
+ - `src/shared/api/auth.ts`, `src/shared/api/index.ts` — unified login facade (`POST /api/v1/Auth/token`).
+ - `vite.config.ts` — proxy notes for `/api` (optional `/meta` rewrite in dev).
 
 ## Testing / Validation
-Manual Steps:
-1. Start app (mock or real backend).
-2. Navigate (should see Login when no token).
-3. Enter credentials (with mock backend: any user → token stub).
-4. Observe header shows username; network requests now carry Authorization.
-5. Click Logout → returns to Login.
+1. Successful login with raw password to `/api/v1/Auth/token`.
+2. Observe header shows username; network requests carry Authorization.
+3. Invalid credentials → inline error.
+4. Click Logout → returns to Login.
 
 ## Edge Cases
 - Invalid credentials → inline error, state not polluted.
@@ -61,7 +43,7 @@ Manual Steps:
 ## Risks & Mitigations
 | Risk | Mitigation |
 |------|------------|
-| Placeholder hash diverges from backend expectation | Encapsulated in `hashPassword` for easy swap |
+| Direct raw password concerns | Always use HTTPS; server performs secure hashing (Argon2/bcrypt) |
 | Silent auth failures | Explicit error messaging + console error during development |
 | Race on early API calls before login | Gating prevents protected UI mount |
 
@@ -70,6 +52,7 @@ Manual Steps:
 - Introduce RTK Query `login` mutation if beneficial.
 - Implement ACL and role-based UI gating.
 - Add e2e happy-path test (Playwright / Cypress).
+- Decide whether to keep `src/auth/hash.ts`; currently unused.
 
 ## Checklist
 - [x] Builds: `yarn build`
