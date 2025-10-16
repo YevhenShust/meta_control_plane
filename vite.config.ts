@@ -23,7 +23,7 @@ export default defineConfig(({ mode }) => {
             configure: (proxy: any) => {
               const log = (msg: string) => {
                 try {
-                  process?.stdout?.write(String(msg) + '\n');
+                  process?.stdout?.write(msg + '\n');
                 } catch {
                   // ignore logging errors
                 }
