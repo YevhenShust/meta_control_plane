@@ -58,6 +58,19 @@ export default function LoginPage({ onSuccess }: LoginPageProps) {
       }
 
   // Send raw password (HTTPS-protected). Client-side hashing removed per updated protocol.
+  // DEV WARNING: In development, warn if non-HTTPS origin is used outside localhost.
+  if (
+    import.meta.env.DEV &&
+    typeof window !== 'undefined' &&
+    window.location.protocol !== 'https:' &&
+    window.location.hostname !== 'localhost' &&
+    window.location.hostname !== '127.0.0.1'
+  ) {
+    console.warn(
+      '[auth] WARNING: Submitting credentials over non-HTTPS. Use HTTPS in dev or ensure localhost.'
+    );
+  }
+
   const response = await loginRequest(username, password);
       
       setSession(response.access_token, username);

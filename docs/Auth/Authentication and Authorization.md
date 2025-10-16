@@ -36,7 +36,7 @@ Notes:
 	- Or Vite dev proxy rewrite `/api` → `/meta/api` in `vite.config.ts`.
 
 ## Client Responsibilities
-- Hash password locally (replace placeholder with final algorithm later).
+- Do not hash password on the client; send over HTTPS.
 - Store token securely (memory + localStorage for persistence).
 - Attach `Authorization: Bearer <token>` to all API requests.
 - Handle `401` by clearing session and returning to Login.
