@@ -73,6 +73,18 @@ http.interceptors.request.use(
       }
     }
 
+    // Dev-only: log the effective request URL (helps verify proxy/prefix)
+    if (import.meta.env.DEV) {
+      try {
+        const method = (config.method || 'get').toUpperCase();
+        const base = (http.defaults.baseURL || '').replace(/\/+$/, '');
+        const url = String(config.url ?? '');
+  console.debug(`[http] ${method} ${base}${url}`);
+      } catch {
+        // ignore logging issues in dev
+      }
+    }
+
     return config;
   },
   (error) => Promise.reject(error)
