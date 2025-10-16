@@ -28,9 +28,15 @@ Install dependencies (PnP, deterministic):
 yarn install --immutable
 ```
 
-Run the dev server:
+Run the dev server (with backend proxy):
 ```powershell
+# Option A: one-off in PowerShell
+$env:VITE_PROXY_TARGET='https://localhost:8143'
 yarn dev
+
+# Option B: via .env.development
+# Put VITE_PROXY_TARGET=https://localhost:8143 into .env.development, then:
+# yarn dev
 ```
 
 Open:
@@ -40,6 +46,8 @@ Stop the server with Ctrl+C.
 
 Build for production:
 ```powershell
+# Integration/Prod builds must set VITE_API_URL (can include path prefix)
+# Example: https://backend.internal or https://backend.internal/meta
 yarn build
 ```
 
@@ -53,26 +61,37 @@ yarn tsc --noEmit
 
 ## Configuration
 
-Vite reads environment variables prefixed with `VITE_`. Create a `.env.local` in the repo root to override defaults.
+Vite reads environment variables prefixed with `VITE_`.
 
+Local development (proxy to backend):
 ```dotenv
-# Backend base URL (no trailing slash). Default: http://localhost:8100
-VITE_API_URL=http://localhost:8100
-
-# Use local mock data from /data instead of backend: 1 = on, anything else = off. Default: off
-VITE_USE_MOCK=1
+# .env.development
+VITE_PROXY_TARGET=https://localhost:8143
+# Optional: mock mode
+VITE_USE_MOCK=0
 ```
 
-PowerShell one‑off overrides:
-```powershell
-$env:VITE_USE_MOCK='1'; yarn dev
-# or
-$env:VITE_API_URL='http://localhost:8100'; yarn dev
+Integration/Production (no proxy, direct calls):
+```dotenv
+# .env.production
+# Absolute backend URL, may include a path prefix (e.g., /meta)
+VITE_API_URL=https://backend.internal/meta
+VITE_USE_MOCK=0
+VITE_AUTH_DEV_BYPASS=0
+```
+
+Mock-only smoke (no backend):
+```dotenv
+# .env.mock (build-time)
+VITE_USE_MOCK=1
+VITE_AUTH_DEV_BYPASS=1
+# Do not set VITE_API_URL
 ```
 
 Transport defaults:
-- Axios base URL: `VITE_API_URL` or `http://localhost:8100` if unset (see `src/shared/api/http.ts`).
-- Mock toggle: `VITE_USE_MOCK === '1'` (see `src/shared/api/utils.ts`).
+- Dev: proxy `/api` to `VITE_PROXY_TARGET` if set.
+- Prod: `VITE_API_URL` is required; the client automatically prepends its path prefix (if any) to `/api/...`.
+- Mock toggle: `VITE_USE_MOCK === '1'`.
 
 ---
 
@@ -124,7 +143,30 @@ Useful constants:
 - PnP editor tooling (optional)
   - If your IDE needs TS SDK wiring: `yarn dlx @yarnpkg/sdks`.
 - Backend not reachable
-  - Set `VITE_API_URL` to your backend, or use `VITE_USE_MOCK=1` to run with local `data/`.
+  - Dev: set `VITE_PROXY_TARGET` and restart `yarn dev`.
+  - Prod build: set `VITE_API_URL` (can include path prefix, e.g., `/meta`).
+  - For self-signed HTTPS in dev, the proxy is already configured with `secure: false`.
+
+---
+
+## Run from Visual Studio (Windows)
+
+Visual Studio 2022 can run yarn scripts:
+
+1. Open the repository folder in Visual Studio (Open Folder).
+2. Enable Corepack once (if needed):
+   ```powershell
+   corepack enable
+   ```
+3. Configure environment for dev proxy:
+   - Add `VITE_PROXY_TARGET=https://localhost:8143` to `.env.development`, or
+   - In Debug Profiles, create a profile to run:
+     - Command: `yarn`
+     - Arguments: `dev`
+     - Environment variables: `VITE_PROXY_TARGET=https://localhost:8143`
+4. Start debugging with the created profile. Visual Studio will open `http://localhost:5173/`.
+
+Tip: In the Vite terminal output you should see lines like `[proxy] GET /api/... -> https://localhost:8143`.
 
 ---
 
