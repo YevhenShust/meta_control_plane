@@ -1,9 +1,9 @@
 import axios from 'axios';
 import { getToken, clearSession } from '../../auth/session';
 
-const baseURL =
-  import.meta.env.VITE_API_URL?.replace(/\/+$/, '') ||
-  'http://localhost:8100';
+const baseURL = import.meta.env.VITE_API_URL
+  ? String(import.meta.env.VITE_API_URL).replace(/\/+$/, '')
+  : '/api';
 
 export const http = axios.create({
   baseURL,
